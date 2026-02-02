@@ -63,6 +63,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     }, 200);
   }
+
+  // Open sidebar and switch it to Edit mode with provided card data.
+  // Used when clicking Edit in manage.html.
+  if (message.action === 'openSidebarForEdit' && message.card) {
+    openSidebar();
+
+    // Wait for iframe to be ready then post edit payload.
+    setTimeout(() => {
+      if (sidebarIframe && sidebarIframe.contentWindow) {
+        sidebarIframe.contentWindow.postMessage({
+          action: 'editCard',
+          card: message.card
+        }, '*');
+      }
+    }, 250);
+  }
   
   if (message.action === "closeSidebar") {
     closeSidebar();
