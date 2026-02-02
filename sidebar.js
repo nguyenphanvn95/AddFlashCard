@@ -8,11 +8,14 @@ const newDeckBtn = document.getElementById('newDeckBtn');
 const manageBtn = document.getElementById('manageBtn');
 const statsContent = document.getElementById('statsContent');
 const headerTitle = document.querySelector('.sidebar-header h1');
+const tagsInput = document.getElementById('tagsInput');
+const tagsDisplay = document.getElementById('tagsDisplay');
 
 // Edit state
 let isEditMode = false;
 let editingCardId = null;
 let editingCreatedAt = null;
+let currentTags = [];
 
 // Toolbar buttons
 const toolbarBtns = document.querySelectorAll('.toolbar-btn[data-command]');
@@ -22,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDecks();
   setupToolbar();
   setupEditors();
+  setupTags();
+  setupRichTextShortcuts();
+  setupMessageHandlers();
   loadStatistics();
 
   // If opened in edit mode (e.g. from Manage page), load context and switch UI.
@@ -66,6 +72,11 @@ function enterEditMode(card) {
     deckSelect.value = card.deck;
     frontEditor.innerHTML = card.front || '';
     backEditor.innerHTML = card.back || '';
+    
+    // Load tags
+    currentTags = card.tags || [];
+    renderTags();
+    
     setHeaderAndButtonForMode();
 
     // Focus front editor for immediate editing
@@ -306,6 +317,7 @@ addCardBtn.addEventListener('click', async () => {
       deck,
       front,
       back,
+      tags: currentTags,
       createdAt: editingCreatedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
@@ -315,6 +327,7 @@ addCardBtn.addEventListener('click', async () => {
       deck: deck,
       front: front,
       back: back,
+      tags: currentTags,
       createdAt: new Date().toISOString()
     };
     await saveCard(card);
@@ -349,6 +362,7 @@ async function updateCard(card) {
         deck: card.deck,
         front: card.front,
         back: card.back,
+        tags: card.tags || [],
         createdAt: original.createdAt || card.createdAt,
         updatedAt: card.updatedAt
       };
@@ -364,6 +378,8 @@ async function updateCard(card) {
         // Exit edit mode and clear editors (back to Add flow)
         frontEditor.innerHTML = '';
         backEditor.innerHTML = '';
+        currentTags = [];
+        renderTags();
         exitEditMode();
       });
     });
@@ -394,6 +410,8 @@ async function updateCard(card) {
         showNotification('Card saved!', 'success');
         frontEditor.innerHTML = '';
         backEditor.innerHTML = '';
+        currentTags = [];
+        renderTags();
         exitEditMode();
       });
     });
@@ -419,6 +437,8 @@ async function saveCard(card) {
         // Clear editors
         frontEditor.innerHTML = '';
         backEditor.innerHTML = '';
+        currentTags = [];
+        renderTags();
         
         showNotification('Card added successfully!', 'success');
         loadStatistics();
@@ -441,6 +461,8 @@ async function saveCard(card) {
       chrome.storage.local.set({ cards: cards }, () => {
         frontEditor.innerHTML = '';
         backEditor.innerHTML = '';
+        currentTags = [];
+        renderTags();
         showNotification('Card added!', 'success');
         loadStatistics();
         loadDecks();
@@ -528,3 +550,272 @@ function showNotification(message, type = 'success') {
     notification.remove();
   }, 3000);
 }
+
+// Tags Management
+function setupTags() {
+  if (!tagsInput || !tagsDisplay) return;
+  
+  tagsInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag();
+    }
+  });
+  
+  tagsInput.addEventListener('blur', () => {
+    if (tagsInput.value.trim()) {
+      addTag();
+    }
+  });
+}
+
+function addTag() {
+  const tagText = tagsInput.value.trim().replace(/,/g, '');
+  if (!tagText) return;
+  
+  // Avoid duplicates
+  if (currentTags.includes(tagText)) {
+    tagsInput.value = '';
+    return;
+  }
+  
+  currentTags.push(tagText);
+  renderTags();
+  tagsInput.value = '';
+}
+
+function removeTag(tag) {
+  currentTags = currentTags.filter(t => t !== tag);
+  renderTags();
+}
+
+function renderTags() {
+  if (!tagsDisplay) return;
+  
+  tagsDisplay.innerHTML = '';
+  currentTags.forEach(tag => {
+    const tagEl = document.createElement('span');
+    tagEl.className = 'tag';
+    tagEl.innerHTML = `
+      ${tag}
+      <span class="tag-remove" data-tag="${tag}">×</span>
+    `;
+    
+    const removeBtn = tagEl.querySelector('.tag-remove');
+    removeBtn.addEventListener('click', () => removeTag(tag));
+    
+    tagsDisplay.appendChild(tagEl);
+  });
+}
+
+// Rich Text Keyboard Shortcuts
+function setupRichTextShortcuts() {
+  const editors = [frontEditor, backEditor];
+  
+  editors.forEach(editor => {
+    if (!editor) return;
+    
+    editor.addEventListener('keydown', (e) => {
+      // Ctrl+B: Bold
+      if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        document.execCommand('bold', false, null);
+        return;
+      }
+      
+      // Ctrl+I: Italic
+      if (e.ctrlKey && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        document.execCommand('italic', false, null);
+        return;
+      }
+      
+      // Ctrl+U: Underline
+      if (e.ctrlKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        document.execCommand('underline', false, null);
+        return;
+      }
+      
+      // Ctrl+K: Insert Link
+      if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        insertLink(editor);
+        return;
+      }
+      
+      // Ctrl+Shift+S: Strikethrough
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.execCommand('strikeThrough', false, null);
+        return;
+      }
+      
+      // Ctrl+]: Increase Font Size
+      if (e.ctrlKey && e.key === ']') {
+        e.preventDefault();
+        increaseFontSize(editor);
+        return;
+      }
+      
+      // Ctrl+[: Decrease Font Size
+      if (e.ctrlKey && e.key === '[') {
+        e.preventDefault();
+        decreaseFontSize(editor);
+        return;
+      }
+      
+      // Ctrl+Shift+L: Bullet List
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        document.execCommand('insertUnorderedList', false, null);
+        return;
+      }
+      
+      // Ctrl+Shift+N: Numbered List
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        document.execCommand('insertOrderedList', false, null);
+        return;
+      }
+      
+      // Ctrl+E: Center Align
+      if (e.ctrlKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        document.execCommand('justifyCenter', false, null);
+        return;
+      }
+      
+      // Ctrl+L: Left Align
+      if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        document.execCommand('justifyLeft', false, null);
+        return;
+      }
+      
+      // Ctrl+R: Right Align
+      if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        document.execCommand('justifyRight', false, null);
+        return;
+      }
+      
+      // Ctrl+Space: Clear Formatting
+      if (e.ctrlKey && e.key === ' ') {
+        e.preventDefault();
+        document.execCommand('removeFormat', false, null);
+        return;
+      }
+    });
+  });
+}
+
+// Insert Link Helper
+function insertLink(editor) {
+  const selection = window.getSelection();
+  const selectedText = selection.toString();
+  
+  const url = prompt('Enter URL:', 'https://');
+  if (!url) return;
+  
+  if (selectedText) {
+    document.execCommand('createLink', false, url);
+  } else {
+    const linkText = prompt('Enter link text:', url);
+    if (linkText) {
+      const link = `<a href="${url}" target="_blank">${linkText}</a>`;
+      document.execCommand('insertHTML', false, link);
+    }
+  }
+}
+
+// Font Size Helpers
+function increaseFontSize(editor) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  
+  const range = selection.getRangeAt(0);
+  const selectedContent = range.extractContents();
+  
+  // Wrap in span with larger font
+  const span = document.createElement('span');
+  span.style.fontSize = 'larger';
+  span.appendChild(selectedContent);
+  
+  range.insertNode(span);
+  
+  // Restore selection
+  selection.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  selection.addRange(newRange);
+}
+
+function decreaseFontSize(editor) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  
+  const range = selection.getRangeAt(0);
+  const selectedContent = range.extractContents();
+  
+  // Wrap in span with smaller font
+  const span = document.createElement('span');
+  span.style.fontSize = 'smaller';
+  span.appendChild(selectedContent);
+  
+  range.insertNode(span);
+  
+  // Restore selection
+  selection.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  selection.addRange(newRange);
+}
+
+// Message Handlers for Alt+A and Alt+B shortcuts
+function setupMessageHandlers() {
+  window.addEventListener('message', (event) => {
+    // Handle messages from parent window (content.js)
+    if (event.data && event.data.action === 'addToFront') {
+      if (frontEditor) {
+        frontEditor.focus();
+        const content = event.data.content;
+        // Insert at cursor or append if empty
+        if (frontEditor.innerHTML.trim() === '') {
+          frontEditor.innerHTML = content;
+        } else {
+          document.execCommand('insertHTML', false, '<br>' + content);
+        }
+        showNotification('Added to Front field', 'success');
+      }
+    }
+    
+    if (event.data && event.data.action === 'addToBack') {
+      if (backEditor) {
+        backEditor.focus();
+        const content = event.data.content;
+        // Insert at cursor or append if empty
+        if (backEditor.innerHTML.trim() === '') {
+          backEditor.innerHTML = content;
+        } else {
+          document.execCommand('insertHTML', false, '<br>' + content);
+        }
+        showNotification('Added to Back field', 'success');
+      }
+    }
+    
+    // Existing message handlers
+    if (event.data && event.data.action === 'addContent') {
+      if (frontEditor) {
+        frontEditor.innerHTML = event.data.content;
+        frontEditor.focus();
+      }
+    }
+    
+    if (event.data && event.data.action === 'editCard') {
+      enterEditMode(event.data.card);
+    }
+  });
+}
+
+

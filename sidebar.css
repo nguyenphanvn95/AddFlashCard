@@ -434,3 +434,64 @@ body {
 .notification.success {
   background-color: #10b981;
 }
+
+/* Tags Section */
+.tags-input {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+}
+
+.tags-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.tags-input::placeholder {
+  color: #64748b;
+}
+
+.tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tag:hover {
+  background-color: #2563eb;
+}
+
+.tag-remove {
+  cursor: pointer;
+  font-weight: bold;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+}
+

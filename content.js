@@ -107,4 +107,80 @@ window.addEventListener('message', (event) => {
   }
 });
 
+// Global keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Alt+Q: Toggle sidebar
+  if (e.altKey && e.key.toLowerCase() === 'q') {
+    e.preventDefault();
+    if (sidebarIframe && sidebarIframe.style.right === '0px') {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+    return;
+  }
+  
+  // Alt+A: Send selected text to Front field
+  if (e.altKey && e.key.toLowerCase() === 'a') {
+    e.preventDefault();
+    const selectedText = window.getSelection().toString().trim();
+    if (selectedText) {
+      if (!sidebarIframe) {
+        createSidebar();
+        setTimeout(() => {
+          if (sidebarIframe) {
+            sidebarIframe.style.right = '0';
+            setTimeout(() => {
+              sidebarIframe.contentWindow.postMessage({
+                action: "addToFront",
+                content: selectedText
+              }, '*');
+            }, 200);
+          }
+        }, 100);
+      } else {
+        openSidebar();
+        setTimeout(() => {
+          sidebarIframe.contentWindow.postMessage({
+            action: "addToFront",
+            content: selectedText
+          }, '*');
+        }, 100);
+      }
+    }
+    return;
+  }
+  
+  // Alt+B: Send selected text to Back field
+  if (e.altKey && e.key.toLowerCase() === 'b') {
+    e.preventDefault();
+    const selectedText = window.getSelection().toString().trim();
+    if (selectedText) {
+      if (!sidebarIframe) {
+        createSidebar();
+        setTimeout(() => {
+          if (sidebarIframe) {
+            sidebarIframe.style.right = '0';
+            setTimeout(() => {
+              sidebarIframe.contentWindow.postMessage({
+                action: "addToBack",
+                content: selectedText
+              }, '*');
+            }, 200);
+          }
+        }, 100);
+      } else {
+        openSidebar();
+        setTimeout(() => {
+          sidebarIframe.contentWindow.postMessage({
+            action: "addToBack",
+            content: selectedText
+          }, '*');
+        }, 100);
+      }
+    }
+    return;
+  }
+});
+
 console.log('AddFlashcard content script loaded');

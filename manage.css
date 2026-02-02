@@ -930,3 +930,292 @@ body {
     right: -100%;
   }
 }
+
+/* APKG and AnkiConnect Modal Styles */
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #60a5fa;
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  border-color: #60a5fa;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.deck-checkbox-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background-color: #0f172a;
+  padding: 12px;
+}
+
+.deck-checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background-color: #1e293b;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deck-checkbox-item:hover {
+  background-color: #334155;
+}
+
+.deck-checkbox-item input[type="checkbox"] {
+  margin-right: 12px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.deck-checkbox-item label {
+  flex: 1;
+  cursor: pointer;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deck-card-count {
+  font-size: 12px;
+  color: #64748b;
+  background-color: #0f172a;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.progress-container {
+  margin-top: 20px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #334155;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.anki-status {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-indicator svg {
+  flex-shrink: 0;
+}
+
+.status-indicator.success {
+  color: #10b981;
+}
+
+.status-indicator.success svg circle {
+  fill: #10b981;
+}
+
+.status-indicator.error {
+  color: #ef4444;
+}
+
+.status-indicator.error svg circle {
+  fill: #ef4444;
+}
+
+.status-indicator.warning {
+  color: #f59e0b;
+}
+
+.status-indicator.warning svg circle {
+  fill: #f59e0b;
+}
+
+.field-mapping {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background-color: #0f172a;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mapping-row label {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.mapping-row select {
+  flex: 0 0 150px;
+}
+
+.sync-result {
+  padding: 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.sync-result.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid #10b981;
+  color: #10b981;
+}
+
+.sync-result.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.btn-success {
+  background-color: #10b981;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #059669;
+}
+
+/* Tags Styles */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 8px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tag:hover {
+  background-color: #2563eb;
+}
+
+.tag-remove {
+  cursor: pointer;
+  font-weight: bold;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.card-tag-small {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #60a5fa;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+

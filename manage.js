@@ -11,6 +11,8 @@ const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const importFileInput = document.getElementById('importFileInput');
 const emptyState = document.getElementById('emptyState');
+const studyModeBtn = document.getElementById('studyModeBtn');
+const tagFilter = document.getElementById('tagFilter');
 
 // Modal elements
 const editModal = document.getElementById('editModal');
@@ -37,6 +39,7 @@ let allDecks = [];
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   setupEventListeners();
+  setupRichTextShortcuts();
 
   // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
   // so the manager reflects changes immediately without manual reload.
@@ -735,3 +738,711 @@ function importData(e) {
   reader.readAsText(file);
   importFileInput.value = '';
 }
+
+// ===== APKG Export Functionality =====
+const apkgModal = document.getElementById('apkgModal');
+const apkgModalClose = document.getElementById('apkgModalClose');
+const apkgModalCancel = document.getElementById('apkgModalCancel');
+const apkgExportBtn = document.getElementById('apkgExportBtn');
+const exportApkgBtn = document.getElementById('exportApkgBtn');
+const apkgParentDeck = document.getElementById('apkgParentDeck');
+const apkgDeckList = document.getElementById('apkgDeckList');
+const apkgProgress = document.getElementById('apkgProgress');
+const apkgProgressFill = document.getElementById('apkgProgressFill');
+const apkgProgressText = document.getElementById('apkgProgressText');
+
+// Open APKG export modal
+exportApkgBtn.addEventListener('click', () => {
+  openApkgModal();
+});
+
+function openApkgModal() {
+  if (allCards.length === 0) {
+    alert('No cards to export!');
+    return;
+  }
+
+  // Populate deck list with checkboxes
+  const deckCounts = {};
+  allDecks.forEach(deck => {
+    deckCounts[deck] = allCards.filter(c => c.deck === deck).length;
+  });
+
+  apkgDeckList.innerHTML = allDecks.map(deck => `
+    <div class="deck-checkbox-item">
+      <input type="checkbox" id="apkg-deck-${deck}" value="${deck}" ${deckCounts[deck] > 0 ? 'checked' : ''}>
+      <label for="apkg-deck-${deck}">
+        <span>${deck}</span>
+        <span class="deck-card-count">${deckCounts[deck]} cards</span>
+      </label>
+    </div>
+  `).join('');
+
+  apkgModal.style.display = 'flex';
+  apkgModal.classList.add('active');
+}
+
+function closeApkgModal() {
+  apkgModal.style.display = 'none';
+  apkgModal.classList.remove('active');
+  apkgProgress.style.display = 'none';
+  apkgProgressFill.style.width = '0%';
+  apkgProgressText.textContent = 'Exporting... 0%';
+}
+
+apkgModalClose.addEventListener('click', closeApkgModal);
+apkgModalCancel.addEventListener('click', closeApkgModal);
+
+// Export APKG
+apkgExportBtn.addEventListener('click', async () => {
+  const parentDeckName = apkgParentDeck.value.trim() || 'AddFlashcard Export';
+  
+  // Get selected decks
+  const selectedDecks = [];
+  apkgDeckList.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+    selectedDecks.push(cb.value);
+  });
+
+  if (selectedDecks.length === 0) {
+    alert('Please select at least one deck to export!');
+    return;
+  }
+
+  try {
+    // Show progress
+    apkgProgress.style.display = 'block';
+    apkgExportBtn.disabled = true;
+    apkgExportBtn.textContent = 'Exporting...';
+
+    // Prepare decks data
+    const decksData = selectedDecks.map(deckName => ({
+      name: deckName,
+      cards: allCards.filter(c => c.deck === deckName)
+    }));
+
+    // Export using apkg-exporter
+    const blob = await window.apkgExporter.exportMultipleDecks(
+      decksData,
+      parentDeckName,
+      (progress) => {
+        const percent = Math.round(progress * 100);
+        apkgProgressFill.style.width = percent + '%';
+        apkgProgressText.textContent = `Exporting... ${percent}%`;
+      }
+    );
+
+    // Download file
+    const totalCards = decksData.reduce((sum, d) => sum + d.cards.length, 0);
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const filename = `AddFlashcard_${parentDeckName.replace(/[^\w\-]/g, '_')}_${timestamp}_${totalCards}cards.apkg`;
+    
+    window.apkgExporter.downloadBlob(blob, filename);
+
+    // Success
+    apkgProgressText.textContent = `Success! Exported ${totalCards} cards`;
+    setTimeout(() => {
+      closeApkgModal();
+      apkgExportBtn.disabled = false;
+      apkgExportBtn.textContent = 'Export APKG';
+    }, 1500);
+
+  } catch (error) {
+    console.error('APKG export error:', error);
+    alert('Error exporting APKG: ' + error.message);
+    apkgExportBtn.disabled = false;
+    apkgExportBtn.textContent = 'Export APKG';
+    apkgProgress.style.display = 'none';
+  }
+});
+
+// ===== AnkiConnect Sync Functionality =====
+const ankiModal = document.getElementById('ankiModal');
+const ankiModalClose = document.getElementById('ankiModalClose');
+const ankiModalCancel = document.getElementById('ankiModalCancel');
+const syncAnkiBtn = document.getElementById('syncAnkiBtn');
+const ankiSyncBtn = document.getElementById('ankiSyncBtn');
+const ankiStatus = document.getElementById('ankiStatus');
+const ankiSyncForm = document.getElementById('ankiSyncForm');
+const ankiSourceDeck = document.getElementById('ankiSourceDeck');
+const ankiTargetDeck = document.getElementById('ankiTargetDeck');
+const ankiFieldFront = document.getElementById('ankiFieldFront');
+const ankiFieldBack = document.getElementById('ankiFieldBack');
+const ankiProgress = document.getElementById('ankiProgress');
+const ankiProgressFill = document.getElementById('ankiProgressFill');
+const ankiProgressText = document.getElementById('ankiProgressText');
+const ankiResult = document.getElementById('ankiResult');
+
+// Open AnkiConnect modal
+syncAnkiBtn.addEventListener('click', async () => {
+  openAnkiModal();
+});
+
+async function openAnkiModal() {
+  if (allCards.length === 0) {
+    alert('No cards to sync!');
+    return;
+  }
+
+  ankiModal.style.display = 'flex';
+  ankiModal.classList.add('active');
+  
+  // Check AnkiConnect connection
+  ankiStatus.innerHTML = `
+    <div class="status-indicator">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+      </svg>
+      <span>Checking connection to Anki...</span>
+    </div>
+  `;
+
+  try {
+    const connected = await window.ankiConnectClient.testConnection();
+    
+    if (connected) {
+      ankiStatus.innerHTML = `
+        <div class="status-indicator success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+          <span>Connected to Anki successfully!</span>
+        </div>
+      `;
+
+      // Populate source deck dropdown
+      ankiSourceDeck.innerHTML = '<option value="">-- Select source deck --</option>' +
+        allDecks.map(deck => {
+          const count = allCards.filter(c => c.deck === deck).length;
+          return `<option value="${deck}">${deck} (${count} cards)</option>`;
+        }).join('');
+
+      ankiSyncForm.style.display = 'block';
+      ankiSyncBtn.style.display = 'inline-block';
+
+    } else {
+      throw new Error('Cannot connect to AnkiConnect');
+    }
+
+  } catch (error) {
+    ankiStatus.innerHTML = `
+      <div class="status-indicator error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <span>Cannot connect to Anki. Please ensure:<br/>
+        1. Anki is running<br/>
+        2. AnkiConnect add-on is installed<br/>
+        3. AnkiConnect is configured to allow connections</span>
+      </div>
+    `;
+    ankiSyncForm.style.display = 'none';
+    ankiSyncBtn.style.display = 'none';
+  }
+}
+
+function closeAnkiModal() {
+  ankiModal.style.display = 'none';
+  ankiModal.classList.remove('active');
+  ankiSyncForm.style.display = 'none';
+  ankiProgress.style.display = 'none';
+  ankiResult.style.display = 'none';
+  ankiProgressFill.style.width = '0%';
+  ankiProgressText.textContent = 'Syncing... 0%';
+}
+
+ankiModalClose.addEventListener('click', closeAnkiModal);
+ankiModalCancel.addEventListener('click', closeAnkiModal);
+
+// Sync to Anki
+ankiSyncBtn.addEventListener('click', async () => {
+  const sourceDeck = ankiSourceDeck.value;
+  const targetDeck = ankiTargetDeck.value.trim();
+
+  if (!sourceDeck) {
+    alert('Please select a source deck!');
+    return;
+  }
+
+  if (!targetDeck) {
+    alert('Please enter a target Anki deck name!');
+    return;
+  }
+
+  const fieldMapping = {
+    'Front': ankiFieldFront.value,
+    'Back': ankiFieldBack.value
+  };
+
+  try {
+    ankiProgress.style.display = 'block';
+    ankiResult.style.display = 'none';
+    ankiSyncBtn.disabled = true;
+    ankiSyncBtn.textContent = 'Syncing...';
+
+    const cards = allCards.filter(c => c.deck === sourceDeck);
+
+    const result = await window.ankiConnectClient.exportCards(
+      sourceDeck,
+      targetDeck,
+      cards,
+      fieldMapping,
+      {
+        onProgress: (progress) => {
+          const percent = Math.round(progress * 100);
+          ankiProgressFill.style.width = percent + '%';
+          ankiProgressText.textContent = `Syncing... ${percent}%`;
+        }
+      }
+    );
+
+    ankiProgress.style.display = 'none';
+    ankiResult.style.display = 'block';
+    ankiResult.className = 'sync-result success';
+    ankiResult.innerHTML = `
+      <strong>Sync Complete!</strong><br/>
+      Total cards: ${result.total}<br/>
+      Successfully added: ${result.success}<br/>
+      Failed/Duplicates: ${result.failed}
+    `;
+
+    ankiSyncBtn.disabled = false;
+    ankiSyncBtn.textContent = 'Sync to Anki';
+
+  } catch (error) {
+    console.error('AnkiConnect sync error:', error);
+    ankiProgress.style.display = 'none';
+    ankiResult.style.display = 'block';
+    ankiResult.className = 'sync-result error';
+    ankiResult.innerHTML = `
+      <strong>Sync Failed!</strong><br/>
+      Error: ${error.message}
+    `;
+    ankiSyncBtn.disabled = false;
+    ankiSyncBtn.textContent = 'Sync to Anki';
+  }
+});
+
+// Tags Management
+let currentCardTags = [];
+const modalTagsInput = document.getElementById('modalTagsInput');
+const modalTagsContainer = document.getElementById('modalTagsContainer');
+const sidebarTagsInput = document.getElementById('sidebarTagsInput');
+const sidebarTagsContainer = document.getElementById('sidebarTagsContainer');
+
+function setupTagsInput(input, container, tagsArray) {
+  if (!input || !container) return;
+  
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const tag = input.value.trim().replace(/,/g, '');
+      if (tag && !tagsArray.includes(tag)) {
+        tagsArray.push(tag);
+        renderTagsInContainer(container, tagsArray);
+      }
+      input.value = '';
+    }
+  });
+  
+  input.addEventListener('blur', () => {
+    const tag = input.value.trim().replace(/,/g, '');
+    if (tag && !tagsArray.includes(tag)) {
+      tagsArray.push(tag);
+      renderTagsInContainer(container, tagsArray);
+      input.value = '';
+    }
+  });
+}
+
+function renderTagsInContainer(container, tagsArray) {
+  if (!container) return;
+  container.innerHTML = '';
+  tagsArray.forEach(tag => {
+    const tagEl = document.createElement('span');
+    tagEl.className = 'tag';
+    tagEl.innerHTML = `${tag} <span class="tag-remove" data-tag="${tag}">×</span>`;
+    const removeBtn = tagEl.querySelector('.tag-remove');
+    removeBtn.addEventListener('click', () => {
+      const index = tagsArray.indexOf(tag);
+      if (index > -1) {
+        tagsArray.splice(index, 1);
+        renderTagsInContainer(container, tagsArray);
+      }
+    });
+    container.appendChild(tagEl);
+  });
+}
+
+// Initialize tags for edit modal
+if (modalTagsInput && modalTagsContainer) {
+  setupTagsInput(modalTagsInput, modalTagsContainer, currentCardTags);
+}
+
+// Initialize tags for edit sidebar
+if (sidebarTagsInput && sidebarTagsContainer) {
+  const sidebarTags = [];
+  setupTagsInput(sidebarTagsInput, sidebarTagsContainer, sidebarTags);
+}
+
+// Update tag filter
+function updateTagFilter() {
+  if (!tagFilter) return;
+  
+  const allTags = new Set();
+  allCards.forEach(card => {
+    if (card.tags && Array.isArray(card.tags)) {
+      card.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+  
+  tagFilter.innerHTML = '<option value="">All Tags</option>';
+  Array.from(allTags).sort().forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    tagFilter.appendChild(option);
+  });
+}
+
+// Study Mode
+if (studyModeBtn) {
+  studyModeBtn.addEventListener('click', () => {
+    let url = 'study.html';
+    
+    // Add deck filter if selected
+    if (currentDeck && currentDeck !== 'all') {
+      url += `?deck=${encodeURIComponent(currentDeck)}`;
+    }
+    
+    // Add tag filter if selected
+    if (tagFilter && tagFilter.value) {
+      const separator = url.includes('?') ? '&' : '?';
+      url += `${separator}tags=${encodeURIComponent(tagFilter.value)}`;
+    }
+    
+    window.open(url, '_blank', 'width=1200,height=800');
+  });
+}
+
+// Update filter event
+if (tagFilter) {
+  tagFilter.addEventListener('change', renderCards);
+}
+
+// Override renderCards to include tag filtering
+const originalRenderCards = renderCards;
+function renderCards() {
+  let filtered = currentDeck === 'all' || !currentDeck
+    ? allCards
+    : allCards.filter(card => card.deck === currentDeck);
+  
+  // Apply tag filter
+  if (tagFilter && tagFilter.value) {
+    const selectedTag = tagFilter.value;
+    filtered = filtered.filter(card => 
+      card.tags && Array.isArray(card.tags) && card.tags.includes(selectedTag)
+    );
+  }
+  
+  // Apply search
+  const searchTerm = searchInput.value.toLowerCase();
+  if (searchTerm) {
+    filtered = filtered.filter(card => {
+      const frontText = stripHTML(card.front).toLowerCase();
+      const backText = stripHTML(card.back).toLowerCase();
+      const tagText = card.tags ? card.tags.join(' ').toLowerCase() : '';
+      return frontText.includes(searchTerm) || 
+             backText.includes(searchTerm) || 
+             tagText.includes(searchTerm);
+    });
+  }
+  
+  // Sort
+  const sortBy = sortSelect.value;
+  if (sortBy === 'newest') {
+    filtered.sort((a, b) => {
+      const aTime = new Date(a.createdAt || 0).getTime();
+      const bTime = new Date(b.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+  } else if (sortBy === 'oldest') {
+    filtered.sort((a, b) => {
+      const aTime = new Date(a.createdAt || 0).getTime();
+      const bTime = new Date(b.createdAt || 0).getTime();
+      return aTime - bTime;
+    });
+  } else if (sortBy === 'front') {
+    filtered.sort((a, b) => {
+      const aText = stripHTML(a.front);
+      const bText = stripHTML(b.front);
+      return aText.localeCompare(bText);
+    });
+  }
+  
+  // Update count
+  cardCount.textContent = `${filtered.length} card${filtered.length !== 1 ? 's' : ''}`;
+  
+  // Render cards
+  if (filtered.length === 0) {
+    cardsGrid.style.display = 'none';
+    emptyState.style.display = 'flex';
+  } else {
+    cardsGrid.style.display = 'grid';
+    emptyState.style.display = 'none';
+    
+    cardsGrid.innerHTML = '';
+    filtered.forEach(card => {
+      const cardEl = createCardElement(card);
+      cardsGrid.appendChild(cardEl);
+    });
+  }
+  
+  // Update tag filter options
+  updateTagFilter();
+}
+
+// Helper to strip HTML
+function stripHTML(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+}
+
+// Update createCardElement to show tags
+const originalCreateCardElement = createCardElement;
+function createCardElement(card) {
+  const cardEl = document.createElement('div');
+  cardEl.className = 'card';
+  
+  const tagsHTML = card.tags && card.tags.length > 0
+    ? `<div class="card-tags">${card.tags.map(tag => 
+        `<span class="card-tag-small">${tag}</span>`
+      ).join('')}</div>`
+    : '';
+  
+  cardEl.innerHTML = `
+    <div class="card-front">
+      <div class="card-label">FRONT</div>
+      <div class="card-text">${card.front}</div>
+      ${tagsHTML}
+    </div>
+    <div class="card-back">
+      <div class="card-label">BACK</div>
+      <div class="card-text">${card.back}</div>
+    </div>
+    <div class="card-actions">
+      <button class="card-btn preview-btn" data-id="${card.id}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+      <button class="card-btn edit-btn" data-id="${card.id}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+      </button>
+      <button class="card-btn delete-btn" data-id="${card.id}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    </div>
+  `;
+  
+  // Attach event listeners
+  const previewBtn = cardEl.querySelector('.preview-btn');
+  const editBtn = cardEl.querySelector('.edit-btn');
+  const deleteBtn = cardEl.querySelector('.delete-btn');
+  
+  previewBtn.addEventListener('click', () => previewCard(card));
+  editBtn.addEventListener('click', () => editCardInSidebar(card));
+  deleteBtn.addEventListener('click', () => deleteCard(card.id));
+  
+  return cardEl;
+}
+
+// Rich Text Keyboard Shortcuts for all editors
+function setupRichTextShortcuts() {
+  const editors = [
+    modalFrontEditor,
+    modalBackEditor,
+    document.getElementById('sidebarFrontEditor'),
+    document.getElementById('sidebarBackEditor')
+  ].filter(el => el !== null);
+  
+  editors.forEach(editor => {
+    editor.addEventListener('keydown', (e) => {
+      // Ctrl+B: Bold
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        document.execCommand('bold', false, null);
+        return;
+      }
+      
+      // Ctrl+I: Italic
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        document.execCommand('italic', false, null);
+        return;
+      }
+      
+      // Ctrl+U: Underline
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        document.execCommand('underline', false, null);
+        return;
+      }
+      
+      // Ctrl+K: Insert Link
+      if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        insertLinkInEditor(editor);
+        return;
+      }
+      
+      // Ctrl+Shift+S: Strikethrough
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.execCommand('strikeThrough', false, null);
+        return;
+      }
+      
+      // Ctrl+]: Increase Font Size
+      if (e.ctrlKey && e.key === ']') {
+        e.preventDefault();
+        changeFontSize(editor, 'larger');
+        return;
+      }
+      
+      // Ctrl+[: Decrease Font Size
+      if (e.ctrlKey && e.key === '[') {
+        e.preventDefault();
+        changeFontSize(editor, 'smaller');
+        return;
+      }
+      
+      // Ctrl+Shift+L: Bullet List
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        document.execCommand('insertUnorderedList', false, null);
+        return;
+      }
+      
+      // Ctrl+Shift+N: Numbered List
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        document.execCommand('insertOrderedList', false, null);
+        return;
+      }
+      
+      // Ctrl+E: Center Align
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        document.execCommand('justifyCenter', false, null);
+        return;
+      }
+      
+      // Ctrl+L: Left Align (only when not Shift is pressed)
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        document.execCommand('justifyLeft', false, null);
+        return;
+      }
+      
+      // Ctrl+R: Right Align
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        document.execCommand('justifyRight', false, null);
+        return;
+      }
+      
+      // Ctrl+Space: Clear Formatting
+      if (e.ctrlKey && e.key === ' ') {
+        e.preventDefault();
+        document.execCommand('removeFormat', false, null);
+        return;
+      }
+      
+      // Ctrl+Shift+C: Code Block
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        formatAsCode();
+        return;
+      }
+    });
+  });
+}
+
+// Insert Link Helper
+function insertLinkInEditor(editor) {
+  const selection = window.getSelection();
+  const selectedText = selection.toString();
+  
+  const url = prompt('Enter URL:', 'https://');
+  if (!url) return;
+  
+  if (selectedText) {
+    document.execCommand('createLink', false, url);
+  } else {
+    const linkText = prompt('Enter link text:', url);
+    if (linkText) {
+      const link = `<a href="${url}" target="_blank">${linkText}</a>`;
+      document.execCommand('insertHTML', false, link);
+    }
+  }
+}
+
+// Font Size Helper
+function changeFontSize(editor, size) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  
+  const range = selection.getRangeAt(0);
+  const selectedContent = range.extractContents();
+  
+  const span = document.createElement('span');
+  span.style.fontSize = size;
+  span.appendChild(selectedContent);
+  
+  range.insertNode(span);
+  
+  // Restore selection
+  selection.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  selection.addRange(newRange);
+}
+
+// Format as Code
+function formatAsCode() {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  
+  const range = selection.getRangeAt(0);
+  const selectedContent = range.extractContents();
+  
+  const code = document.createElement('code');
+  code.style.backgroundColor = '#0f172a';
+  code.style.padding = '2px 6px';
+  code.style.borderRadius = '3px';
+  code.style.fontFamily = 'Courier New, monospace';
+  code.style.fontSize = '13px';
+  code.style.color = '#fbbf24';
+  code.appendChild(selectedContent);
+  
+  range.insertNode(code);
+  
+  // Restore selection
+  selection.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(code);
+  selection.addRange(newRange);
+}
+
+

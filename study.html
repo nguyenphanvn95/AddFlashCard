@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Mode - AddFlashcard</title>
+  <link rel="stylesheet" href="study.css">
+</head>
+<body>
+  <div class="study-container">
+    <!-- Header -->
+    <header class="study-header">
+      <div class="study-header-left">
+        <button class="icon-btn" id="exitStudyBtn" title="Exit Study Mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Exit
+        </button>
+        <h1 id="studyDeckName">Study Mode</h1>
+      </div>
+      <div class="study-header-right">
+        <div class="progress-info">
+          <span id="currentCardNumber">1</span>/<span id="totalCards">0</span>
+        </div>
+        <button class="icon-btn" id="settingsBtn" title="Study Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6"></path>
+            <path d="M17 12h6M5 12h6"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Study Area -->
+    <main class="study-main">
+      <!-- Card Display -->
+      <div class="card-display" id="cardDisplay">
+        <div class="flashcard" id="flashcard">
+          <div class="card-inner" id="cardInner">
+            <div class="card-face card-front">
+              <div class="card-label">QUESTION</div>
+              <div class="card-content" id="frontContent"></div>
+              <div class="card-tags" id="cardTagsFront"></div>
+            </div>
+            <div class="card-face card-back">
+              <div class="card-label">ANSWER</div>
+              <div class="card-content" id="backContent"></div>
+              <div class="card-tags" id="cardTagsBack"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flip Hint -->
+        <div class="flip-hint" id="flipHint">
+          <kbd>Space</kbd> to flip card
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="study-controls">
+        <button class="control-btn" id="prevBtn" title="Previous card (←)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
+        <button class="control-btn flip-btn" id="flipBtn" title="Flip card (Space)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Flip
+        </button>
+
+        <button class="control-btn" id="nextBtn" title="Next card (→)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Difficulty Buttons (shown after flip) -->
+      <div class="difficulty-controls" id="difficultyControls" style="display: none;">
+        <button class="difficulty-btn hard" data-difficulty="hard">
+          <span class="difficulty-label">Hard</span>
+          <span class="difficulty-key">1</span>
+        </button>
+        <button class="difficulty-btn good" data-difficulty="good">
+          <span class="difficulty-label">Good</span>
+          <span class="difficulty-key">2</span>
+        </button>
+        <button class="difficulty-btn easy" data-difficulty="easy">
+          <span class="difficulty-label">Easy</span>
+          <span class="difficulty-key">3</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Stats Footer -->
+    <footer class="study-footer">
+      <div class="stat-item">
+        <span class="stat-label">Studied:</span>
+        <span class="stat-value" id="studiedCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Remaining:</span>
+        <span class="stat-value" id="remainingCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Session Time:</span>
+        <span class="stat-value" id="sessionTime">00:00</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Study Settings</h2>
+        <button class="modal-close" id="closeSettingsBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="randomizeCheck">
+            Randomize card order
+          </label>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="autoFlipCheck">
+            Auto-flip to answer after
+            <input type="number" id="autoFlipDelay" min="1" max="60" value="5" style="width: 60px;">
+            seconds
+          </label>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">
+            Filter by deck:
+            <select id="deckFilterSelect" class="form-select">
+              <option value="">All Decks</option>
+            </select>
+          </label>
+        </div>
+        <div class="setting-group">
+          <label class="setting-label">
+            Filter by tags:
+            <input type="text" id="tagsFilterInput" placeholder="Enter tags (comma-separated)">
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="resetProgressBtn">Reset Progress</button>
+        <button class="btn btn-primary" id="applySettingsBtn">Apply & Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion Modal -->
+  <div class="modal" id="completionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🎉 Study Session Complete!</h2>
+      </div>
+      <div class="modal-body">
+        <div class="completion-stats">
+          <div class="completion-stat">
+            <div class="completion-stat-value" id="completionCardsStudied">0</div>
+            <div class="completion-stat-label">Cards Studied</div>
+          </div>
+          <div class="completion-stat">
+            <div class="completion-stat-value" id="completionTimeSpent">0:00</div>
+            <div class="completion-stat-label">Time Spent</div>
+          </div>
+          <div class="completion-stat">
+            <div class="completion-stat-value" id="completionAccuracy">0%</div>
+            <div class="completion-stat-label">Confidence</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="exitFromCompletionBtn">Exit</button>
+        <button class="btn btn-primary" id="restartStudyBtn">Study Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="study.js"></script>
+</body>
+</html>

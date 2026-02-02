@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.2.1",
-  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF (local & online) và Notion với lưu trữ media local",
+  "version": "2.4.1",
+  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Export APKG và sync với Anki qua AnkiConnect",
   "permissions": [
     "contextMenus",
     "storage",
@@ -40,7 +40,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["sidebar.html", "sidebar.css", "sidebar.js", "media-handler.js"],
+      "resources": ["sidebar.html", "sidebar.css", "sidebar.js", "media-handler.js", "study.html", "study.css", "study.js"],
       "matches": ["<all_urls>"]
     }
   ]
