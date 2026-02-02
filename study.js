@@ -60,7 +60,6 @@ function loadStudySession() {
   const params = new URLSearchParams(window.location.search);
   const deck = params.get('deck');
   const tags = params.get('tags');
-  const cardId = params.get('cardId');
   
   chrome.storage.local.get(['cards', 'decks', 'studySettings'], (result) => {
     let allCards = result.cards || [];
@@ -83,24 +82,6 @@ function loadStudySession() {
     deckFilterSelect.value = deck || settings.selectedDeck || '';
     tagsFilterInput.value = tags || settings.selectedTags || '';
     
-    // If a specific cardId is requested, study only that card
-    if (cardId) {
-      const single = (allCards || []).find(c => String(c.id) === String(cardId));
-      studyCards = single ? [single] : [];
-      studyDeckName.textContent = single ? 'Study Mode - Single Card' : 'Study Mode - Card not found';
-
-      if (studyCards.length === 0) {
-        showNoCardsMessage();
-        return;
-      }
-
-      totalCards.textContent = studyCards.length;
-      remainingCount.textContent = studyCards.length;
-      displayCard();
-      updateProgress();
-      return;
-    }
-
     // Filter cards by deck
     if (deck) {
       allCards = allCards.filter(card => card.deck === deck);

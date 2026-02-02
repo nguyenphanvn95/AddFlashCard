@@ -12,18 +12,6 @@ function initNotionSync() {
   
   // Try multiple times with increasing delays
   attemptInject();
-
-  // Notion often re-renders the topbar; keep a light watchdog running.
-  // This prevents the button from "injecting" and then disappearing.
-  setInterval(() => {
-    try {
-      if (!document.querySelector('[data-addflashcard="sync-button"]')) {
-        injectSyncButton();
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, 2500);
 }
 
 // Attempt to inject with retry logic
@@ -75,12 +63,6 @@ function injectSyncButton() {
   syncButton.setAttribute('role', 'button');
   syncButton.setAttribute('tabindex', '0');
   syncButton.setAttribute('data-addflashcard', 'sync-button');
-
-  // Make it resilient against Notion's layout constraints
-  syncButton.style.display = 'flex';
-  syncButton.style.alignItems = 'center';
-  syncButton.style.pointerEvents = 'auto';
-  syncButton.style.zIndex = '2147483647';
   
   syncButton.innerHTML = `
     <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 28px; 
@@ -112,34 +94,13 @@ function injectSyncButton() {
   // Add click handler
   syncButton.addEventListener('click', handleSyncClick);
 
-  // Insert before Share button
+  // Insert before Share button (use parentNode like the working snippet)
   try {
-    // Make sure the wrapper is visible in Notion's flex layout
-    syncButton.style.display = 'flex';
-    syncButton.style.alignItems = 'center';
-    syncButton.style.pointerEvents = 'auto';
-    syncButton.style.zIndex = '9999';
-
-    // Notion often nests the Share button in multiple wrappers.
-    // We climb to a stable flex-row container so the button actually renders.
-    const container = getTopbarFlexContainer(shareButton) || shareButton.parentElement;
-    if (!container) throw new Error('No container found for Share button');
-
-    // If container uses overflow hidden, give our button a chance to be visible
-    syncButton.style.flex = '0 0 auto';
-
-    // Insert immediately BEFORE the Share button element (or its wrapper inside the same container)
-    if (container.contains(shareButton)) {
-      container.insertBefore(syncButton, shareButton);
-    } else {
-      // fallback: append then move left by placing before the nearest sibling that looks like share
-      container.appendChild(syncButton);
+    if (!shareButton.parentNode) {
+      console.log('AddFlashcard: Share button has no parentNode yet...');
+      return false;
     }
-
-    // If Notion re-renders, we may end up duplicated; dedupe by data attr
-    const duplicates = container.querySelectorAll('[data-addflashcard="sync-button"]');
-    duplicates.forEach((el, idx) => { if (idx > 0) el.remove(); });
-
+    shareButton.parentNode.insertBefore(syncButton, shareButton);
     console.log('AddFlashcard: Sync button inserted successfully!');
     return true;
   } catch (error) {
@@ -148,36 +109,18 @@ function injectSyncButton() {
   }
 }
 
-// Find a stable flex container in Notion's topbar that contains the Share button.
-function getTopbarFlexContainer(shareButton) {
-  let el = shareButton;
-  for (let i = 0; i < 8 && el; i++) {
-    const parent = el.parentElement;
-    if (!parent) return null;
-    const style = window.getComputedStyle(parent);
-    // Heuristic: topbar rows are flex and contain multiple role=button
-    if (style.display === 'flex') {
-      const btnCount = parent.querySelectorAll('div[role="button"]').length;
-      if (btnCount >= 2) return parent;
-    }
-    el = parent;
-  }
-  // Try the closest header/topbar if the above fails
-  const topbar = shareButton.closest('.notion-topbar') || shareButton.closest('header') || shareButton.closest('nav');
-  if (topbar) {
-    const rows = topbar.querySelectorAll('div');
-    for (const row of rows) {
-      const s = window.getComputedStyle(row);
-      if (s.display === 'flex' && row.contains(shareButton)) return row;
-    }
-  }
-  return null;
-}
-
 // Find Share button with multiple strategies
 function findShareButton() {
+  // Strategy 0 (preferred): Notion's dedicated share button class
+  // This matches the working console snippet provided by the user.
+  let shareButton = document.querySelector('.notion-topbar-share-menu');
+  if (shareButton) {
+    console.log('Strategy 0: Found via .notion-topbar-share-menu');
+    return shareButton;
+  }
+
   // Strategy 1: Direct aria-label
-  let shareButton = document.querySelector('[aria-label="Share"]');
+  shareButton = document.querySelector('[aria-label="Share"]');
   if (shareButton) {
     console.log('Strategy 1: Found via aria-label');
     return shareButton;
