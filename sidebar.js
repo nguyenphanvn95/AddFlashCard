@@ -7,12 +7,6 @@ const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 const newDeckBtn = document.getElementById('newDeckBtn');
 const manageBtn = document.getElementById('manageBtn');
 const statsContent = document.getElementById('statsContent');
-const headerTitle = document.querySelector('.sidebar-header h1');
-
-// Edit state
-let isEditMode = false;
-let editingCardId = null;
-let editingCreatedAt = null;
 
 // Toolbar buttons
 const toolbarBtns = document.querySelectorAll('.toolbar-btn[data-command]');
@@ -23,71 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setupToolbar();
   setupEditors();
   loadStatistics();
-
-  // If opened in edit mode (e.g. from Manage page), load context and switch UI.
-  const params = new URLSearchParams(location.search);
-  if (params.get('mode') === 'edit') {
-    chrome.storage.local.get(['editCardContext'], (result) => {
-      if (result.editCardContext && typeof result.editCardContext.id === 'number') {
-        enterEditMode(result.editCardContext);
-      }
-    });
-  }
 });
-
-function setHeaderAndButtonForMode() {
-  if (isEditMode) {
-    if (headerTitle) headerTitle.textContent = 'Edit card';
-    addCardBtn.textContent = 'SAVE CARD';
-    addCardBtn.classList.add('is-edit');
-  } else {
-    if (headerTitle) headerTitle.textContent = 'Add Card';
-    addCardBtn.textContent = 'ADD CARD';
-    addCardBtn.classList.remove('is-edit');
-  }
-}
-
-function enterEditMode(card) {
-  isEditMode = true;
-  editingCardId = card.id;
-  editingCreatedAt = card.createdAt || null;
-
-  // Ensure decks are loaded then select correct deck.
-  chrome.storage.local.get(['decks'], (result) => {
-    const decks = result.decks || ['Default'];
-    if (!decks.includes(card.deck)) {
-      decks.push(card.deck);
-      chrome.storage.local.set({ decks }, () => loadDecks());
-    } else {
-      loadDecks();
-    }
-
-    // Populate fields
-    deckSelect.value = card.deck;
-    frontEditor.innerHTML = card.front || '';
-    backEditor.innerHTML = card.back || '';
-    setHeaderAndButtonForMode();
-
-    // Focus front editor for immediate editing
-    frontEditor.focus();
-  });
-}
-
-function exitEditMode() {
-  isEditMode = false;
-  editingCardId = null;
-  editingCreatedAt = null;
-  setHeaderAndButtonForMode();
-}
 
 // Load danh sách decks
 function loadDecks() {
   chrome.storage.local.get(['decks', 'cards'], (result) => {
     const decks = result.decks || ['Default'];
     const cards = result.cards || [];
-
-    // Preserve selection (especially important for Edit mode)
-    const preferred = isEditMode && deckSelect.value ? deckSelect.value : deckSelect.value;
     
     // Clear current options
     deckSelect.innerHTML = '<option value="">Choose a deck...</option>';
@@ -105,10 +41,8 @@ function loadDecks() {
       deckSelect.appendChild(option);
     });
     
-    // Restore selection if possible; otherwise select first deck
-    if (preferred && decks.includes(preferred)) {
-      deckSelect.value = preferred;
-    } else if (decks.length > 0) {
+    // Select first deck by default
+    if (decks.length > 0) {
       deckSelect.value = decks[0];
     }
   });
@@ -219,26 +153,16 @@ window.addEventListener('message', (event) => {
       insertContent(backEditor, content);
     }
   }
-
-  // Allow parent/content script to switch sidebar into Edit mode
-  if (event.data.action === 'editCard' && event.data.card) {
-    enterEditMode(event.data.card);
-  }
 });
 
 // Chèn nội dung vào editor
 function insertContent(editor, content) {
-  // Prefer rich HTML payload to preserve formatting (bold/links/lists, etc.)
-  // Supported: text/html (selection), image/link/video from context menu.
-  if (content && content.dataHtml) {
-    const fragment = htmlToSafeFragment(content.dataHtml);
-    editor.appendChild(fragment);
-  } else if (content && (content.isImage || content.mediaType === 'image') && content.data) {
+  if (content.isImage) {
     const img = document.createElement('img');
     img.src = content.data;
     img.style.maxWidth = '100%';
     editor.appendChild(img);
-  } else if (content && content.data) {
+  } else {
     const p = document.createElement('p');
     p.textContent = content.data;
     editor.appendChild(p);
@@ -246,42 +170,6 @@ function insertContent(editor, content) {
   
   editor.focus();
   showNotification('Content added!', 'success');
-}
-
-/**
- * Convert HTML string to a safe DocumentFragment.
- * - strips <script>/<style>
- * - removes event handler attrs (on*)
- * - keeps formatting tags so “Send to Front/Back” preserves layout
- */
-function htmlToSafeFragment(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(String(html || ''), 'text/html');
-
-  // Remove scripts/styles
-  doc.querySelectorAll('script, style').forEach(el => el.remove());
-
-  // Remove on* attributes and javascript: URLs
-  doc.querySelectorAll('*').forEach(el => {
-    [...el.attributes].forEach(attr => {
-      const name = attr.name.toLowerCase();
-      const val = String(attr.value || '');
-
-      if (name.startsWith('on')) {
-        el.removeAttribute(attr.name);
-        return;
-      }
-      if ((name === 'href' || name === 'src') && val.trim().toLowerCase().startsWith('javascript:')) {
-        el.removeAttribute(attr.name);
-        return;
-      }
-    });
-  });
-
-  const frag = document.createDocumentFragment();
-  // Keep body children to avoid wrapping <html><body> artifacts
-  [...doc.body.childNodes].forEach(n => frag.appendChild(n));
-  return frag;
 }
 
 // Add card
@@ -300,64 +188,16 @@ addCardBtn.addEventListener('click', () => {
     return;
   }
 
-  if (isEditMode && typeof editingCardId === 'number') {
-    updateCard({
-      id: editingCardId,
-      deck,
-      front,
-      back,
-      createdAt: editingCreatedAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-  } else {
-    const card = {
-      id: Date.now(),
-      deck: deck,
-      front: front,
-      back: back,
-      createdAt: new Date().toISOString()
-    };
-    saveCard(card);
-  }
+  const card = {
+    id: Date.now(),
+    deck: deck,
+    front: front,
+    back: back,
+    createdAt: new Date().toISOString()
+  };
+
+  saveCard(card);
 });
-
-// Update existing card (Edit mode)
-function updateCard(card) {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    const idx = cards.findIndex(c => c.id === card.id);
-    if (idx === -1) {
-      showNotification('Card not found (maybe deleted).', 'error');
-      exitEditMode();
-      return;
-    }
-
-    // Preserve original createdAt if present
-    const original = cards[idx];
-    cards[idx] = {
-      ...original,
-      deck: card.deck,
-      front: card.front,
-      back: card.back,
-      createdAt: original.createdAt || card.createdAt,
-      updatedAt: card.updatedAt
-    };
-
-    chrome.storage.local.set({ cards }, () => {
-      showNotification('Card saved successfully!', 'success');
-      loadStatistics();
-      loadDecks();
-
-      // Clear edit context so next open is clean
-      chrome.storage.local.remove(['editCardContext']);
-
-      // Exit edit mode and clear editors (back to Add flow)
-      frontEditor.innerHTML = '';
-      backEditor.innerHTML = '';
-      exitEditMode();
-    });
-  });
-}
 
 // Save card
 function saveCard(card) {
@@ -420,22 +260,12 @@ function loadStatistics() {
 
 // Close sidebar
 closeSidebarBtn.addEventListener('click', () => {
-  // If running inside an injected iframe, ask parent to close.
-  // If running standalone (popup window), just close the window.
-  if (window.top === window.self) {
-    window.close();
-  } else {
-    window.parent.postMessage({ action: 'closeSidebar' }, '*');
-  }
+  window.parent.postMessage({ action: 'closeSidebar' }, '*');
 });
 
 // Open manage page
 manageBtn.addEventListener('click', () => {
-  if (window.top === window.self) {
-    chrome.runtime.sendMessage({ action: 'openManagePage' });
-  } else {
-    window.parent.postMessage({ action: 'openManagePage' }, '*');
-  }
+  window.parent.postMessage({ action: 'openManagePage' }, '*');
 });
 
 // Show notification

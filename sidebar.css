@@ -223,16 +223,6 @@ body {
   margin: 8px 0;
 }
 
-.editor video,
-.editor iframe {
-  max-width: 100%;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  border-radius: 4px;
-  margin: 8px 0;
-}
-
 .editor code {
   background-color: #0f172a;
   padding: 2px 6px;
