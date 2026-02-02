@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AddFlashcard Sidebar</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar-container">
+    <!-- Header -->
+    <div class="sidebar-header">
+      <div class="header-left">
+        <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        <h1>Add Card</h1>
+      </div>
+      <button class="close-btn" id="closeSidebarBtn" title="Close">✕</button>
+    </div>
+
+    <div class="sidebar-content">
+      <!-- Deck Selection -->
+      <div class="deck-selection">
+        <label class="input-label">Deck</label>
+        <select id="deckSelect" class="deck-select">
+          <option value="">Choose a deck...</option>
+        </select>
+        <button class="new-deck-btn" id="newDeckBtn" title="Create new deck">+ New Deck</button>
+      </div>
+
+      <!-- FRONT Section -->
+      <div class="card-section">
+        <label class="section-label">FRONT</label>
+        
+        <!-- Toolbar Front -->
+        <div class="toolbar">
+          <button class="toolbar-btn" data-command="bold" data-target="front" title="Bold"><b>B</b></button>
+          <button class="toolbar-btn" data-command="italic" data-target="front" title="Italic"><i>I</i></button>
+          <button class="toolbar-btn" data-command="underline" data-target="front" title="Underline"><u>U</u></button>
+          <button class="toolbar-btn" data-command="strikethrough" data-target="front" title="Strikethrough"><s>S</s></button>
+          
+          <div class="toolbar-divider"></div>
+          
+          <button class="toolbar-btn" data-command="insertUnorderedList" data-target="front" title="Bullet list">•</button>
+          <button class="toolbar-btn" data-command="insertOrderedList" data-target="front" title="Numbered list">1.</button>
+          
+          <div class="toolbar-divider"></div>
+          
+          <button class="toolbar-btn" id="linkBtnFront" title="Insert link">🔗</button>
+          <button class="toolbar-btn" id="imageBtnFront" title="Insert image">🖼️</button>
+        </div>
+
+        <!-- Editor Front -->
+        <div class="editor" id="frontEditor" contenteditable="true" data-placeholder="Write a question here..."></div>
+      </div>
+
+      <!-- BACK Section -->
+      <div class="card-section">
+        <label class="section-label">BACK</label>
+        
+        <!-- Toolbar Back -->
+        <div class="toolbar">
+          <button class="toolbar-btn" data-command="bold" data-target="back" title="Bold"><b>B</b></button>
+          <button class="toolbar-btn" data-command="italic" data-target="back" title="Italic"><i>I</i></button>
+          <button class="toolbar-btn" data-command="underline" data-target="back" title="Underline"><u>U</u></button>
+          <button class="toolbar-btn" data-command="strikethrough" data-target="back" title="Strikethrough"><s>S</s></button>
+          
+          <div class="toolbar-divider"></div>
+          
+          <button class="toolbar-btn" data-command="insertUnorderedList" data-target="back" title="Bullet list">•</button>
+          <button class="toolbar-btn" data-command="insertOrderedList" data-target="back" title="Numbered list">1.</button>
+          
+          <div class="toolbar-divider"></div>
+          
+          <button class="toolbar-btn" id="linkBtnBack" title="Insert link">🔗</button>
+          <button class="toolbar-btn" id="imageBtnBack" title="Insert image">🖼️</button>
+        </div>
+
+        <!-- Editor Back -->
+        <div class="editor" id="backEditor" contenteditable="true" data-placeholder="Write the answer here..."></div>
+      </div>
+
+      <!-- Add Card Button -->
+      <button class="add-card-btn" id="addCardBtn">ADD CARD</button>
+
+      <!-- Statistics -->
+      <div class="statistics" id="statistics">
+        <div class="stats-header">
+          <h3>📊 Statistics</h3>
+        </div>
+        <div class="stats-content" id="statsContent">
+          <div class="stats-loading">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Manage Button -->
+      <button class="manage-btn" id="manageBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6m-6-6h6m6 0h-6"></path>
+        </svg>
+        Manage Cards
+      </button>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

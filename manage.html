@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Flashcards</title>
+  <link rel="stylesheet" href="manage.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-left">
+          <svg class="logo" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+          <div>
+            <h1>AddFlashcard Manager</h1>
+            <p class="subtitle">Manage your decks and cards</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="exportBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export
+          </button>
+          <button class="btn btn-secondary" id="importBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <aside class="sidebar-left">
+        <div class="deck-list-header">
+          <h2>Decks</h2>
+          <button class="icon-btn" id="addDeckBtn" title="Add new deck">+</button>
+        </div>
+        
+        <div class="deck-list" id="deckList">
+          <div class="deck-loading">Loading decks...</div>
+        </div>
+      </aside>
+
+      <!-- Cards Area -->
+      <main class="cards-area">
+        <div class="cards-header">
+          <div class="cards-header-left">
+            <h2 id="currentDeckName">All Cards</h2>
+            <span class="card-count" id="cardCount">0 cards</span>
+          </div>
+          <div class="cards-header-right">
+            <input type="search" class="search-input" id="searchInput" placeholder="Search cards...">
+            <select class="sort-select" id="sortSelect">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="front">Front A-Z</option>
+            </select>
+            <button class="btn btn-danger" id="deleteAllBtn">Delete All</button>
+          </div>
+        </div>
+
+        <div class="cards-grid" id="cardsGrid">
+          <div class="cards-loading">
+            <div class="spinner"></div>
+            <p>Loading cards...</p>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+          <h3>No cards yet</h3>
+          <p>Start adding flashcards to see them here</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Card</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Deck</label>
+          <select class="modal-select" id="modalDeckSelect">
+            <!-- Will be populated dynamically -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Front</label>
+          <div class="modal-editor" id="modalFrontEditor" contenteditable="true"></div>
+        </div>
+        <div class="form-group">
+          <label>Back</label>
+          <div class="modal-editor" id="modalBackEditor" contenteditable="true"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalSave">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal" id="previewModal">
+    <div class="modal-content preview-modal">
+      <div class="modal-header">
+        <h3>Card Preview</h3>
+        <button class="modal-close" id="previewClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-card" id="previewCard">
+          <div class="preview-side" id="previewFront">
+            <div class="preview-label">FRONT</div>
+            <div class="preview-content" id="previewFrontContent"></div>
+          </div>
+          <div class="preview-divider"></div>
+          <div class="preview-side" id="previewBack">
+            <div class="preview-label">BACK</div>
+            <div class="preview-content" id="previewBackContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+  <script src="manage.js"></script>
+</body>
+</html>

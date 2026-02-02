@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add a Card</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        <h1>Add a card</h1>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" id="clearBtn" title="Clear all">🗑️</button>
+      </div>
+    </div>
+
+    <!-- Deck Selection -->
+    <div class="deck-selection">
+      <input type="text" id="deckInput" placeholder="Choose or Add a Deck" />
+    </div>
+
+    <!-- FRONT Section -->
+    <div class="card-section">
+      <label class="section-label">FRONT</label>
+      
+      <!-- Toolbar Front -->
+      <div class="toolbar">
+        <select id="frontStyle" class="style-select">
+          <option value="normal">Normal</option>
+          <option value="heading1">Heading 1</option>
+          <option value="heading2">Heading 2</option>
+        </select>
+        
+        <button class="toolbar-btn" data-command="bold" data-target="front"><b>B</b></button>
+        <button class="toolbar-btn" data-command="italic" data-target="front"><i>I</i></button>
+        <button class="toolbar-btn" data-command="underline" data-target="front"><u>U</u></button>
+        <button class="toolbar-btn" data-command="strikethrough" data-target="front"><s>S</s></button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" data-command="insertUnorderedList" data-target="front">☰</button>
+        <button class="toolbar-btn" data-command="insertOrderedList" data-target="front">≡</button>
+        <button class="toolbar-btn" data-command="indent" data-target="front">→</button>
+        <button class="toolbar-btn" data-command="outdent" data-target="front">←</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" data-command="superscript" data-target="front">x²</button>
+        <button class="toolbar-btn" data-command="subscript" data-target="front">x₂</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" id="linkBtnFront">🔗</button>
+        <button class="toolbar-btn" id="imageBtnFront">🖼️</button>
+        <button class="toolbar-btn" id="codeBtnFront">&lt;/&gt;</button>
+      </div>
+
+      <!-- Editor Front -->
+      <div class="editor" id="frontEditor" contenteditable="true" data-placeholder="Write a question here..."></div>
+    </div>
+
+    <!-- BACK Section -->
+    <div class="card-section">
+      <label class="section-label">BACK</label>
+      
+      <!-- Toolbar Back -->
+      <div class="toolbar">
+        <select id="backStyle" class="style-select">
+          <option value="normal">Normal</option>
+          <option value="heading1">Heading 1</option>
+          <option value="heading2">Heading 2</option>
+        </select>
+        
+        <button class="toolbar-btn" data-command="bold" data-target="back"><b>B</b></button>
+        <button class="toolbar-btn" data-command="italic" data-target="back"><i>I</i></button>
+        <button class="toolbar-btn" data-command="underline" data-target="back"><u>U</u></button>
+        <button class="toolbar-btn" data-command="strikethrough" data-target="back"><s>S</s></button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" data-command="insertUnorderedList" data-target="back">☰</button>
+        <button class="toolbar-btn" data-command="insertOrderedList" data-target="back">≡</button>
+        <button class="toolbar-btn" data-command="indent" data-target="back">→</button>
+        <button class="toolbar-btn" data-command="outdent" data-target="back">←</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" data-command="superscript" data-target="back">x²</button>
+        <button class="toolbar-btn" data-command="subscript" data-target="back">x₂</button>
+        
+        <div class="toolbar-divider"></div>
+        
+        <button class="toolbar-btn" id="linkBtnBack">🔗</button>
+        <button class="toolbar-btn" id="imageBtnBack">🖼️</button>
+        <button class="toolbar-btn" id="codeBtnBack">&lt;/&gt;</button>
+      </div>
+
+      <!-- Editor Back -->
+      <div class="editor" id="backEditor" contenteditable="true" data-placeholder="Write the answer here..."></div>
+    </div>
+
+    <!-- Add Card Button -->
+    <button class="add-card-btn" id="addCardBtn">ADD CARD</button>
+
+    <!-- Cards List -->
+    <div class="cards-list" id="cardsList"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
