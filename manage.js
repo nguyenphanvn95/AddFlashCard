@@ -440,26 +440,13 @@ function deleteDeck(name) {
 }
 
 // Preview card
-function previewCard(idOrCard) {
-  const id = (typeof idOrCard === 'object' && idOrCard) ? idOrCard.id : idOrCard;
+function previewCard(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   
   previewFrontContent.innerHTML = card.front;
   previewBackContent.innerHTML = card.back;
   previewModal.classList.add('active');
-}
-
-// Open a single card directly in Study Mode (requested behavior for the eye button)
-function openCardInStudyMode(card) {
-  if (!card || !card.id) return;
-  const url = chrome.runtime.getURL(`study.html?cardId=${encodeURIComponent(card.id)}`);
-  chrome.tabs.create({ url });
-}
-
-// Back-compat helper (some parts of the UI call this name)
-function editCardInSidebar(card) {
-  openEditSidebar(card);
 }
 
 // Close preview modal
@@ -1273,14 +1260,28 @@ function createCardElement(card) {
   const editBtn = cardEl.querySelector('.edit-btn');
   const deleteBtn = cardEl.querySelector('.delete-btn');
   
-  // Eye: open directly in Study Mode (single-card)
-  previewBtn.addEventListener('click', () => openCardInStudyMode(card));
-
-  // Edit: open right-side editor sidebar
-  editBtn.addEventListener('click', () => editCardInSidebar(card));
+  // Eye button: open this specific card in Study Mode
+  previewBtn.addEventListener('click', () => openCardInStudy(card.id));
+  // Pencil button: open right sidebar editor
+  editBtn.addEventListener('click', () => openEditSidebar(card));
   deleteBtn.addEventListener('click', () => deleteCard(card.id));
   
   return cardEl;
+}
+
+// Open a single card in Study Mode (new tab)
+function openCardInStudy(cardId) {
+  try {
+    const url = chrome.runtime.getURL(`study.html?cardId=${encodeURIComponent(cardId)}`);
+    window.open(url, '_blank');
+  } catch (e) {
+    console.error('Open study mode failed:', e);
+  }
+}
+
+// Backward-compatible alias (older code referenced editCardInSidebar)
+function editCardInSidebar(card) {
+  openEditSidebar(card);
 }
 
 // Rich Text Keyboard Shortcuts for all editors

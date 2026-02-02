@@ -221,6 +221,7 @@ function setupEditors() {
 
 // Lắng nghe message từ parent window (content script)
 window.addEventListener('message', (event) => {
+  // Handle old-style addContent with type field
   if (event.data.action === 'addContent') {
     const content = event.data.content;
     
@@ -229,6 +230,15 @@ window.addEventListener('message', (event) => {
     } else if (content.type === 'sendToBack') {
       insertContent(backEditor, content);
     }
+  }
+
+  // Handle new-style direct addToFront/addToBack actions
+  if (event.data.action === 'addToFront') {
+    insertContentFromSelection(frontEditor, event.data.content, event.data.isHtml);
+  }
+  
+  if (event.data.action === 'addToBack') {
+    insertContentFromSelection(backEditor, event.data.content, event.data.isHtml);
   }
 
   // Allow parent/content script to switch sidebar into Edit mode
@@ -252,6 +262,46 @@ function insertContent(editor, content) {
   } else if (content && content.data) {
     const p = document.createElement('p');
     p.textContent = content.data;
+    editor.appendChild(p);
+  }
+  
+  editor.focus();
+  showNotification('Content added!', 'success');
+}
+
+// Chèn nội dung từ selection (Alt+A hoặc Alt+B)
+function insertContentFromSelection(editor, content, isHtml) {
+  if (!content) return;
+  
+  // Nếu là HTML, parse và sanitize
+  if (isHtml) {
+    const fragment = htmlToSafeFragment(content);
+    
+    // Chuyển đổi ảnh từ URL thành base64 để lưu trữ offline
+    fragment.querySelectorAll('img[src]').forEach(async (img) => {
+      const src = img.getAttribute('src');
+      // Chỉ convert ảnh từ URL, không convert ảnh đã là base64
+      if (src && !src.startsWith('data:') && (src.startsWith('http://') || src.startsWith('https://'))) {
+        try {
+          const response = await fetch(src);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          console.warn('Could not convert image to base64:', error);
+          // Giữ nguyên URL nếu không convert được
+        }
+      }
+    });
+    
+    editor.appendChild(fragment);
+  } else {
+    // Plain text
+    const p = document.createElement('p');
+    p.textContent = content;
     editor.appendChild(p);
   }
   

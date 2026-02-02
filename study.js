@@ -83,22 +83,34 @@ function loadStudySession() {
     deckFilterSelect.value = deck || settings.selectedDeck || '';
     tagsFilterInput.value = tags || settings.selectedTags || '';
     
-    // If a single card is requested, study ONLY that card (ignore deck/tags filters)
+    // If a specific cardId is requested, study only that card
     if (cardId) {
-      allCards = allCards.filter(card => String(card.id) === String(cardId));
-      studyDeckName.textContent = 'Studying: 1 selected card';
+      const single = (allCards || []).find(c => String(c.id) === String(cardId));
+      studyCards = single ? [single] : [];
+      studyDeckName.textContent = single ? 'Study Mode - Single Card' : 'Study Mode - Card not found';
+
+      if (studyCards.length === 0) {
+        showNoCardsMessage();
+        return;
+      }
+
+      totalCards.textContent = studyCards.length;
+      remainingCount.textContent = studyCards.length;
+      displayCard();
+      updateProgress();
+      return;
     }
 
-    // Filter cards by deck (only when not studying a single card)
-    if (!cardId && deck) {
+    // Filter cards by deck
+    if (deck) {
       allCards = allCards.filter(card => card.deck === deck);
       studyDeckName.textContent = `Studying: ${deck}`;
-    } else if (!cardId) {
+    } else {
       studyDeckName.textContent = 'Study Mode - All Cards';
     }
     
     // Filter cards by tags
-    if (tags && !cardId) {
+    if (tags) {
       const tagsList = tags.split(',').map(t => t.trim().toLowerCase());
       allCards = allCards.filter(card => {
         if (!card.tags || card.tags.length === 0) return false;

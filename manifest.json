@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Export APKG và sync với Anki qua AnkiConnect",
   "permissions": [
     "contextMenus",
@@ -10,8 +10,12 @@
     "scripting",
     "tabs"
   ],
+  "optional_permissions": [
+    "https://www.notion.so/*",
+    "https://*.notion.so/*"
+  ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "background": {
     "service_worker": "background.js"
@@ -31,7 +35,8 @@
     },
     {
       "matches": ["*://*.notion.so/*", "*://notion.so/*"],
-      "js": ["notion-sync.js"],
+      "js": ["notion-sync-improved.js"],
+      "css": ["notion-sync.css"],
       "run_at": "document_idle"
     },
     {
@@ -43,7 +48,22 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["sidebar.html", "sidebar.css", "sidebar.js", "media-handler.js", "study.html", "study.css", "study.js"],
+      "resources": [
+        "sidebar.html", 
+        "sidebar.css", 
+        "sidebar.js", 
+        "media-handler.js", 
+        "study.html", 
+        "study.css", 
+        "study.js",
+        "vendor/jszip.min.js",
+        "vendor/sql-wasm.js",
+        "vendor/sql-wasm.wasm",
+        "notion-sync.css",
+        "icons/icon16.png",
+        "icons/icon48.png",
+        "icons/icon128.png"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

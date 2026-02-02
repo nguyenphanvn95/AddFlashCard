@@ -9,26 +9,23 @@ class APKGExporterV2 {
 
   // Load required libraries
   async loadLibraries() {
-    // MV3 rule: extension pages cannot load remote scripts (CDN). Libraries must be bundled.
-    // Put these files in: vendor/
-    //   - vendor/jszip.min.js
-    //   - vendor/sql-wasm.js
-    //   - vendor/sql-wasm.wasm
-    // (See VENDOR-LIBS.md for exact download links.)
-
-    const jszipUrl = (typeof chrome !== 'undefined' && chrome.runtime)
-      ? chrome.runtime.getURL('vendor/jszip.min.js')
-      : 'vendor/jszip.min.js';
-    const sqlUrl = (typeof chrome !== 'undefined' && chrome.runtime)
-      ? chrome.runtime.getURL('vendor/sql-wasm.js')
-      : 'vendor/sql-wasm.js';
-
+    // MV3 extensions cannot load scripts from remote CDNs (CSP blocks them).
+    // JSZip is bundled locally.
     if (!window.JSZip) {
-      await this.loadScript(jszipUrl);
+      await this.loadScript(chrome.runtime.getURL('vendor/jszip.min.js'));
     }
+
+    // NOTE: sql.js (sqlite in wasm) is required to build a valid .apkg.
+    // If you want browser-side APKG export, you must bundle sql.js + sql-wasm.wasm locally.
+    // This build disables CDN loading and provides a clear error.
     if (!window.initSqlJs) {
-      await this.loadScript(sqlUrl);
+      throw new Error(
+        'APKG export needs sql.js (SQLite WASM) bundled locally. ' +
+        'Remote CDN loading is blocked by MV3 CSP. ' +
+        'Please bundle sql-wasm.js + sql-wasm.wasm in /vendor and update apkg-exporter.js locateFile.'
+      );
     }
+
     await this.ensureSqlReady();
   }
 
@@ -49,12 +46,8 @@ class APKGExporterV2 {
       throw new Error('sql.js not loaded');
     }
     
-    const base = (typeof chrome !== 'undefined' && chrome.runtime)
-      ? chrome.runtime.getURL('vendor/')
-      : 'vendor/';
-
     this.SQL_INSTANCE = await initSqlJs({
-      locateFile: (file) => `${base}${file}`
+      locateFile: file => chrome.runtime.getURL(`vendor/${file}`)
     });
     this.sqlReady = true;
   }
@@ -677,3 +670,16 @@ video { max-width: 100%; height: auto; }`,
 
 // Export singleton
 window.apkgExporterV2 = new APKGExporterV2();
+
+// Backward-compatible alias used by manage.js
+// (Older code expects window.apkgExporter with exportMultipleDecks / downloadBlob)
+window.apkgExporter = window.apkgExporterV2;
+
+// Backward-compatible API expected by manage.js
+// manage.js calls exportMultipleDecks(decksData, parentDeckName, onProgress)
+// In v2 we prefer exportMultipleDecksWithMedia.
+if (typeof window.apkgExporterV2.exportMultipleDecks !== 'function') {
+  window.apkgExporterV2.exportMultipleDecks = async function (decksData, parentDeckName, onProgress) {
+    return await this.exportMultipleDecksWithMedia(decksData, parentDeckName, onProgress);
+  };
+}
