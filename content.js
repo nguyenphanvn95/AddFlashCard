@@ -120,63 +120,107 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   
-  // Alt+A: Send selected text to Front field
+  // Alt+A: Send selected content to Front field (with formatting)
   if (e.altKey && e.key.toLowerCase() === 'a') {
     e.preventDefault();
-    const selectedText = window.getSelection().toString().trim();
-    if (selectedText) {
-      if (!sidebarIframe) {
-        createSidebar();
-        setTimeout(() => {
-          if (sidebarIframe) {
-            sidebarIframe.style.right = '0';
-            setTimeout(() => {
-              sidebarIframe.contentWindow.postMessage({
-                action: "addToFront",
-                content: selectedText
-              }, '*');
-            }, 200);
-          }
-        }, 100);
-      } else {
-        openSidebar();
-        setTimeout(() => {
-          sidebarIframe.contentWindow.postMessage({
-            action: "addToFront",
-            content: selectedText
-          }, '*');
-        }, 100);
+    
+    // Get rich HTML selection
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = document.createElement('div');
+      container.appendChild(range.cloneContents());
+      
+      // Normalize relative URLs
+      const makeAbs = (url) => {
+        try { return new URL(url, location.href).href; } catch { return url; }
+      };
+      container.querySelectorAll('a[href]').forEach(a => a.setAttribute('href', makeAbs(a.getAttribute('href'))));
+      container.querySelectorAll('img[src]').forEach(img => img.setAttribute('src', makeAbs(img.getAttribute('src'))));
+      container.querySelectorAll('video[src]').forEach(v => v.setAttribute('src', makeAbs(v.getAttribute('src'))));
+      container.querySelectorAll('source[src]').forEach(s => s.setAttribute('src', makeAbs(s.getAttribute('src'))));
+      
+      const htmlContent = container.innerHTML;
+      const textContent = selection.toString().trim();
+      
+      if (htmlContent || textContent) {
+        if (!sidebarIframe) {
+          createSidebar();
+          setTimeout(() => {
+            if (sidebarIframe) {
+              sidebarIframe.style.right = '0';
+              setTimeout(() => {
+                sidebarIframe.contentWindow.postMessage({
+                  action: "addToFront",
+                  content: htmlContent || textContent,
+                  isHtml: true
+                }, '*');
+              }, 200);
+            }
+          }, 100);
+        } else {
+          openSidebar();
+          setTimeout(() => {
+            sidebarIframe.contentWindow.postMessage({
+              action: "addToFront",
+              content: htmlContent || textContent,
+              isHtml: true
+            }, '*');
+          }, 100);
+        }
       }
     }
     return;
   }
   
-  // Alt+B: Send selected text to Back field
+  // Alt+B: Send selected content to Back field (with formatting)
   if (e.altKey && e.key.toLowerCase() === 'b') {
     e.preventDefault();
-    const selectedText = window.getSelection().toString().trim();
-    if (selectedText) {
-      if (!sidebarIframe) {
-        createSidebar();
-        setTimeout(() => {
-          if (sidebarIframe) {
-            sidebarIframe.style.right = '0';
-            setTimeout(() => {
-              sidebarIframe.contentWindow.postMessage({
-                action: "addToBack",
-                content: selectedText
-              }, '*');
-            }, 200);
-          }
-        }, 100);
-      } else {
-        openSidebar();
-        setTimeout(() => {
-          sidebarIframe.contentWindow.postMessage({
-            action: "addToBack",
-            content: selectedText
-          }, '*');
-        }, 100);
+    
+    // Get rich HTML selection
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = document.createElement('div');
+      container.appendChild(range.cloneContents());
+      
+      // Normalize relative URLs
+      const makeAbs = (url) => {
+        try { return new URL(url, location.href).href; } catch { return url; }
+      };
+      container.querySelectorAll('a[href]').forEach(a => a.setAttribute('href', makeAbs(a.getAttribute('href'))));
+      container.querySelectorAll('img[src]').forEach(img => img.setAttribute('src', makeAbs(img.getAttribute('src'))));
+      container.querySelectorAll('video[src]').forEach(v => v.setAttribute('src', makeAbs(v.getAttribute('src'))));
+      container.querySelectorAll('source[src]').forEach(s => s.setAttribute('src', makeAbs(s.getAttribute('src'))));
+      
+      const htmlContent = container.innerHTML;
+      const textContent = selection.toString().trim();
+      
+      if (htmlContent || textContent) {
+        if (!sidebarIframe) {
+          createSidebar();
+          setTimeout(() => {
+            if (sidebarIframe) {
+              sidebarIframe.style.right = '0';
+              setTimeout(() => {
+                sidebarIframe.contentWindow.postMessage({
+                  action: "addToBack",
+                  content: htmlContent || textContent,
+                  isHtml: true
+                }, '*');
+              }, 200);
+            }
+          }, 100);
+        } else {
+          openSidebar();
+          setTimeout(() => {
+            sidebarIframe.contentWindow.postMessage({
+              action: "addToBack",
+              content: htmlContent || textContent,
+              isHtml: true
+            }, '*');
+          }, 100);
+        }
       }
     }
     return;

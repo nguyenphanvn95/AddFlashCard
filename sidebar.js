@@ -780,11 +780,17 @@ function setupMessageHandlers() {
       if (frontEditor) {
         frontEditor.focus();
         const content = event.data.content;
-        // Insert at cursor or append if empty
-        if (frontEditor.innerHTML.trim() === '') {
+        const isHtml = event.data.isHtml;
+        
+        // Insert HTML content or plain text
+        if (frontEditor.innerHTML.trim() === '' || frontEditor.innerHTML === '<br>') {
           frontEditor.innerHTML = content;
         } else {
-          document.execCommand('insertHTML', false, '<br>' + content);
+          if (isHtml) {
+            document.execCommand('insertHTML', false, '<br>' + content);
+          } else {
+            document.execCommand('insertHTML', false, '<br>' + content);
+          }
         }
         showNotification('Added to Front field', 'success');
       }
@@ -794,11 +800,17 @@ function setupMessageHandlers() {
       if (backEditor) {
         backEditor.focus();
         const content = event.data.content;
-        // Insert at cursor or append if empty
-        if (backEditor.innerHTML.trim() === '') {
+        const isHtml = event.data.isHtml;
+        
+        // Insert HTML content or plain text
+        if (backEditor.innerHTML.trim() === '' || backEditor.innerHTML === '<br>') {
           backEditor.innerHTML = content;
         } else {
-          document.execCommand('insertHTML', false, '<br>' + content);
+          if (isHtml) {
+            document.execCommand('insertHTML', false, '<br>' + content);
+          } else {
+            document.execCommand('insertHTML', false, '<br>' + content);
+          }
         }
         showNotification('Added to Back field', 'success');
       }
@@ -817,5 +829,4 @@ function setupMessageHandlers() {
     }
   });
 }
-
 

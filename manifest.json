@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Export APKG và sync với Anki qua AnkiConnect",
   "permissions": [
     "contextMenus",
@@ -10,6 +10,9 @@
     "scripting",
     "tabs"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' https://cdnjs.cloudflare.com; object-src 'self'"
+  },
   "background": {
     "service_worker": "background.js"
   },

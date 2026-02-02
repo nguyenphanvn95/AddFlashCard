@@ -37,34 +37,27 @@ function attemptInject() {
 
 // Inject Sync button next to Share button
 function injectSyncButton() {
-  console.log('AddFlashcard: Attempting to inject sync button...');
-  
-  // Don't inject if already exists and is still in DOM
+  // Don't inject if already exists
   if (syncButton && document.body.contains(syncButton)) {
-    console.log('AddFlashcard: Sync button already exists in DOM');
     return true;
   }
   
   // Reset syncButton reference if it was removed
   if (syncButton && !document.body.contains(syncButton)) {
-    console.log('AddFlashcard: Previous button removed, will create new one');
     syncButton = null;
   }
   
-  // Find the Share button
+  // Find the Share button with multiple strategies
   const shareButton = findShareButton();
   
   if (!shareButton) {
-    console.log('AddFlashcard: Share button not found, cannot inject');
+    console.log('AddFlashcard: Share button not found yet...');
     return false;
   }
 
-  console.log('AddFlashcard: Share button found!');
-  console.log('  - Tag:', shareButton.tagName);
-  console.log('  - Text:', shareButton.textContent.trim());
-  console.log('  - Parent:', shareButton.parentElement?.tagName);
+  console.log('AddFlashcard: Share button found!', shareButton);
 
-  // Create sync button with improved styling
+  // Create sync button
   syncButton = document.createElement('div');
   syncButton.className = 'addflashcard-notion-sync-button';
   syncButton.setAttribute('role', 'button');
@@ -72,12 +65,11 @@ function injectSyncButton() {
   syncButton.setAttribute('data-addflashcard', 'sync-button');
   
   syncButton.innerHTML = `
-    <div style="display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; 
-                height: 28px; border-radius: 6px; background: rgb(46, 170, 220); 
-                color: white; font-size: 13px; font-weight: 500; cursor: pointer; 
-                transition: all 0.2s ease; margin-right: 8px;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                user-select: none;">
+    <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 28px; 
+                border-radius: 6px; background: rgb(46, 170, 220); color: white; 
+                font-size: 13px; font-weight: 500; cursor: pointer; 
+                transition: background 0.2s ease; margin-right: 8px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
         <path d="M13.5 2h-11C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5h11c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zm-11 1h11c.28 0 .5.22.5.5v2H2v-2c0-.28.22-.5.5-.5zm11 10h-11c-.28 0-.5-.22-.5-.5V7h12v5.5c0 .28-.22.5-.5.5z"/>
         <path d="M4 9h3v1H4zm0 2h5v1H4z"/>
@@ -91,116 +83,101 @@ function injectSyncButton() {
   syncButton.addEventListener('mouseenter', () => {
     if (!isSyncing) {
       buttonInner.style.background = 'rgb(35, 131, 226)';
-      buttonInner.style.transform = 'scale(1.05)';
     }
   });
   syncButton.addEventListener('mouseleave', () => {
     if (!isSyncing) {
       buttonInner.style.background = 'rgb(46, 170, 220)';
-      buttonInner.style.transform = 'scale(1)';
     }
   });
 
   // Add click handler
   syncButton.addEventListener('click', handleSyncClick);
 
-  // Insert before Share button with error handling
+  // Insert before Share button
   try {
-    if (!shareButton.parentElement) {
-      console.error('AddFlashcard: Share button has no parent element');
-      return false;
-    }
-    
     shareButton.parentElement.insertBefore(syncButton, shareButton);
-    console.log('AddFlashcard: ✓ Sync button injected successfully!');
-    
-    // Verify injection
-    if (document.body.contains(syncButton)) {
-      console.log('AddFlashcard: ✓ Verified button is in DOM');
-      return true;
-    } else {
-      console.error('AddFlashcard: ✗ Button not found in DOM after injection');
-      return false;
-    }
-    
+    console.log('AddFlashcard: Sync button inserted successfully!');
+    return true;
   } catch (error) {
     console.error('AddFlashcard: Error inserting button:', error);
-    console.error('  Error details:', error.message);
     return false;
   }
 }
 
 // Find Share button with multiple strategies
 function findShareButton() {
-  console.log('AddFlashcard: Searching for Share button...');
-  
   // Strategy 1: Direct aria-label
   let shareButton = document.querySelector('[aria-label="Share"]');
-  if (shareButton && shareButton.offsetParent !== null) {
-    console.log('✓ Strategy 1: Found via aria-label');
+  if (shareButton) {
+    console.log('Strategy 1: Found via aria-label');
     return shareButton;
   }
   
-  // Strategy 2: Look for text content "Share" or "Chia sẻ" in buttons
-  const allButtons = Array.from(document.querySelectorAll('div[role="button"], button'));
+  // Strategy 2: Look for specific Notion Share button structure
+  const topbar = document.querySelector('.notion-topbar') || 
+                 document.querySelector('[class*="topbar"]') ||
+                 document.querySelector('div[style*="position"][style*="top"]');
   
-  for (const btn of allButtons) {
-    const text = btn.textContent.trim();
-    const isShareButton = text === 'Share' || text === 'Chia sẻ' || text.includes('Share');
+  if (topbar) {
+    console.log('Found topbar:', topbar);
     
-    if (isShareButton) {
-      const rect = btn.getBoundingClientRect();
-      // Must be visible and in top area
-      if (rect.top > 0 && rect.top < 150 && rect.width > 0 && rect.height > 0) {
-        console.log('✓ Strategy 2: Found Share button via text content:', text);
+    // Look for buttons in topbar
+    const buttons = topbar.querySelectorAll('div[role="button"]');
+    console.log('Found buttons in topbar:', buttons.length);
+    
+    for (const btn of buttons) {
+      const text = btn.textContent.trim();
+      console.log('Button text:', text);
+      
+      if (text === 'Share' || text.includes('Share') || text === 'Chia sẻ') {
+        console.log('Strategy 2: Found Share button via topbar');
         return btn;
       }
     }
   }
   
-  // Strategy 3: Look in specific Notion topbar areas
-  const topbarSelectors = [
-    '[class*="notion-topbar"]',
-    '[class*="Topbar"]', 
-    'div[style*="position: fixed"][style*="top: 0"]',
-    'div[data-block-id][style*="position"][style*="fixed"]'
-  ];
+  // Strategy 3: Look for all buttons on page
+  const allButtons = document.querySelectorAll('div[role="button"]');
+  console.log('Total buttons on page:', allButtons.length);
   
-  for (const selector of topbarSelectors) {
-    const topbar = document.querySelector(selector);
-    if (topbar) {
-      const buttons = topbar.querySelectorAll('div[role="button"], button');
-      for (const btn of buttons) {
-        const text = btn.textContent.trim();
-        if (text === 'Share' || text === 'Chia sẻ' || text.includes('Share')) {
-          console.log('✓ Strategy 3: Found in topbar area');
-          return btn;
-        }
-      }
-    }
-  }
-  
-  // Strategy 4: Look for SVG share icon patterns
-  const svgButtons = document.querySelectorAll('div[role="button"] svg, button svg');
-  for (const svg of svgButtons) {
-    const btn = svg.closest('[role="button"], button');
-    if (btn) {
+  for (const btn of allButtons) {
+    const text = btn.textContent.trim();
+    if (text === 'Share' || text === 'Chia sẻ') {
+      // Make sure it's in the top area (y position < 200px)
       const rect = btn.getBoundingClientRect();
-      const hasShareIcon = svg.querySelector('path[d*="M18"]') || 
-                           svg.querySelector('path[d*="M15"]');
-      
-      if (hasShareIcon && rect.top < 150) {
-        // Verify it's likely the share button
-        const text = btn.textContent.trim();
-        if (text === 'Share' || text === 'Chia sẻ' || text.length < 20) {
-          console.log('✓ Strategy 4: Found via SVG icon');
-          return btn;
-        }
+      if (rect.top < 200) {
+        console.log('Strategy 3: Found Share button via all buttons');
+        return btn;
       }
     }
   }
   
-  console.log('✗ Share button not found with any strategy');
+  // Strategy 4: Look for button with specific class patterns
+  const notionButtons = document.querySelectorAll('[class*="notion"][role="button"]');
+  for (const btn of notionButtons) {
+    if (btn.textContent.includes('Share') || btn.textContent.includes('Chia sẻ')) {
+      console.log('Strategy 4: Found via class pattern');
+      return btn;
+    }
+  }
+  
+  // Strategy 5: Look in the header/nav area
+  const header = document.querySelector('header') || 
+                document.querySelector('nav') ||
+                document.querySelector('[role="banner"]');
+  
+  if (header) {
+    const headerButtons = header.querySelectorAll('div[role="button"]');
+    for (const btn of headerButtons) {
+      if (btn.textContent.includes('Share') || btn.textContent.includes('Chia sẻ')) {
+        console.log('Strategy 5: Found in header');
+        return btn;
+      }
+    }
+  }
+
+  console.log('AddFlashcard: No Share button found with any strategy');
   return null;
 }
 
@@ -271,25 +248,83 @@ function getPageTitle() {
 
 // Extract all toggles from the page
 function extractToggles() {
+  console.log('AddFlashcard: Extracting toggles from page...');
   const toggles = [];
   
-  // Find all toggle blocks (details elements in Notion)
-  const toggleBlocks = document.querySelectorAll('details.notion-toggle-block');
+  // Strategy 1: Find toggles using modern Notion structure (details elements)
+  let toggleBlocks = document.querySelectorAll('details.notion-toggle-block');
+  console.log(`Strategy 1: Found ${toggleBlocks.length} toggles via details.notion-toggle-block`);
+  
+  // Strategy 2: Try alternative selectors if first one fails
+  if (toggleBlocks.length === 0) {
+    toggleBlocks = document.querySelectorAll('details[class*="toggle"]');
+    console.log(`Strategy 2: Found ${toggleBlocks.length} toggles via details[class*="toggle"]`);
+  }
+  
+  // Strategy 3: Find by data attributes
+  if (toggleBlocks.length === 0) {
+    toggleBlocks = document.querySelectorAll('[data-block-id] details');
+    console.log(`Strategy 3: Found ${toggleBlocks.length} toggles via [data-block-id] details`);
+  }
+  
+  // Strategy 4: Find any details elements in the page content area
+  if (toggleBlocks.length === 0) {
+    const mainContent = document.querySelector('[class*="notion-page-content"]') || 
+                       document.querySelector('main') || 
+                       document.body;
+    toggleBlocks = mainContent.querySelectorAll('details');
+    console.log(`Strategy 4: Found ${toggleBlocks.length} toggles via details in main content`);
+  }
+  
+  console.log(`Total toggle blocks found: ${toggleBlocks.length}`);
   
   toggleBlocks.forEach((toggle, index) => {
     try {
       // Get toggle title (front of card)
       const summary = toggle.querySelector('summary');
-      const titleElement = summary?.querySelector('[data-content-editable-leaf="true"]') || summary;
-      const front = titleElement ? cleanHtml(titleElement.innerHTML) : '';
+      if (!summary) {
+        console.log(`  Toggle ${index}: No summary found, skipping`);
+        return;
+      }
       
-      if (!front.trim()) return; // Skip empty toggles
+      // Try multiple strategies to get title text
+      let front = '';
+      
+      // Strategy 1: contenteditable leaf
+      const leafElement = summary.querySelector('[data-content-editable-leaf="true"]');
+      if (leafElement) {
+        front = cleanHtml(leafElement.innerHTML);
+      }
+      
+      // Strategy 2: Direct summary text
+      if (!front) {
+        const summaryClone = summary.cloneNode(true);
+        // Remove any icons or buttons
+        summaryClone.querySelectorAll('svg, button, .notion-record-icon').forEach(el => el.remove());
+        front = cleanHtml(summaryClone.innerHTML);
+      }
+      
+      // Strategy 3: Just get text content
+      if (!front) {
+        front = summary.textContent.trim();
+      }
+      
+      console.log(`  Toggle ${index}: Front = "${front.substring(0, 50)}..."`);
+      
+      if (!front.trim()) {
+        console.log(`  Toggle ${index}: Empty front, skipping`);
+        return;
+      }
       
       // Get toggle content (back of card) - preserve formatting
-      const contentDiv = toggle.querySelector(':scope > div:not(summary)');
       let back = '';
       
-      if (contentDiv) {
+      // Find content div - try multiple selectors
+      const contentDiv = toggle.querySelector(':scope > div:not(summary)') ||
+                        toggle.querySelector('div[class*="content"]') ||
+                        toggle.querySelector('div:last-child');
+      
+      if (contentDiv && contentDiv !== summary) {
         // Clone the content to process it
         const contentClone = contentDiv.cloneNode(true);
         
@@ -323,16 +358,19 @@ function extractToggles() {
         back = contentClone.innerHTML;
       }
       
+      console.log(`  Toggle ${index}: Back = "${back.substring(0, 50)}..."`);
+      
       toggles.push({
         front: front,
         back: back || '<p><em>No content</em></p>',
         index: index
       });
     } catch (error) {
-      console.error('Error extracting toggle:', error);
+      console.error(`Error extracting toggle ${index}:`, error);
     }
   });
   
+  console.log(`Successfully extracted ${toggles.length} toggles`);
   return toggles;
 }
 
