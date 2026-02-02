@@ -120,15 +120,58 @@ function injectSyncButton() {
     syncButton.style.pointerEvents = 'auto';
     syncButton.style.zIndex = '9999';
 
-    // Prefer inserting into the same flex row that contains Share.
-    const container = shareButton.parentElement;
-    container.insertBefore(syncButton, shareButton);
+    // Notion often nests the Share button in multiple wrappers.
+    // We climb to a stable flex-row container so the button actually renders.
+    const container = getTopbarFlexContainer(shareButton) || shareButton.parentElement;
+    if (!container) throw new Error('No container found for Share button');
+
+    // If container uses overflow hidden, give our button a chance to be visible
+    syncButton.style.flex = '0 0 auto';
+
+    // Insert immediately BEFORE the Share button element (or its wrapper inside the same container)
+    if (container.contains(shareButton)) {
+      container.insertBefore(syncButton, shareButton);
+    } else {
+      // fallback: append then move left by placing before the nearest sibling that looks like share
+      container.appendChild(syncButton);
+    }
+
+    // If Notion re-renders, we may end up duplicated; dedupe by data attr
+    const duplicates = container.querySelectorAll('[data-addflashcard="sync-button"]');
+    duplicates.forEach((el, idx) => { if (idx > 0) el.remove(); });
+
     console.log('AddFlashcard: Sync button inserted successfully!');
     return true;
   } catch (error) {
     console.error('AddFlashcard: Error inserting button:', error);
     return false;
   }
+}
+
+// Find a stable flex container in Notion's topbar that contains the Share button.
+function getTopbarFlexContainer(shareButton) {
+  let el = shareButton;
+  for (let i = 0; i < 8 && el; i++) {
+    const parent = el.parentElement;
+    if (!parent) return null;
+    const style = window.getComputedStyle(parent);
+    // Heuristic: topbar rows are flex and contain multiple role=button
+    if (style.display === 'flex') {
+      const btnCount = parent.querySelectorAll('div[role="button"]').length;
+      if (btnCount >= 2) return parent;
+    }
+    el = parent;
+  }
+  // Try the closest header/topbar if the above fails
+  const topbar = shareButton.closest('.notion-topbar') || shareButton.closest('header') || shareButton.closest('nav');
+  if (topbar) {
+    const rows = topbar.querySelectorAll('div');
+    for (const row of rows) {
+      const s = window.getComputedStyle(row);
+      if (s.display === 'flex' && row.contains(shareButton)) return row;
+    }
+  }
+  return null;
 }
 
 // Find Share button with multiple strategies

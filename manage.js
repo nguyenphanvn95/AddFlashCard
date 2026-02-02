@@ -1260,11 +1260,28 @@ function createCardElement(card) {
   const editBtn = cardEl.querySelector('.edit-btn');
   const deleteBtn = cardEl.querySelector('.delete-btn');
   
-  previewBtn.addEventListener('click', () => previewCard(card));
-  editBtn.addEventListener('click', () => editCardInSidebar(card));
+  // Eye button: open this specific card in Study Mode
+  previewBtn.addEventListener('click', () => openCardInStudy(card.id));
+  // Pencil button: open right sidebar editor
+  editBtn.addEventListener('click', () => openEditSidebar(card));
   deleteBtn.addEventListener('click', () => deleteCard(card.id));
   
   return cardEl;
+}
+
+// Open a single card in Study Mode (new tab)
+function openCardInStudy(cardId) {
+  try {
+    const url = chrome.runtime.getURL(`study.html?cardId=${encodeURIComponent(cardId)}`);
+    window.open(url, '_blank');
+  } catch (e) {
+    console.error('Open study mode failed:', e);
+  }
+}
+
+// Backward-compatible alias (older code referenced editCardInSidebar)
+function editCardInSidebar(card) {
+  openEditSidebar(card);
 }
 
 // Rich Text Keyboard Shortcuts for all editors

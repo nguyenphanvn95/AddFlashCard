@@ -9,12 +9,23 @@ class APKGExporterV2 {
 
   // Load required libraries
   async loadLibraries() {
+    // MV3 extensions cannot load scripts from remote CDNs (CSP blocks them).
+    // JSZip is bundled locally.
     if (!window.JSZip) {
-      await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      await this.loadScript(chrome.runtime.getURL('vendor/jszip.min.js'));
     }
+
+    // NOTE: sql.js (sqlite in wasm) is required to build a valid .apkg.
+    // If you want browser-side APKG export, you must bundle sql.js + sql-wasm.wasm locally.
+    // This build disables CDN loading and provides a clear error.
     if (!window.initSqlJs) {
-      await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js');
+      throw new Error(
+        'APKG export needs sql.js (SQLite WASM) bundled locally. ' +
+        'Remote CDN loading is blocked by MV3 CSP. ' +
+        'Please bundle sql-wasm.js + sql-wasm.wasm in /vendor and update apkg-exporter.js locateFile.'
+      );
     }
+
     await this.ensureSqlReady();
   }
 
@@ -36,7 +47,7 @@ class APKGExporterV2 {
     }
     
     this.SQL_INSTANCE = await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+      locateFile: file => chrome.runtime.getURL(`vendor/${file}`)
     });
     this.sqlReady = true;
   }
