@@ -12,6 +12,18 @@ function initNotionSync() {
   
   // Try multiple times with increasing delays
   attemptInject();
+
+  // Notion often re-renders the topbar; keep a light watchdog running.
+  // This prevents the button from "injecting" and then disappearing.
+  setInterval(() => {
+    try {
+      if (!document.querySelector('[data-addflashcard="sync-button"]')) {
+        injectSyncButton();
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, 2500);
 }
 
 // Attempt to inject with retry logic
@@ -63,6 +75,12 @@ function injectSyncButton() {
   syncButton.setAttribute('role', 'button');
   syncButton.setAttribute('tabindex', '0');
   syncButton.setAttribute('data-addflashcard', 'sync-button');
+
+  // Make it resilient against Notion's layout constraints
+  syncButton.style.display = 'flex';
+  syncButton.style.alignItems = 'center';
+  syncButton.style.pointerEvents = 'auto';
+  syncButton.style.zIndex = '2147483647';
   
   syncButton.innerHTML = `
     <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 28px; 
@@ -96,7 +114,15 @@ function injectSyncButton() {
 
   // Insert before Share button
   try {
-    shareButton.parentElement.insertBefore(syncButton, shareButton);
+    // Make sure the wrapper is visible in Notion's flex layout
+    syncButton.style.display = 'flex';
+    syncButton.style.alignItems = 'center';
+    syncButton.style.pointerEvents = 'auto';
+    syncButton.style.zIndex = '9999';
+
+    // Prefer inserting into the same flex row that contains Share.
+    const container = shareButton.parentElement;
+    container.insertBefore(syncButton, shareButton);
     console.log('AddFlashcard: Sync button inserted successfully!');
     return true;
   } catch (error) {

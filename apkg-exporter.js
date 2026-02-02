@@ -659,3 +659,16 @@ video { max-width: 100%; height: auto; }`,
 
 // Export singleton
 window.apkgExporterV2 = new APKGExporterV2();
+
+// Backward-compatible alias used by manage.js
+// (Older code expects window.apkgExporter with exportMultipleDecks / downloadBlob)
+window.apkgExporter = window.apkgExporterV2;
+
+// Backward-compatible API expected by manage.js
+// manage.js calls exportMultipleDecks(decksData, parentDeckName, onProgress)
+// In v2 we prefer exportMultipleDecksWithMedia.
+if (typeof window.apkgExporterV2.exportMultipleDecks !== 'function') {
+  window.apkgExporterV2.exportMultipleDecks = async function (decksData, parentDeckName, onProgress) {
+    return await this.exportMultipleDecksWithMedia(decksData, parentDeckName, onProgress);
+  };
+}
