@@ -394,3 +394,18 @@ class StorageManager {
 
 // Export singleton instance
 window.storageManager = new StorageManager();
+
+// Debug: Log any changes made to chrome.storage.local so we can detect writes
+if (chrome && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    try {
+      console.log('[AddFlashcard][storage.onChanged] keys:', Object.keys(changes));
+      for (const key in changes) {
+        console.log('[AddFlashcard][storage.onChanged] ', key, '=>', changes[key]);
+      }
+    } catch (err) {
+      console.log('[AddFlashcard][storage.onChanged] error printing changes', err);
+    }
+  });
+}

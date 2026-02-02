@@ -576,12 +576,28 @@ function extractToggleBack(toggle) {
   // Clone the content
   const clone = contentDiv.cloneNode(true);
   
-  // Remove the title if it's in the content
+  // Remove the title if it's in the content, but avoid removing the whole first content block
   const titleInContent = clone.querySelector('[data-content-editable-leaf="true"]');
   if (titleInContent) {
-    const titleContainer = titleInContent.closest('div[style*="display: flex"]');
-    if (titleContainer) {
-      titleContainer.remove();
+    try {
+      // Compare text with the original editable element text to ensure we only remove the title node
+      const originalTitleText = (editableElement && editableElement.textContent) ? editableElement.textContent.trim() : '';
+      const candidates = Array.from(clone.querySelectorAll('[data-content-editable-leaf="true"]'));
+      for (const el of candidates) {
+        if (el.textContent.trim() === originalTitleText) {
+          // Remove only this leaf node to preserve surrounding blocks
+          const parent = el.parentElement;
+          el.remove();
+
+          // If the parent becomes empty (no text nodes / child elements), remove it as well
+          if (parent && parent.childElementCount === 0 && parent.textContent.trim() === '') {
+            parent.remove();
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      log('  ⚠️ Error while removing title from clone:', err);
     }
   }
   

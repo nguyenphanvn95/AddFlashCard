@@ -1,8 +1,0 @@
-{
-    "chat.tools.terminal.autoApprove": {
-        "/^powershell -Command \"Invoke-WebRequest -Uri 'https://cdnjs\\.cloudflare\\.com/ajax/libs/sql\\.js/1\\.8\\.0/sql-wasm\\.js' -OutFile 'sql-wasm\\.js'; Invoke-WebRequest -Uri 'https://cdnjs\\.cloudflare\\.com/ajax/libs/sql\\.js/1\\.8\\.0/sql-wasm\\.wasm' -OutFile 'sql-wasm\\.wasm'; dir\"$/": {
-            "approve": true,
-            "matchCommandLine": true
-        }
-    }
-}

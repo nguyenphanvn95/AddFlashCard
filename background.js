@@ -1,5 +1,12 @@
 // Tạo context menu khi extension được cài đặt
 chrome.runtime.onInstalled.addListener(() => {
+  console.log('[AddFlashcard] Extension installed/updated');
+  
+  // Check chrome.storage availability
+  chrome.storage.local.get(null, (result) => {
+    console.log('[AddFlashcard] Storage initialized. Keys:', Object.keys(result));
+  });
+  
   // Menu chính
   chrome.contextMenus.create({
     id: "addflashcard",
@@ -23,6 +30,21 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ["selection", "image", "link", "video"]
   });
 });
+
+// Log storage changes in the background context so we can see writes from any page
+if (chrome && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    try {
+      console.log('[AddFlashcard][background storage.onChanged] keys:', Object.keys(changes));
+      for (const k in changes) {
+        console.log('[AddFlashcard][background storage.onChanged]', k, '=>', changes[k]);
+      }
+    } catch (err) {
+      console.error('[AddFlashcard][background storage.onChanged] error:', err);
+    }
+  });
+}
 
 /**
  * Get rich selection HTML from the page to preserve formatting (bold/italic/links/lists, etc.).
