@@ -3,38 +3,74 @@
 
 let syncButton = null;
 let isSyncing = false;
+let retryCount = 0;
+const MAX_RETRIES = 10;
 
 // Initialize when DOM is ready
 function initNotionSync() {
-  // Wait for Notion to fully load
+  console.log('AddFlashcard: Initializing Notion sync...');
+  
+  // Try multiple times with increasing delays
+  attemptInject();
+}
+
+// Attempt to inject with retry logic
+function attemptInject() {
+  const delay = Math.min(1000 + (retryCount * 500), 5000); // 1s, 1.5s, 2s, ..., max 5s
+  
   setTimeout(() => {
-    injectSyncButton();
-    observePageChanges();
-  }, 2000);
+    const injected = injectSyncButton();
+    
+    if (!injected && retryCount < MAX_RETRIES) {
+      retryCount++;
+      console.log(`AddFlashcard: Retry ${retryCount}/${MAX_RETRIES}...`);
+      attemptInject();
+    } else if (injected) {
+      console.log('AddFlashcard: Sync button injected successfully!');
+      observePageChanges();
+      retryCount = 0;
+    } else {
+      console.log('AddFlashcard: Failed to inject after max retries');
+    }
+  }, delay);
 }
 
 // Inject Sync button next to Share button
 function injectSyncButton() {
-  // Find the Share button in Notion's header
-  const shareButton = document.querySelector('[aria-label="Share"]') || 
-                     document.querySelector('div[role="button"]:has-text("Share")') ||
-                     findShareButton();
-  
-  if (!shareButton || syncButton) {
-    return; // Share button not found or sync button already exists
+  // Don't inject if already exists
+  if (syncButton && document.body.contains(syncButton)) {
+    return true;
   }
+  
+  // Reset syncButton reference if it was removed
+  if (syncButton && !document.body.contains(syncButton)) {
+    syncButton = null;
+  }
+  
+  // Find the Share button with multiple strategies
+  const shareButton = findShareButton();
+  
+  if (!shareButton) {
+    console.log('AddFlashcard: Share button not found yet...');
+    return false;
+  }
+
+  console.log('AddFlashcard: Share button found!', shareButton);
 
   // Create sync button
   syncButton = document.createElement('div');
-  syncButton.className = 'notion-sync-button';
+  syncButton.className = 'addflashcard-notion-sync-button';
   syncButton.setAttribute('role', 'button');
   syncButton.setAttribute('tabindex', '0');
+  syncButton.setAttribute('data-addflashcard', 'sync-button');
+  
   syncButton.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; 
+    <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 28px; 
                 border-radius: 6px; background: rgb(46, 170, 220); color: white; 
-                font-size: 14px; font-weight: 500; cursor: pointer; 
-                transition: background 0.2s ease;">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                font-size: 13px; font-weight: 500; cursor: pointer; 
+                transition: background 0.2s ease; margin-right: 8px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
         <path d="M13.5 2h-11C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5h11c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zm-11 1h11c.28 0 .5.22.5.5v2H2v-2c0-.28.22-.5.5-.5zm11 10h-11c-.28 0-.5-.22-.5-.5V7h12v5.5c0 .28-.22.5-.5.5z"/>
         <path d="M4 9h3v1H4zm0 2h5v1H4z"/>
       </svg>
@@ -45,7 +81,9 @@ function injectSyncButton() {
   // Add hover effect
   const buttonInner = syncButton.querySelector('div');
   syncButton.addEventListener('mouseenter', () => {
-    buttonInner.style.background = 'rgb(35, 131, 226)';
+    if (!isSyncing) {
+      buttonInner.style.background = 'rgb(35, 131, 226)';
+    }
   });
   syncButton.addEventListener('mouseleave', () => {
     if (!isSyncing) {
@@ -57,31 +95,89 @@ function injectSyncButton() {
   syncButton.addEventListener('click', handleSyncClick);
 
   // Insert before Share button
-  shareButton.parentElement.insertBefore(syncButton, shareButton);
+  try {
+    shareButton.parentElement.insertBefore(syncButton, shareButton);
+    console.log('AddFlashcard: Sync button inserted successfully!');
+    return true;
+  } catch (error) {
+    console.error('AddFlashcard: Error inserting button:', error);
+    return false;
+  }
 }
 
 // Find Share button with multiple strategies
 function findShareButton() {
-  // Strategy 1: Look for button with Share text
-  const buttons = document.querySelectorAll('div[role="button"]');
-  for (const btn of buttons) {
-    if (btn.textContent.trim() === 'Share') {
+  // Strategy 1: Direct aria-label
+  let shareButton = document.querySelector('[aria-label="Share"]');
+  if (shareButton) {
+    console.log('Strategy 1: Found via aria-label');
+    return shareButton;
+  }
+  
+  // Strategy 2: Look for specific Notion Share button structure
+  const topbar = document.querySelector('.notion-topbar') || 
+                 document.querySelector('[class*="topbar"]') ||
+                 document.querySelector('div[style*="position"][style*="top"]');
+  
+  if (topbar) {
+    console.log('Found topbar:', topbar);
+    
+    // Look for buttons in topbar
+    const buttons = topbar.querySelectorAll('div[role="button"]');
+    console.log('Found buttons in topbar:', buttons.length);
+    
+    for (const btn of buttons) {
+      const text = btn.textContent.trim();
+      console.log('Button text:', text);
+      
+      if (text === 'Share' || text.includes('Share') || text === 'Chia sẻ') {
+        console.log('Strategy 2: Found Share button via topbar');
+        return btn;
+      }
+    }
+  }
+  
+  // Strategy 3: Look for all buttons on page
+  const allButtons = document.querySelectorAll('div[role="button"]');
+  console.log('Total buttons on page:', allButtons.length);
+  
+  for (const btn of allButtons) {
+    const text = btn.textContent.trim();
+    if (text === 'Share' || text === 'Chia sẻ') {
+      // Make sure it's in the top area (y position < 200px)
+      const rect = btn.getBoundingClientRect();
+      if (rect.top < 200) {
+        console.log('Strategy 3: Found Share button via all buttons');
+        return btn;
+      }
+    }
+  }
+  
+  // Strategy 4: Look for button with specific class patterns
+  const notionButtons = document.querySelectorAll('[class*="notion"][role="button"]');
+  for (const btn of notionButtons) {
+    if (btn.textContent.includes('Share') || btn.textContent.includes('Chia sẻ')) {
+      console.log('Strategy 4: Found via class pattern');
       return btn;
     }
   }
-
-  // Strategy 2: Look in the page header area
-  const header = document.querySelector('.notion-page-controls') || 
-                document.querySelector('[data-block-id]')?.closest('.notion-frame')?.querySelector('.notion-topbar');
+  
+  // Strategy 5: Look in the header/nav area
+  const header = document.querySelector('header') || 
+                document.querySelector('nav') ||
+                document.querySelector('[role="banner"]');
+  
   if (header) {
     const headerButtons = header.querySelectorAll('div[role="button"]');
     for (const btn of headerButtons) {
-      if (btn.textContent.includes('Share')) {
+      if (btn.textContent.includes('Share') || btn.textContent.includes('Chia sẻ')) {
+        console.log('Strategy 5: Found in header');
         return btn;
       }
     }
   }
 
+  console.log('AddFlashcard: No Share button found with any strategy');
   return null;
 }
 
@@ -343,15 +439,36 @@ function observePageChanges() {
   
   const observer = new MutationObserver(() => {
     if (location.href !== lastUrl) {
+      console.log('AddFlashcard: Page changed, re-injecting button...');
       lastUrl = location.href;
       syncButton = null; // Reset button
-      setTimeout(() => injectSyncButton(), 1000);
+      retryCount = 0; // Reset retry counter
+      attemptInject(); // Use retry logic
     }
   });
   
   observer.observe(document.body, {
     childList: true,
     subtree: true
+  });
+  
+  // Also observe for DOM changes that might add the Share button
+  const headerObserver = new MutationObserver(() => {
+    if (!syncButton || !document.body.contains(syncButton)) {
+      const shareButton = findShareButton();
+      if (shareButton && (!syncButton || !document.body.contains(syncButton))) {
+        console.log('AddFlashcard: Share button appeared, injecting sync button...');
+        syncButton = null;
+        injectSyncButton();
+      }
+    }
+  });
+  
+  // Observe the entire document for header changes
+  headerObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: false
   });
 }
 

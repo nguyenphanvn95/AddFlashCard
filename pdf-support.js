@@ -2,36 +2,73 @@
 // This script works with PDF.js viewer to enable text selection and flashcard creation
 
 let pdfSyncButton = null;
+let pdfToolbarInjected = false;
 
 // Initialize PDF support
 function initPDFSupport() {
+  console.log('AddFlashcard PDF: Initializing...');
+  
   // Check if we're on a PDF page
   if (!isPDFPage()) {
+    console.log('AddFlashcard PDF: Not a PDF page');
     return;
   }
 
-  console.log('PDF page detected, initializing AddFlashcard PDF support');
+  console.log('AddFlashcard PDF: PDF page detected, setting up...');
   
-  // Wait for PDF to load
+  // Wait for PDF to load with retry logic
   waitForPDFLoad();
 }
 
 // Check if current page is a PDF
 function isPDFPage() {
-  // Check for PDF.js viewer
-  if (document.querySelector('#viewer') || document.querySelector('.pdfViewer')) {
+  // Check 1: URL contains .pdf
+  if (window.location.href.toLowerCase().includes('.pdf')) {
+    console.log('AddFlashcard PDF: Detected via URL');
     return true;
   }
   
-  // Check for embedded PDF
+  // Check 2: PDF.js viewer elements
+  if (document.querySelector('#viewer') || 
+      document.querySelector('.pdfViewer') ||
+      document.querySelector('#viewerContainer')) {
+    console.log('AddFlashcard PDF: Detected via PDF.js elements');
+    return true;
+  }
+  
+  // Check 3: Embedded PDF
   if (document.querySelector('embed[type="application/pdf"]') || 
-      document.querySelector('object[type="application/pdf"]')) {
+      document.querySelector('object[type="application/pdf"]') ||
+      document.querySelector('iframe[src*=".pdf"]')) {
+    console.log('AddFlashcard PDF: Detected via embedded PDF');
     return true;
   }
   
-  // Check URL
-  if (window.location.href.toLowerCase().includes('.pdf') ||
-      window.location.href.includes('pdfjs.action=download')) {
+  // Check 4: Chrome's native PDF viewer
+  if (document.querySelector('embed[type="application/x-google-chrome-pdf"]')) {
+    console.log('AddFlashcard PDF: Detected via Chrome PDF viewer');
+    return true;
+  }
+  
+  // Check 5: Content-Type header (for local files)
+  const metaTags = document.querySelectorAll('meta[http-equiv="content-type"]');
+  for (const meta of metaTags) {
+    if (meta.content && meta.content.includes('application/pdf')) {
+      console.log('AddFlashcard PDF: Detected via content-type meta');
+      return true;
+    }
+  }
+  
+  // Check 6: File protocol with .pdf
+  if (window.location.protocol === 'file:' && window.location.pathname.toLowerCase().endsWith('.pdf')) {
+    console.log('AddFlashcard PDF: Detected local PDF file');
+    return true;
+  }
+  
+  // Check 7: Body class or data attributes
+  if (document.body.classList.contains('pdf') || 
+      document.body.dataset.documentType === 'pdf') {
+    console.log('AddFlashcard PDF: Detected via body class/data');
     return true;
   }
   
@@ -40,40 +77,70 @@ function isPDFPage() {
 
 // Wait for PDF to fully load
 function waitForPDFLoad() {
+  let attempts = 0;
+  const maxAttempts = 30; // 15 seconds total
+  
   const checkInterval = setInterval(() => {
+    attempts++;
+    
+    // Check for text layer or PDF viewer elements
     const textLayer = document.querySelector('.textLayer');
     const pdfViewer = document.querySelector('.pdfViewer');
+    const viewerContainer = document.querySelector('#viewerContainer');
+    const pdfPages = document.querySelectorAll('.page');
     
-    if (textLayer || pdfViewer) {
+    // Check if PDF has loaded
+    const hasTextLayer = textLayer && textLayer.textContent.trim().length > 0;
+    const hasViewer = pdfViewer || viewerContainer;
+    const hasPages = pdfPages && pdfPages.length > 0;
+    
+    console.log(`AddFlashcard PDF: Load check ${attempts}/${maxAttempts}`, {
+      hasTextLayer,
+      hasViewer,
+      hasPages
+    });
+    
+    if (hasTextLayer || (hasViewer && hasPages)) {
+      console.log('AddFlashcard PDF: PDF loaded successfully!');
       clearInterval(checkInterval);
       setupPDFFeatures();
+    } else if (attempts >= maxAttempts) {
+      console.log('AddFlashcard PDF: Timeout waiting for PDF load, setting up anyway...');
+      clearInterval(checkInterval);
+      setupPDFFeatures(); // Try anyway
     }
   }, 500);
-  
-  // Stop checking after 30 seconds
-  setTimeout(() => clearInterval(checkInterval), 30000);
 }
 
 // Setup PDF-specific features
 function setupPDFFeatures() {
-  // Inject floating toolbar for PDF
-  injectPDFToolbar();
+  console.log('AddFlashcard PDF: Setting up features...');
+  
+  // Inject floating toolbar for PDF (only once)
+  if (!pdfToolbarInjected) {
+    injectPDFToolbar();
+    pdfToolbarInjected = true;
+  }
   
   // Enable text selection context menu
   enablePDFContextMenu();
   
-  console.log('AddFlashcard PDF features enabled');
+  console.log('AddFlashcard PDF: Features enabled successfully!');
 }
 
 // Inject floating toolbar for PDF pages
 function injectPDFToolbar() {
   // Check if toolbar already exists
   if (document.querySelector('#addflashcard-pdf-toolbar')) {
+    console.log('AddFlashcard PDF: Toolbar already exists');
     return;
   }
 
+  console.log('AddFlashcard PDF: Injecting toolbar...');
+
   const toolbar = document.createElement('div');
   toolbar.id = 'addflashcard-pdf-toolbar';
+  toolbar.setAttribute('data-addflashcard', 'pdf-toolbar');
   toolbar.style.cssText = `
     position: fixed;
     bottom: 20px;
@@ -84,7 +151,7 @@ function injectPDFToolbar() {
     padding: 12px;
     display: flex;
     gap: 8px;
-    z-index: 10000;
+    z-index: 999999;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   `;
 
@@ -99,7 +166,7 @@ function injectPDFToolbar() {
   });
 
   // Extract All button
-  const extractBtn = createToolbarButton('Extract All Text', 'rgb(255, 152, 0)', () => {
+  const extractBtn = createToolbarButton('Extract All', 'rgb(255, 152, 0)', () => {
     extractAllPDFText();
   });
 
@@ -120,6 +187,8 @@ function injectPDFToolbar() {
   });
 
   toolbar.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+  
+  console.log('AddFlashcard PDF: Toolbar injected successfully!');
 }
 
 // Create toolbar button
@@ -201,8 +270,9 @@ function extractAllPDFText() {
   setTimeout(() => {
     const allText = [];
     
-    // Try different selectors for PDF text
+    // Strategy 1: Try textLayer elements (PDF.js)
     const textLayers = document.querySelectorAll('.textLayer');
+    console.log('AddFlashcard PDF: Found', textLayers.length, 'text layers');
     
     if (textLayers.length > 0) {
       textLayers.forEach((layer, index) => {
@@ -211,37 +281,78 @@ function extractAllPDFText() {
           allText.push(`--- Page ${index + 1} ---\n${pageText}\n`);
         }
       });
-    } else {
-      // Fallback: try to get any visible text
-      const viewer = document.querySelector('#viewer') || document.querySelector('.pdfViewer');
+    }
+    
+    // Strategy 2: Try PDF pages directly
+    if (allText.length === 0) {
+      const pages = document.querySelectorAll('.page');
+      console.log('AddFlashcard PDF: Found', pages.length, 'pages');
+      
+      pages.forEach((page, index) => {
+        const pageText = page.textContent.trim();
+        if (pageText) {
+          allText.push(`--- Page ${index + 1} ---\n${pageText}\n`);
+        }
+      });
+    }
+    
+    // Strategy 3: Try viewer container
+    if (allText.length === 0) {
+      const viewer = document.querySelector('#viewer') || 
+                    document.querySelector('.pdfViewer') ||
+                    document.querySelector('#viewerContainer');
+      
       if (viewer) {
-        allText.push(viewer.textContent.trim());
+        console.log('AddFlashcard PDF: Extracting from viewer container');
+        const text = viewer.textContent.trim();
+        if (text) {
+          allText.push(text);
+        }
+      }
+    }
+    
+    // Strategy 4: Try entire body (last resort for simple PDFs)
+    if (allText.length === 0) {
+      console.log('AddFlashcard PDF: Trying body text extraction');
+      const bodyText = document.body.textContent.trim();
+      if (bodyText && bodyText.length > 100) { // Make sure it's substantial
+        allText.push(bodyText);
       }
     }
 
     if (allText.length === 0) {
-      showPDFNotification('No text found in PDF', 'error');
+      showPDFNotification('No text found in PDF (might be scanned image)', 'error');
       return;
     }
 
     const fullText = allText.join('\n\n');
+    console.log('AddFlashcard PDF: Extracted', fullText.length, 'characters');
     
     // Open sidebar with extracted text
     const content = {
       type: 'sendToBack',
       dataText: fullText,
-      dataHtml: `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px;">${escapeHtml(fullText)}</pre>`,
+      dataHtml: `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.6;">${escapeHtml(fullText)}</pre>`,
       pageUrl: window.location.href,
       pageTitle: document.title || 'PDF Document',
       sourceType: 'pdf-full'
     };
 
+    // Send to content script
     chrome.runtime.sendMessage({
       action: "openSidebarWithContent",
       content: content
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('AddFlashcard PDF: Error sending message:', chrome.runtime.lastError);
+        showPDFNotification('Error opening sidebar. Please try again.', 'error');
+      } else {
+        const pageCount = textLayers.length || 
+                         document.querySelectorAll('.page').length || 
+                         'all';
+        showPDFNotification(`Extracted text from ${pageCount} page(s)`, 'success');
+      }
     });
-
-    showPDFNotification(`Extracted text from ${textLayers.length} pages`, 'success');
   }, 500);
 }
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.2.0",
-  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion với lưu trữ media local",
+  "version": "2.2.1",
+  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF (local & online) và Notion với lưu trữ media local",
   "permissions": [
     "contextMenus",
     "storage",
