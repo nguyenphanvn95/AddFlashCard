@@ -14,7 +14,7 @@
 // ========================================
 const CONSTANTS = {
   BUTTON_ID: 'addflashcard-sync-button',
-  BUTTON_CLASS: 'addflashcard-sync-btn',
+  BUTTON_CLASS: 'addflashcard-notion-sync-button',
   TOPBAR_SELECTOR: '.notion-topbar-action-buttons',
   SHARE_BUTTON_SELECTOR: 'div[role="button"]',
   MAX_MUTATION_COUNT: 10000,
@@ -83,39 +83,27 @@ function createSyncButton() {
   button.setAttribute('role', 'button');
   button.setAttribute('aria-label', 'Sync Notion toggles to flashcards');
   button.setAttribute('tabindex', '0');
+  button.setAttribute('data-state', 'idle'); // idle, syncing, success, failed
   
-  // Upload/Sync icon (similar to Notion Exporter but with cards icon)
-  button.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" 
-         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-         stroke-linejoin="round" class="addflashcard-icon">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="17 8 12 3 7 8"/>
-      <line x1="12" x2="12" y1="3" y2="15"/>
-      <rect x="3" y="17" width="18" height="4" rx="1"/>
-    </svg>
-  `;
+  // Create icon element - Refresh emoji
+  const iconEl = document.createElement('span');
+  iconEl.textContent = '🔄';
+  iconEl.className = 'addflashcard-button-icon';
+  iconEl.style.fontSize = '14px';
+  iconEl.style.lineHeight = '1';
+  iconEl.style.display = 'flex';
+  iconEl.style.alignItems = 'center';
   
-  // Apply inline styles (matching Notion Exporter's approach)
-  Object.assign(button.style, {
-    padding: '4px 8px',
-    margin: '0px 2px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-    transition: 'background-color 0.15s ease',
-    position: 'relative',
-    userSelect: 'none',
-  });
+  // Create text element
+  const textEl = document.createElement('span');
+  textEl.className = 'addflashcard-button-text';
+  textEl.textContent = 'Sync cards';
+  
+  button.appendChild(iconEl);
+  button.appendChild(textEl);
   
   // Event listeners
   button.addEventListener('click', handleSyncClick);
-  button.addEventListener('mouseenter', handleButtonHover);
-  button.addEventListener('mouseleave', handleButtonLeave);
-  
-  // Keyboard accessibility
   button.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -253,16 +241,42 @@ function injectStyles() {
 // ========================================
 // EVENT HANDLERS
 // ========================================
-function handleButtonHover() {
-  if (!state.isSyncing && state.button) {
-    // Hover effect handled by CSS
+function updateButtonState(newState) {
+  if (!state.button) return;
+  
+  state.button.setAttribute('data-state', newState);
+  const textEl = state.button.querySelector('.addflashcard-button-text');
+  
+  switch(newState) {
+    case 'idle':
+      textEl.textContent = 'Sync cards';
+      break;
+    case 'syncing':
+      textEl.textContent = 'Syncing cards';
+      break;
+    case 'success':
+      textEl.textContent = 'Synced cards.';
+      // Reset to idle after 2 seconds
+      setTimeout(() => {
+        updateButtonState('idle');
+      }, 2000);
+      break;
+    case 'failed':
+      textEl.textContent = 'Failed';
+      // Reset to idle after 3 seconds
+      setTimeout(() => {
+        updateButtonState('idle');
+      }, 3000);
+      break;
   }
 }
 
+function handleButtonHover() {
+  // Hover effect handled by CSS
+}
+
 function handleButtonLeave() {
-  if (!state.isSyncing && state.button) {
-    // Leave effect handled by CSS
-  }
+  // Leave effect handled by CSS
 }
 
 async function handleSyncClick(event) {
@@ -276,11 +290,7 @@ async function handleSyncClick(event) {
   
   log('🔄 Starting sync...');
   state.isSyncing = true;
-  
-  // Update button state
-  if (state.button) {
-    state.button.setAttribute('data-syncing', 'true');
-  }
+  updateButtonState('syncing');
   
   try {
     // Get page title for deck name
@@ -292,28 +302,29 @@ async function handleSyncClick(event) {
     // Extract toggles from page
     const toggles = await extractTogglesFromPage();
     
+    log(`Total toggles found: ${toggles.length}`);
+    
     if (toggles.length === 0) {
-      showToast('No toggles found on this page', 'warning');
+      showToast('⚠️ No toggles with content found on this page', 'warning');
+      log('⚠️ Warning: Found toggle elements but none had valid content');
+      updateButtonState('failed');
       return;
     }
     
-    log(`Found ${toggles.length} toggles`);
+    log(`✓ Successfully extracted ${toggles.length} toggles`);
     
     // Sync to storage
     await syncCardsToStorage(deckName, toggles);
     
     showToast(`✅ Synced ${toggles.length} cards to deck "${deckName}"`, 'success');
+    updateButtonState('success');
     
   } catch (error) {
     log('❌ Sync error:', error);
     showToast('❌ Sync failed: ' + error.message, 'error');
+    updateButtonState('failed');
   } finally {
     state.isSyncing = false;
-    
-    // Reset button state
-    if (state.button) {
-      state.button.setAttribute('data-syncing', 'false');
-    }
   }
 }
 
@@ -344,7 +355,15 @@ async function extractTogglesFromPage() {
   const toggles = [];
   
   // Find all toggle blocks
-  const toggleElements = document.querySelectorAll('details');
+  let toggleElements = document.querySelectorAll('details.notion-toggle-block, details[class*="toggle"], [class*="notion-toggle-block"]');
+  
+  if (toggleElements.length === 0) {
+    toggleElements = document.querySelectorAll('[data-block-id][class*="toggle"]');
+  }
+  
+  if (toggleElements.length === 0) {
+    toggleElements = document.querySelectorAll('details');
+  }
   
   log(`Found ${toggleElements.length} toggle elements`);
   
@@ -352,20 +371,53 @@ async function extractTogglesFromPage() {
     const toggle = toggleElements[i];
     
     try {
+      // Log toggle structure
+      log(`Toggle ${i}: <${toggle.tagName.toLowerCase()}> with ${toggle.children.length} children`);
+      
       const front = extractToggleFront(toggle);
-      if (!front.trim()) continue;
+      
+      // Skip if front is empty
+      if (!front || !front.trim()) {
+        log(`  ⊘ Toggle ${i}: Empty front, skipping`);
+        continue;
+      }
+      
+      // Store original state (whether toggle was closed)
+      const wasClosedOriginally = isToggleClosed(toggle);
+      
+      // Check if toggle is closed and open it if needed
+      let shouldCloseAfter = false;
+      if (wasClosedOriginally) {
+        const opened = await openToggle(toggle);
+        if (!opened) {
+          log(`  ⚠️ Toggle ${i} is closed and could not be opened`);
+          // Still try to extract, might get empty back
+        } else {
+          shouldCloseAfter = true;
+        }
+      }
       
       const back = extractToggleBack(toggle);
       
+      // Restore original state if it was closed
+      if (shouldCloseAfter) {
+        closeToggle(toggle);
+      }
+      
+      // Debug: log front and back comparison
+      if (front === back) {
+        log(`  ⚠️ WARNING: Front and Back are IDENTICAL!`);
+      }
+      
       toggles.push({
         front: front,
-        back: back || '<p><em>No content</em></p>',
+        back: back || '<p><em>No content or toggle closed</em></p>',
         index: i,
         url: window.location.href,
         timestamp: Date.now(),
       });
       
-      log(`  ✓ Toggle ${i}: "${front.substring(0, 50)}..."`);
+      log(`  ✓ Toggle ${i}: Front="${front.substring(0, 30)}..." | Back="${(back || '').substring(0, 30)}..."`);
       
     } catch (error) {
       log(`  ✗ Toggle ${i} extraction failed:`, error);
@@ -376,48 +428,209 @@ async function extractTogglesFromPage() {
 }
 
 function extractToggleFront(toggle) {
-  const summary = toggle.querySelector('summary');
-  if (!summary) return '';
+  // Find the editable element that contains the title
+  const editableElement = toggle.querySelector('[data-content-editable-leaf="true"]');
   
-  const clone = summary.cloneNode(true);
+  if (!editableElement) {
+    log('  ⚠️ No editable element found');
+    return '';
+  }
   
-  // Remove icons, buttons, and other non-text elements
-  clone.querySelectorAll('svg, button, [class*="icon"]').forEach(el => el.remove());
+  // Get only the text content of this element (not children)
+  const text = editableElement.textContent.trim();
   
-  return clone.textContent.trim();
+  log(`  Front text: "${text.substring(0, 60)}..."`);
+  
+  return text;
+}
+
+function extractToggleFront(toggle) {
+  // Find the editable element that contains the title
+  const editableElement = toggle.querySelector('[data-content-editable-leaf="true"]');
+  
+  if (!editableElement) {
+    log('  ⚠️ No editable element found');
+    return '';
+  }
+  
+  // Get only the text content of this element (not children)
+  const text = editableElement.textContent.trim();
+  
+  log(`  Front text: "${text.substring(0, 60)}..."`);
+  
+  return text;
+}
+
+function isToggleClosed(toggle) {
+  const button = toggle.querySelector('[aria-expanded]');
+  if (!button) return false;
+  return button.getAttribute('aria-expanded') === 'false';
+}
+
+async function openToggle(toggle) {
+  const button = toggle.querySelector('[role="button"][aria-expanded]');
+  if (!button) return false;
+  
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+  if (isExpanded) return true; // Already open
+  
+  log('  ⏳ Toggle is closed, opening it...');
+  
+  // Click the button to expand
+  button.click();
+  
+  // Wait for content to load
+  return new Promise((resolve) => {
+    let attempts = 0;
+    const checkInterval = setInterval(() => {
+      const contentDiv = toggle.querySelector('[id][style*="display: flex"]:not(:scope > div:first-of-type)');
+      const newExpanded = button.getAttribute('aria-expanded') === 'true';
+      
+      if (newExpanded && contentDiv) {
+        clearInterval(checkInterval);
+        log('  ✓ Toggle opened');
+        resolve(true);
+      } else if (++attempts > 30) { // 3 seconds timeout
+        clearInterval(checkInterval);
+        log('  ✗ Toggle open timeout');
+        resolve(false);
+      }
+    }, 100);
+  });
+}
+
+function closeToggle(toggle) {
+  const button = toggle.querySelector('[role="button"][aria-expanded]');
+  if (!button) return;
+  
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+  if (!isExpanded) return; // Already closed
+  
+  log('  ⏳ Closing toggle to restore original state...');
+  button.click();
 }
 
 function extractToggleBack(toggle) {
-  // Get all children except summary
-  const contentDiv = Array.from(toggle.children).find(
-    child => child.tagName !== 'SUMMARY'
-  );
+  // Find the editable element (title)
+  const editableElement = toggle.querySelector('[data-content-editable-leaf="true"]');
   
-  if (!contentDiv) return '';
+  if (!editableElement) {
+    log('  ⚠️ No editable element found for back');
+    return '';
+  }
   
+  // Find the parent flex container with the title
+  let titleFlexContainer = editableElement.closest('div[style*="display: flex"]');
+  
+  if (!titleFlexContainer) {
+    log('  ⚠️ No title flex container found');
+    return '';
+  }
+  
+  // The content is in a sibling div of the title flex container
+  // Look for div with id that's not empty
+  let contentDiv = titleFlexContainer.nextElementSibling;
+  
+  // Verify it's the content container (should have display: flex)
+  if (contentDiv) {
+    const style = contentDiv.getAttribute('style') || '';
+    const hasId = contentDiv.getAttribute('id');
+    
+    // If not the right one, search for it
+    if (!style.includes('display: flex') || !hasId) {
+      contentDiv = null;
+    }
+  }
+  
+  // Fallback: search parent's children
+  if (!contentDiv) {
+    const parent = titleFlexContainer.parentElement;
+    if (parent) {
+      const children = Array.from(parent.children);
+      const titleIndex = children.indexOf(titleFlexContainer);
+      
+      for (let i = titleIndex + 1; i < children.length; i++) {
+        const sibling = children[i];
+        const siblingStyle = sibling.getAttribute('style') || '';
+        const siblingId = sibling.getAttribute('id');
+        
+        if (siblingStyle.includes('display: flex') && siblingId) {
+          // Check if it contains blocks
+          if (sibling.querySelector('[data-block-id]')) {
+            contentDiv = sibling;
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // If still not found, toggle might be closed
+  if (!contentDiv) {
+    log('  ℹ No content div found (toggle may be closed)');
+    return '';
+  }
+  
+  log(`  Content container found`);
+  
+  // Clone the content
   const clone = contentDiv.cloneNode(true);
+  
+  // Remove the title if it's in the content
+  const titleInContent = clone.querySelector('[data-content-editable-leaf="true"]');
+  if (titleInContent) {
+    const titleContainer = titleInContent.closest('div[style*="display: flex"]');
+    if (titleContainer) {
+      titleContainer.remove();
+    }
+  }
   
   // Convert relative URLs to absolute
   processMediaElements(clone);
   
-  return clone.innerHTML;
+  const backHtml = clone.innerHTML.trim();
+  
+  log(`  Back HTML length: ${backHtml.length} chars`);
+  
+  return backHtml;
 }
 
 function processMediaElements(container) {
-  // Process images
+  // Process images - preserve all attributes and styling
   container.querySelectorAll('img').forEach(img => {
     const src = img.getAttribute('src');
     if (src && !src.startsWith('http')) {
       img.setAttribute('src', new URL(src, window.location.href).href);
     }
+    // Ensure images have proper styling attributes
+    if (!img.getAttribute('style')) {
+      img.setAttribute('style', 'max-width: 100%; height: auto;');
+    }
   });
   
-  // Process videos
+  // Process embedded images (background-image, etc)
+  container.querySelectorAll('[style*="background-image"]').forEach(el => {
+    const style = el.getAttribute('style');
+    const updated = style.replace(
+      /url\(['""]?(?!http)([^)]+)['"""]?\)/g,
+      (match, url) => `url('${new URL(url, window.location.href).href}')`
+    );
+    el.setAttribute('style', updated);
+  });
+  
+  // Process videos and audio
   container.querySelectorAll('video, audio').forEach(media => {
     const src = media.getAttribute('src');
     if (src && !src.startsWith('http')) {
       media.setAttribute('src', new URL(src, window.location.href).href);
     }
+    // Preserve source elements in video/audio
+    media.querySelectorAll('source').forEach(source => {
+      const srcAttr = source.getAttribute('src');
+      if (srcAttr && !srcAttr.startsWith('http')) {
+        source.setAttribute('src', new URL(srcAttr, window.location.href).href);
+      }
+    });
   });
   
   // Process links
@@ -427,6 +640,18 @@ function processMediaElements(container) {
       link.setAttribute('href', new URL(href, window.location.href).href);
     }
   });
+  
+  // Preserve text formatting - keep all style attributes intact
+  container.querySelectorAll('[style]').forEach(el => {
+    const style = el.getAttribute('style');
+    // Don't modify existing styles - preserve font colors, weights, text-decoration, etc
+    if (style && !style.includes('background-image')) {
+      // Already being handled above, just preserve as-is
+    }
+  });
+  
+  // Preserve heading, bold, italic, underline, and other text formatting
+  // These are typically done with HTML tags (strong, em, u, h1, h2, etc) which are preserved automatically
 }
 
 // ========================================
@@ -434,7 +659,7 @@ function processMediaElements(container) {
 // ========================================
 async function syncCardsToStorage(deckName, toggles) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(['cards', 'decks'], (result) => {
+    chrome.storage.local.get(['cards', 'decks'], async (result) => {
       try {
         let cards = result.cards || [];
         let decks = result.decks || ['Default'];
@@ -444,31 +669,54 @@ async function syncCardsToStorage(deckName, toggles) {
           decks.push(deckName);
         }
         
-        // Add new cards
+        // Get existing cards in this deck
+        const existingCards = cards.filter(c => c.deck === deckName);
+        
+        // Add or update cards
         const now = Date.now();
-        toggles.forEach(toggle => {
-          cards.push({
-            id: `notion-${now}-${toggle.index}`,
-            front: toggle.front,
-            back: toggle.back,
-            deck: deckName,
-            created: now,
-            lastReviewed: 0,
-            nextReview: now,
-            interval: 1,
-            easeFactor: 2.5,
-            repetitions: 0,
-            source: 'notion',
-            sourceUrl: toggle.url,
-          });
-        });
+        let addedCount = 0;
+        let updatedCount = 0;
+        
+        for (const toggle of toggles) {
+          // Check if card with same front already exists in this deck
+          const duplicate = existingCards.find(card => card.front === toggle.front);
+          
+          if (duplicate) {
+            // Update existing card's back
+            const cardIndex = cards.findIndex(c => c.id === duplicate.id);
+            if (cardIndex !== -1) {
+              cards[cardIndex].back = toggle.back;
+              cards[cardIndex].lastReviewed = now;
+              log(`  🔄 Updated card: "${toggle.front.substring(0, 40)}..."`);
+              updatedCount++;
+            }
+          } else {
+            // Create new card
+            cards.push({
+              id: `notion-${now}-${toggle.index}`,
+              front: toggle.front,
+              back: toggle.back,
+              deck: deckName,
+              created: now,
+              lastReviewed: 0,
+              nextReview: now,
+              interval: 1,
+              easeFactor: 2.5,
+              repetitions: 0,
+              source: 'notion',
+              sourceUrl: toggle.url,
+            });
+            log(`  ✨ Created card: "${toggle.front.substring(0, 40)}..."`);
+            addedCount++;
+          }
+        }
         
         // Save to storage
         chrome.storage.local.set({ cards, decks }, () => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
-            log(`✅ Saved ${toggles.length} cards to storage`);
+            log(`✅ Sync complete: +${addedCount} new, ~${updatedCount} updated`);
             resolve();
           }
         });

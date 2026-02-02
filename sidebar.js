@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEditors();
   setupTags();
   setupRichTextShortcuts();
-  setupMessageHandlers();
   loadStatistics();
 
   // If opened in edit mode (e.g. from Manage page), load context and switch UI.
@@ -820,63 +819,5 @@ function decreaseFontSize(editor) {
   const newRange = document.createRange();
   newRange.selectNodeContents(span);
   selection.addRange(newRange);
-}
-
-// Message Handlers for Alt+A and Alt+B shortcuts
-function setupMessageHandlers() {
-  window.addEventListener('message', (event) => {
-    // Handle messages from parent window (content.js)
-    if (event.data && event.data.action === 'addToFront') {
-      if (frontEditor) {
-        frontEditor.focus();
-        const content = event.data.content;
-        const isHtml = event.data.isHtml;
-        
-        // Insert HTML content or plain text
-        if (frontEditor.innerHTML.trim() === '' || frontEditor.innerHTML === '<br>') {
-          frontEditor.innerHTML = content;
-        } else {
-          if (isHtml) {
-            document.execCommand('insertHTML', false, '<br>' + content);
-          } else {
-            document.execCommand('insertHTML', false, '<br>' + content);
-          }
-        }
-        showNotification('Added to Front field', 'success');
-      }
-    }
-    
-    if (event.data && event.data.action === 'addToBack') {
-      if (backEditor) {
-        backEditor.focus();
-        const content = event.data.content;
-        const isHtml = event.data.isHtml;
-        
-        // Insert HTML content or plain text
-        if (backEditor.innerHTML.trim() === '' || backEditor.innerHTML === '<br>') {
-          backEditor.innerHTML = content;
-        } else {
-          if (isHtml) {
-            document.execCommand('insertHTML', false, '<br>' + content);
-          } else {
-            document.execCommand('insertHTML', false, '<br>' + content);
-          }
-        }
-        showNotification('Added to Back field', 'success');
-      }
-    }
-    
-    // Existing message handlers
-    if (event.data && event.data.action === 'addContent') {
-      if (frontEditor) {
-        frontEditor.innerHTML = event.data.content;
-        frontEditor.focus();
-      }
-    }
-    
-    if (event.data && event.data.action === 'editCard') {
-      enterEditMode(event.data.card);
-    }
-  });
 }
 

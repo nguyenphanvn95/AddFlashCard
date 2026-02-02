@@ -69,87 +69,168 @@ class APKGExporterV2 {
   }
 
   // Extract and process media from HTML
-  extractMedia(html) {
-    if (!html) return { media: [], html: '' };
+  async extractMedia(html, globalMediaIndex = { value: 0 }) {
+    if (!html) return { media: [], html: '', lastIndex: globalMediaIndex.value };
     
     const media = [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const timestamp = Date.now();
+    
+    // Use passed-in index counter to ensure unique filenames
+    let currentIndex = globalMediaIndex.value;
     
     // Extract images
     const images = doc.querySelectorAll('img');
-    images.forEach((img, idx) => {
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
       const src = img.getAttribute('src');
-      if (src && src.startsWith('data:')) {
+      
+      if (!src) continue;
+      
+      let base64Data = null;
+      let mimeType = 'image/png';
+      
+      // Handle base64 encoded images
+      if (src.startsWith('data:')) {
         const matches = src.match(/^data:(.+?);base64,(.+)$/);
         if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const ext = mimeType.split('/')[1].split('+')[0] || 'png';
-          const filename = `img_${timestamp}_${idx}.${ext}`;
-          
-          media.push({
-            filename,
-            data: this.base64ToBlob(base64Data, mimeType),
-            type: 'image'
-          });
-          
-          img.setAttribute('src', filename);
+          mimeType = matches[1];
+          base64Data = matches[2];
         }
       }
-    });
+      // Handle regular URLs (from Notion CDN, etc)
+      else if (src.startsWith('http')) {
+        const dataUrl = await this.fetchAndConvertToBase64(src);
+        if (dataUrl) {
+          const matches = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+          if (matches) {
+            mimeType = matches[1];
+            base64Data = matches[2];
+          }
+        }
+      }
+      
+      // If we got base64 data, save it
+      if (base64Data) {
+        const ext = mimeType.split('/')[1].split('+')[0] || 'png';
+        const originalFilename = `image.${ext}`;
+        
+        media.push({
+          index: currentIndex,
+          filename: originalFilename,  // Original filename with extension for manifest
+          data: this.base64ToBlob(base64Data, mimeType),
+          type: 'image'
+        });
+        
+        img.setAttribute('src', originalFilename);
+        console.log(`[extractMedia] Image: index=${currentIndex}, filename=${originalFilename}`);
+        currentIndex++;
+      } else if (src) {
+        console.log(`[extractMedia] Image: could not extract, keeping original src: ${src}`);
+      }
+    }
     
     // Extract audio
     const audios = doc.querySelectorAll('audio');
-    audios.forEach((audio, idx) => {
+    for (let i = 0; i < audios.length; i++) {
+      const audio = audios[i];
       const src = audio.getAttribute('src') || audio.querySelector('source')?.getAttribute('src');
-      if (src && src.startsWith('data:')) {
+      
+      if (!src) continue;
+      
+      let base64Data = null;
+      let mimeType = 'audio/mpeg';
+      
+      if (src.startsWith('data:')) {
         const matches = src.match(/^data:(.+?);base64,(.+)$/);
         if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const ext = mimeType.split('/')[1] || 'mp3';
-          const filename = `audio_${timestamp}_${idx}.${ext}`;
-          
-          media.push({
-            filename,
-            data: this.base64ToBlob(base64Data, mimeType),
-            type: 'audio'
-          });
-          
-          // Replace with [sound:filename] tag for Anki
-          const soundTag = document.createElement('span');
-          soundTag.textContent = `[sound:${filename}]`;
-          audio.replaceWith(soundTag);
+          mimeType = matches[1];
+          base64Data = matches[2];
+        }
+      } else if (src.startsWith('http')) {
+        const dataUrl = await this.fetchAndConvertToBase64(src);
+        if (dataUrl) {
+          const matches = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+          if (matches) {
+            mimeType = matches[1];
+            base64Data = matches[2];
+          }
         }
       }
-    });
+      
+      if (base64Data) {
+        const ext = mimeType.split('/')[1] || 'mp3';
+        const originalFilename = `audio.${ext}`;
+        
+        media.push({
+          index: currentIndex,
+          filename: originalFilename,
+          data: this.base64ToBlob(base64Data, mimeType),
+          type: 'audio'
+        });
+        
+        // Replace with [sound:originalFilename] tag for Anki
+        const soundTag = document.createElement('span');
+        soundTag.textContent = `[sound:${originalFilename}]`;
+        audio.replaceWith(soundTag);
+        console.log(`[extractMedia] Audio: index=${currentIndex}, filename=${originalFilename}`);
+        currentIndex++;
+      }
+    }
     
     // Extract video
     const videos = doc.querySelectorAll('video');
-    videos.forEach((video, idx) => {
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
       const src = video.getAttribute('src') || video.querySelector('source')?.getAttribute('src');
-      if (src && src.startsWith('data:')) {
+      
+      if (!src) continue;
+      
+      let base64Data = null;
+      let mimeType = 'video/mp4';
+      
+      if (src.startsWith('data:')) {
         const matches = src.match(/^data:(.+?);base64,(.+)$/);
         if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const ext = mimeType.split('/')[1] || 'mp4';
-          const filename = `video_${timestamp}_${idx}.${ext}`;
-          
-          media.push({
-            filename,
-            data: this.base64ToBlob(base64Data, mimeType),
-            type: 'video'
-          });
-          
-          // Keep video tag but update src
-          video.setAttribute('src', filename);
-          video.setAttribute('controls', 'controls');
+          mimeType = matches[1];
+          base64Data = matches[2];
+        }
+      } else if (src.startsWith('http')) {
+        const dataUrl = await this.fetchAndConvertToBase64(src);
+        if (dataUrl) {
+          const matches = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+          if (matches) {
+            mimeType = matches[1];
+            base64Data = matches[2];
+          }
         }
       }
-    });
+      
+      if (base64Data) {
+        const ext = mimeType.split('/')[1] || 'mp4';
+        const originalFilename = `video.${ext}`;
+        
+        media.push({
+          index: currentIndex,
+          filename: originalFilename,
+          data: this.base64ToBlob(base64Data, mimeType),
+          type: 'video'
+        });
+        
+        // Keep video tag but update src
+        video.setAttribute('src', originalFilename);
+        video.setAttribute('controls', 'controls');
+        console.log(`[extractMedia] Video: index=${currentIndex}, filename=${originalFilename}`);
+        currentIndex++;
+      }
+    }
+    
+    // IMPORTANT: Preserve HTML structure and text formatting
+    // This includes: bold, italic, underline, colors, heading levels, lists, etc.
+    // The HTML extraction already maintains all semantic and styling information
+    
+    // Update global counter
+    globalMediaIndex.value = currentIndex;
     
     return {
       media,
@@ -168,6 +249,29 @@ class APKGExporterV2 {
       return new Blob([byteArray], { type: mimeType });
     } catch (error) {
       console.error('Failed to convert base64 to blob:', error);
+      return null;
+    }
+  }
+
+  // Fetch image from URL and convert to base64 (for Notion CDN images)
+  async fetchAndConvertToBase64(url) {
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) return null;
+      
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      return new Promise((resolve) => {
+        reader.onloadend = () => {
+          // reader.result is "data:image/png;base64,..."
+          resolve(reader.result);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Failed to fetch image:', url, error);
       return null;
     }
   }
@@ -199,7 +303,6 @@ class APKGExporterV2 {
 
     const allMedia = [];
     const mediaManifest = {};
-    let mediaIndex = 0;
 
     const nowMs = Date.now();
     const nowSec = Math.floor(nowMs / 1000);
@@ -342,6 +445,7 @@ video { max-width: 100%; height: auto; }`,
 
     // Process cards and extract media
     const tmplCount = tmpls.length;
+    let globalMediaIndex = { value: 0 };  // Shared counter for all media
     
     for (let idx = 0; idx < cards.length; idx++) {
       const card = cards[idx];
@@ -350,21 +454,26 @@ video { max-width: 100%; height: auto; }`,
         onProgress((idx + 1) / cards.length);
       }
 
-      // Extract media from both sides
+      // Extract media from both sides with shared counter
       let frontHtml = this.cleanHtml(card.front);
       let backHtml = this.cleanHtml(card.back);
       
-      const frontResult = this.extractMedia(frontHtml);
-      const backResult = this.extractMedia(backHtml);
+      const frontResult = await this.extractMedia(frontHtml, globalMediaIndex);
+      const backResult = await this.extractMedia(backHtml, globalMediaIndex);
       
       // Collect all media
-      [...frontResult.media, ...backResult.media].forEach(media => {
+      const cardMediaCount = frontResult.media.length + backResult.media.length;
+      [...frontResult.media, ...backResult.media].forEach((media, mediaIdx) => {
         if (media.data) {
-          mediaManifest[mediaIndex] = media.filename;
+          const mediaKey = String(media.index);  // Index as string key "0", "1", etc
+          mediaManifest[mediaKey] = media.filename;  // Filename with extension
           allMedia.push(media);
-          mediaIndex++;
+          console.log(`[APKG] Card ${idx} media ${mediaIdx}: key="${mediaKey}", filename="${media.filename}"`);
         }
       });
+      if (cardMediaCount > 0) {
+        console.log(`[APKG] Card ${idx}: extracted ${cardMediaCount} media files`);
+      }
       
       const noteId = nowMs + 1000 + idx;
       const fields = [frontResult.html, backResult.html];
@@ -386,7 +495,7 @@ video { max-width: 100%; height: auto; }`,
         db.run(`INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
           cardId, noteId, deckId, ord, nowSec, -1,
           0, 0, due,
-          0, 0, 0, 0, 0, 0, 0, "{}"
+          0, 0, 0, 0, 0, 0, 0, 0, "{}"
         ]);
       }
     }
@@ -396,14 +505,20 @@ video { max-width: 100%; height: auto; }`,
     const zip = new JSZip();
     zip.file("collection.anki2", data);
     
-    // Add all media files
-    allMedia.forEach(media => {
+    // Add all media files - IMPORTANT: use numeric index as filename, not the original name
+    allMedia.forEach((media) => {
       if (media.data) {
-        zip.file(media.filename, media.data);
+        // File in ZIP is stored with numeric index only (no extension)
+        const mediaFilename = String(media.index);
+        zip.file(mediaFilename, media.data);
+        console.log(`[APKG] Added media file: ${mediaFilename} (original: ${media.filename})`);
       }
     });
     
-    zip.file("media", JSON.stringify(mediaManifest));
+    // Create proper media manifest
+    const mediaManifestStr = JSON.stringify(mediaManifest);
+    console.log(`[APKG] Media manifest:`, mediaManifestStr);
+    zip.file("media", mediaManifestStr);
 
     const blob = await zip.generateAsync({
       type: "blob",
@@ -429,8 +544,8 @@ video { max-width: 100%; height: auto; }`,
 
     const allMedia = [];
     const mediaManifest = {};
-    let mediaIndex = 0;
     let processedCards = 0;
+    let globalMediaIndex = { value: 0 };  // Shared counter for all media
 
     const nowMs = Date.now();
     const nowSec = Math.floor(nowMs / 1000);
@@ -594,17 +709,22 @@ video { max-width: 100%; height: auto; }`,
         let frontHtml = this.cleanHtml(card.front);
         let backHtml = this.cleanHtml(card.back);
         
-        const frontResult = this.extractMedia(frontHtml);
-        const backResult = this.extractMedia(backHtml);
+        const frontResult = await this.extractMedia(frontHtml, globalMediaIndex);
+        const backResult = await this.extractMedia(backHtml, globalMediaIndex);
         
         // Collect media
-        [...frontResult.media, ...backResult.media].forEach(media => {
+        const cardMediaCount = frontResult.media.length + backResult.media.length;
+        [...frontResult.media, ...backResult.media].forEach((media, mediaIdx) => {
           if (media.data) {
-            mediaManifest[mediaIndex] = media.filename;
+            const mediaKey = String(media.index);  // Index as string key "0", "1", etc
+            mediaManifest[mediaKey] = media.filename;  // Filename with extension
             allMedia.push(media);
-            mediaIndex++;
+            console.log(`[APKG] Deck ${deckData.name} card ${globalCardIndex} media ${mediaIdx}: key="${mediaKey}", filename="${media.filename}"`);
           }
         });
+        if (cardMediaCount > 0) {
+          console.log(`[APKG] Deck ${deckData.name} card ${globalCardIndex}: extracted ${cardMediaCount} media files`);
+        }
 
         const noteId = nowMs + 1000 + globalCardIndex;
         const fields = [frontResult.html, backResult.html];
@@ -625,7 +745,7 @@ video { max-width: 100%; height: auto; }`,
           db.run(`INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
             cardId, noteId, deckId, ord, nowSec, -1,
             0, 0, due,
-            0, 0, 0, 0, 0, 0, 0, "{}"
+            0, 0, 0, 0, 0, 0, 0, 0, "{}"
           ]);
         }
 
@@ -638,14 +758,20 @@ video { max-width: 100%; height: auto; }`,
     const zip = new JSZip();
     zip.file("collection.anki2", data);
     
-    // Add media
-    allMedia.forEach(media => {
+    // Add media - use numeric index as filename, not original name
+    allMedia.forEach((media) => {
       if (media.data) {
-        zip.file(media.filename, media.data);
+        // File in ZIP is stored with numeric index only (no extension)
+        const mediaFilename = String(media.index);
+        zip.file(mediaFilename, media.data);
+        console.log(`[APKG] Added media file: ${mediaFilename} (original: ${media.filename})`);
       }
     });
     
-    zip.file("media", JSON.stringify(mediaManifest));
+    // Create proper media manifest
+    const mediaManifestStr = JSON.stringify(mediaManifest);
+    console.log(`[APKG] Media manifest:`, mediaManifestStr);
+    zip.file("media", mediaManifestStr);
 
     const blob = await zip.generateAsync({
       type: "blob",

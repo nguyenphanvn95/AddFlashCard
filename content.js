@@ -56,10 +56,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Đợi sidebar load xong rồi gửi content
     setTimeout(() => {
       if (sidebarIframe && sidebarIframe.contentWindow) {
-        sidebarIframe.contentWindow.postMessage({
-          action: "addContent",
-          content: message.content
-        }, '*');
+        const content = message.content;
+        
+        // Convert to the same format as Alt+A/Alt+B
+        // Prefer dataHtml (rich formatting) over dataText (plain)
+        const htmlContent = content.dataHtml || content.data || '';
+        
+        if (content.type === 'sendToFront') {
+          sidebarIframe.contentWindow.postMessage({
+            action: "addToFront",
+            content: htmlContent,
+            isHtml: !!content.dataHtml  // true if we have HTML, false if plain text
+          }, '*');
+        } else if (content.type === 'sendToBack') {
+          sidebarIframe.contentWindow.postMessage({
+            action: "addToBack",
+            content: htmlContent,
+            isHtml: !!content.dataHtml
+          }, '*');
+        }
       }
     }, 200);
   }

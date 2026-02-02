@@ -814,6 +814,9 @@ apkgExportBtn.addEventListener('click', async () => {
     apkgExportBtn.disabled = true;
     apkgExportBtn.textContent = 'Exporting...';
 
+    // Load libraries (SQL.js and JSZip) - required for APKG export
+    await window.apkgExporter.loadLibraries();
+
     // Prepare decks data
     const decksData = selectedDecks.map(deckName => ({
       name: deckName,
@@ -871,6 +874,13 @@ const ankiProgress = document.getElementById('ankiProgress');
 const ankiProgressFill = document.getElementById('ankiProgressFill');
 const ankiProgressText = document.getElementById('ankiProgressText');
 const ankiResult = document.getElementById('ankiResult');
+
+// Auto-fill target deck when source deck is selected
+ankiSourceDeck.addEventListener('change', () => {
+  if (ankiSourceDeck.value) {
+    ankiTargetDeck.value = ankiSourceDeck.value;
+  }
+});
 
 // Open AnkiConnect modal
 syncAnkiBtn.addEventListener('click', async () => {
@@ -983,6 +993,7 @@ ankiSyncBtn.addEventListener('click', async () => {
     ankiSyncBtn.textContent = 'Syncing...';
 
     const cards = allCards.filter(c => c.deck === sourceDeck);
+    const shouldUpdateDuplicates = document.getElementById('ankiUpdateDuplicates').checked;
 
     const result = await window.ankiConnectClient.exportCards(
       sourceDeck,
@@ -990,6 +1001,7 @@ ankiSyncBtn.addEventListener('click', async () => {
       cards,
       fieldMapping,
       {
+        updateDuplicates: shouldUpdateDuplicates,
         onProgress: (progress) => {
           const percent = Math.round(progress * 100);
           ankiProgressFill.style.width = percent + '%';
@@ -1005,7 +1017,8 @@ ankiSyncBtn.addEventListener('click', async () => {
       <strong>Sync Complete!</strong><br/>
       Total cards: ${result.total}<br/>
       Successfully added: ${result.success}<br/>
-      Failed/Duplicates: ${result.failed}
+      Successfully updated: ${result.updated || 0}<br/>
+      Skipped/Failed: ${result.failed}
     `;
 
     ankiSyncBtn.disabled = false;
