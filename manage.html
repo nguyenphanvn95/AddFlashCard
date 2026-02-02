@@ -149,8 +149,84 @@
     </div>
   </div>
 
+  <!-- Edit Sidebar (slides in from right) -->
+  <div class="edit-sidebar" id="editSidebar">
+    <div class="edit-sidebar-header">
+      <h2 id="editSidebarTitle">Edit Card</h2>
+      <button class="sidebar-close-btn" id="closeSidebarBtn">✕</button>
+    </div>
+    
+    <div class="edit-sidebar-body">
+      <!-- Deck Selection -->
+      <div class="form-group">
+        <label for="sidebarDeckSelect">Deck</label>
+        <select class="form-select" id="sidebarDeckSelect">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
+      
+      <!-- Toolbar for Front -->
+      <div class="form-group">
+        <label>Front</label>
+        <div class="editor-toolbar">
+          <button class="toolbar-btn" data-command="bold" data-target="front" title="Bold">
+            <strong>B</strong>
+          </button>
+          <button class="toolbar-btn" data-command="italic" data-target="front" title="Italic">
+            <em>I</em>
+          </button>
+          <button class="toolbar-btn" data-command="underline" data-target="front" title="Underline">
+            <u>U</u>
+          </button>
+          <button class="toolbar-btn" data-command="insertUnorderedList" data-target="front" title="Bullet List">
+            ≡
+          </button>
+          <button class="toolbar-btn" id="linkBtnFrontSidebar" title="Insert Link">
+            🔗
+          </button>
+          <button class="toolbar-btn" id="imageBtnFrontSidebar" title="Insert Image">
+            🖼️
+          </button>
+        </div>
+        <div class="editor-content" id="sidebarFrontEditor" contenteditable="true"></div>
+      </div>
+      
+      <!-- Toolbar for Back -->
+      <div class="form-group">
+        <label>Back</label>
+        <div class="editor-toolbar">
+          <button class="toolbar-btn" data-command="bold" data-target="back" title="Bold">
+            <strong>B</strong>
+          </button>
+          <button class="toolbar-btn" data-command="italic" data-target="back" title="Italic">
+            <em>I</em>
+          </button>
+          <button class="toolbar-btn" data-command="underline" data-target="back" title="Underline">
+            <u>U</u>
+          </button>
+          <button class="toolbar-btn" data-command="insertUnorderedList" data-target="back" title="Bullet List">
+            ≡
+          </button>
+          <button class="toolbar-btn" id="linkBtnBackSidebar" title="Insert Link">
+            🔗
+          </button>
+          <button class="toolbar-btn" id="imageBtnBackSidebar" title="Insert Image">
+            🖼️
+          </button>
+        </div>
+        <div class="editor-content" id="sidebarBackEditor" contenteditable="true"></div>
+      </div>
+    </div>
+    
+    <div class="edit-sidebar-footer">
+      <button class="btn btn-secondary" id="sidebarCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="sidebarSaveBtn">Save Changes</button>
+    </div>
+  </div>
+
   <input type="file" id="importFileInput" accept=".json" style="display: none;">
 
+  <script src="media-handler.js"></script>
   <script src="manage.js"></script>
 </body>
 </html>

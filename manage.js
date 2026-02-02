@@ -99,6 +99,91 @@ function setupEventListeners() {
   previewModal.addEventListener('click', (e) => {
     if (e.target === previewModal) closePreviewModal();
   });
+  
+  // Sidebar editor event listeners
+  const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+  const sidebarCancelBtn = document.getElementById('sidebarCancelBtn');
+  const sidebarSaveBtn = document.getElementById('sidebarSaveBtn');
+  
+  if (closeSidebarBtn) {
+    closeSidebarBtn.addEventListener('click', closeEditSidebar);
+  }
+  
+  if (sidebarCancelBtn) {
+    sidebarCancelBtn.addEventListener('click', closeEditSidebar);
+  }
+  
+  if (sidebarSaveBtn) {
+    sidebarSaveBtn.addEventListener('click', saveSidebarCard);
+  }
+  
+  // Setup toolbar buttons for sidebar
+  setupSidebarToolbar();
+}
+
+// Setup sidebar toolbar
+function setupSidebarToolbar() {
+  const frontEditor = document.getElementById('sidebarFrontEditor');
+  const backEditor = document.getElementById('sidebarBackEditor');
+  
+  // Toolbar buttons
+  const toolbarBtns = document.querySelectorAll('.editor-toolbar .toolbar-btn[data-command]');
+  toolbarBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const command = btn.getAttribute('data-command');
+      const target = btn.getAttribute('data-target');
+      const editor = target === 'front' ? frontEditor : backEditor;
+      
+      editor.focus();
+      document.execCommand(command, false, null);
+    });
+  });
+  
+  // Link buttons
+  const linkBtnFront = document.getElementById('linkBtnFrontSidebar');
+  const linkBtnBack = document.getElementById('linkBtnBackSidebar');
+  
+  if (linkBtnFront) {
+    linkBtnFront.addEventListener('click', () => insertLink(frontEditor));
+  }
+  
+  if (linkBtnBack) {
+    linkBtnBack.addEventListener('click', () => insertLink(backEditor));
+  }
+  
+  // Image buttons
+  const imageBtnFront = document.getElementById('imageBtnFrontSidebar');
+  const imageBtnBack = document.getElementById('imageBtnBackSidebar');
+  
+  if (imageBtnFront) {
+    imageBtnFront.addEventListener('click', () => insertImage(frontEditor));
+  }
+  
+  if (imageBtnBack) {
+    imageBtnBack.addEventListener('click', () => insertImage(backEditor));
+  }
+}
+
+// Insert link helper
+function insertLink(editor) {
+  const url = prompt('Enter URL:');
+  if (url) {
+    editor.focus();
+    document.execCommand('createLink', false, url);
+  }
+}
+
+// Insert image helper
+function insertImage(editor) {
+  const url = prompt('Enter image URL:');
+  if (url) {
+    editor.focus();
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = '100%';
+    editor.appendChild(img);
+  }
 }
 
 // Render decks
@@ -371,10 +456,161 @@ function editCard(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
 
-  // Send card data to sidebar window for editing.
-  // This allows using the same rich editors (and browser input features)
-  // as the normal "Add card" workflow.
-  chrome.runtime.sendMessage({ action: 'openEditCard', card });
+  // Open the sidebar editor instead of sending to background
+  openEditSidebar(card);
+}
+
+// Open edit sidebar
+function openEditSidebar(card) {
+  currentCard = card;
+  
+  // Create overlay
+  let overlay = document.getElementById('sidebarOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'sidebarOverlay';
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+  }
+  
+  // Get sidebar elements
+  const sidebar = document.getElementById('editSidebar');
+  const deckSelect = document.getElementById('sidebarDeckSelect');
+  const frontEditor = document.getElementById('sidebarFrontEditor');
+  const backEditor = document.getElementById('sidebarBackEditor');
+  
+  // Populate deck select
+  deckSelect.innerHTML = '';
+  allDecks.forEach(deck => {
+    const option = document.createElement('option');
+    option.value = deck;
+    option.textContent = deck;
+    if (deck === card.deck) {
+      option.selected = true;
+    }
+    deckSelect.appendChild(option);
+  });
+  
+  // Populate editors
+  frontEditor.innerHTML = card.front || '';
+  backEditor.innerHTML = card.back || '';
+  
+  // Show sidebar
+  overlay.classList.add('active');
+  sidebar.classList.add('active');
+  
+  // Close on overlay click
+  overlay.onclick = () => closeEditSidebar();
+}
+
+// Close edit sidebar
+function closeEditSidebar() {
+  const sidebar = document.getElementById('editSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.remove('active');
+  overlay.classList.remove('active');
+  
+  currentCard = null;
+}
+
+// Save card from sidebar
+async function saveSidebarCard() {
+  if (!currentCard) return;
+  
+  const deckSelect = document.getElementById('sidebarDeckSelect');
+  const frontEditor = document.getElementById('sidebarFrontEditor');
+  const backEditor = document.getElementById('sidebarBackEditor');
+  
+  let front = frontEditor.innerHTML.trim();
+  let back = backEditor.innerHTML.trim();
+  
+  if (!front || !back) {
+    alert('Please fill in both front and back');
+    return;
+  }
+  
+  // Show processing notification
+  showNotification('Processing media files...', 'info');
+  
+  try {
+    // Process media if MediaHandler is available
+    if (typeof MediaHandler !== 'undefined' && MediaHandler.processHTMLContent) {
+      front = await MediaHandler.processHTMLContent(front);
+      back = await MediaHandler.processHTMLContent(back);
+    }
+    
+    // Update card
+    currentCard.deck = deckSelect.value;
+    currentCard.front = front;
+    currentCard.back = back;
+    currentCard.updatedAt = new Date().toISOString();
+    
+    chrome.storage.local.set({ cards: allCards }, () => {
+      closeEditSidebar();
+      renderCards();
+      renderDecks();
+      showNotification('Card saved successfully!', 'success');
+    });
+  } catch (error) {
+    console.error('Error saving card:', error);
+    
+    // Fallback: save without media processing
+    currentCard.deck = deckSelect.value;
+    currentCard.front = front;
+    currentCard.back = back;
+    currentCard.updatedAt = new Date().toISOString();
+    
+    chrome.storage.local.set({ cards: allCards }, () => {
+      closeEditSidebar();
+      renderCards();
+      renderDecks();
+      showNotification('Card saved (media not processed)', 'warning');
+    });
+  }
+}
+
+// Show notification helper
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    animation: slideInNotif 0.3s ease-out;
+  `;
+  notification.textContent = message;
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInNotif {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutNotif {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+  `;
+  if (!document.querySelector('style[data-notif-style]')) {
+    style.setAttribute('data-notif-style', 'true');
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOutNotif 0.3s ease-out';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // Close edit modal

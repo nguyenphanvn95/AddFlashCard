@@ -285,7 +285,7 @@ function htmlToSafeFragment(html) {
 }
 
 // Add card
-addCardBtn.addEventListener('click', () => {
+addCardBtn.addEventListener('click', async () => {
   const deck = deckSelect.value.trim();
   const front = frontEditor.innerHTML.trim();
   const back = backEditor.innerHTML.trim();
@@ -301,7 +301,7 @@ addCardBtn.addEventListener('click', () => {
   }
 
   if (isEditMode && typeof editingCardId === 'number') {
-    updateCard({
+    await updateCard({
       id: editingCardId,
       deck,
       front,
@@ -317,63 +317,136 @@ addCardBtn.addEventListener('click', () => {
       back: back,
       createdAt: new Date().toISOString()
     };
-    saveCard(card);
+    await saveCard(card);
   }
 });
 
-// Update existing card (Edit mode)
-function updateCard(card) {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    const idx = cards.findIndex(c => c.id === card.id);
-    if (idx === -1) {
-      showNotification('Card not found (maybe deleted).', 'error');
-      exitEditMode();
-      return;
+// Update existing card (Edit mode) with media download
+async function updateCard(card) {
+  // Show processing notification
+  showNotification('Processing media files...', 'info');
+  
+  try {
+    // Process front and back content to download media
+    if (MediaHandler && typeof MediaHandler.processHTMLContent === 'function') {
+      card.front = await MediaHandler.processHTMLContent(card.front);
+      card.back = await MediaHandler.processHTMLContent(card.back);
     }
+    
+    chrome.storage.local.get(['cards'], (result) => {
+      const cards = result.cards || [];
+      const idx = cards.findIndex(c => c.id === card.id);
+      if (idx === -1) {
+        showNotification('Card not found (maybe deleted).', 'error');
+        exitEditMode();
+        return;
+      }
 
-    // Preserve original createdAt if present
-    const original = cards[idx];
-    cards[idx] = {
-      ...original,
-      deck: card.deck,
-      front: card.front,
-      back: card.back,
-      createdAt: original.createdAt || card.createdAt,
-      updatedAt: card.updatedAt
-    };
+      // Preserve original createdAt if present
+      const original = cards[idx];
+      cards[idx] = {
+        ...original,
+        deck: card.deck,
+        front: card.front,
+        back: card.back,
+        createdAt: original.createdAt || card.createdAt,
+        updatedAt: card.updatedAt
+      };
 
-    chrome.storage.local.set({ cards }, () => {
-      showNotification('Card saved successfully!', 'success');
-      loadStatistics();
-      loadDecks();
+      chrome.storage.local.set({ cards }, () => {
+        showNotification('Card saved successfully!', 'success');
+        loadStatistics();
+        loadDecks();
 
-      // Clear edit context so next open is clean
-      chrome.storage.local.remove(['editCardContext']);
+        // Clear edit context so next open is clean
+        chrome.storage.local.remove(['editCardContext']);
 
-      // Exit edit mode and clear editors (back to Add flow)
-      frontEditor.innerHTML = '';
-      backEditor.innerHTML = '';
-      exitEditMode();
+        // Exit edit mode and clear editors (back to Add flow)
+        frontEditor.innerHTML = '';
+        backEditor.innerHTML = '';
+        exitEditMode();
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error updating card:', error);
+    showNotification('Error processing media, saving with original URLs', 'warning');
+    
+    // Fallback without media processing
+    chrome.storage.local.get(['cards'], (result) => {
+      const cards = result.cards || [];
+      const idx = cards.findIndex(c => c.id === card.id);
+      if (idx === -1) {
+        showNotification('Card not found', 'error');
+        exitEditMode();
+        return;
+      }
+      
+      const original = cards[idx];
+      cards[idx] = {
+        ...original,
+        deck: card.deck,
+        front: card.front,
+        back: card.back,
+        updatedAt: card.updatedAt
+      };
+      
+      chrome.storage.local.set({ cards }, () => {
+        showNotification('Card saved!', 'success');
+        frontEditor.innerHTML = '';
+        backEditor.innerHTML = '';
+        exitEditMode();
+      });
+    });
+  }
 }
 
-// Save card
-function saveCard(card) {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    cards.push(card);
-    chrome.storage.local.set({ cards: cards }, () => {
-      // Clear editors
-      frontEditor.innerHTML = '';
-      backEditor.innerHTML = '';
-      
-      showNotification('Card added successfully!', 'success');
-      loadStatistics();
-      loadDecks();
+// Save card (with media download)
+async function saveCard(card) {
+  // Show processing notification
+  showNotification('Processing media files...', 'info');
+  
+  try {
+    // Process front and back content to download media
+    if (MediaHandler && typeof MediaHandler.processHTMLContent === 'function') {
+      card.front = await MediaHandler.processHTMLContent(card.front);
+      card.back = await MediaHandler.processHTMLContent(card.back);
+    }
+    
+    chrome.storage.local.get(['cards'], (result) => {
+      const cards = result.cards || [];
+      cards.push(card);
+      chrome.storage.local.set({ cards: cards }, () => {
+        // Clear editors
+        frontEditor.innerHTML = '';
+        backEditor.innerHTML = '';
+        
+        showNotification('Card added successfully!', 'success');
+        loadStatistics();
+        loadDecks();
+        
+        // Check storage usage
+        if (MediaHandler && typeof MediaHandler.cleanupOldMedia === 'function') {
+          MediaHandler.cleanupOldMedia();
+        }
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error saving card:', error);
+    showNotification('Error processing media, saving with original URLs', 'warning');
+    
+    // Fallback: save without processing
+    chrome.storage.local.get(['cards'], (result) => {
+      const cards = result.cards || [];
+      cards.push(card);
+      chrome.storage.local.set({ cards: cards }, () => {
+        frontEditor.innerHTML = '';
+        backEditor.innerHTML = '';
+        showNotification('Card added!', 'success');
+        loadStatistics();
+        loadDecks();
+      });
+    });
+  }
 }
 
 // Load statistics
