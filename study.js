@@ -60,6 +60,7 @@ function loadStudySession() {
   const params = new URLSearchParams(window.location.search);
   const deck = params.get('deck');
   const tags = params.get('tags');
+  const cardId = params.get('cardId');
   
   chrome.storage.local.get(['cards', 'decks', 'studySettings'], (result) => {
     let allCards = result.cards || [];
@@ -82,16 +83,22 @@ function loadStudySession() {
     deckFilterSelect.value = deck || settings.selectedDeck || '';
     tagsFilterInput.value = tags || settings.selectedTags || '';
     
-    // Filter cards by deck
-    if (deck) {
+    // If a single card is requested, study ONLY that card (ignore deck/tags filters)
+    if (cardId) {
+      allCards = allCards.filter(card => String(card.id) === String(cardId));
+      studyDeckName.textContent = 'Studying: 1 selected card';
+    }
+
+    // Filter cards by deck (only when not studying a single card)
+    if (!cardId && deck) {
       allCards = allCards.filter(card => card.deck === deck);
       studyDeckName.textContent = `Studying: ${deck}`;
-    } else {
+    } else if (!cardId) {
       studyDeckName.textContent = 'Study Mode - All Cards';
     }
     
     // Filter cards by tags
-    if (tags) {
+    if (tags && !cardId) {
       const tagsList = tags.split(',').map(t => t.trim().toLowerCase());
       allCards = allCards.filter(card => {
         if (!card.tags || card.tags.length === 0) return false;

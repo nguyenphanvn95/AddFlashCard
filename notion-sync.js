@@ -57,38 +57,36 @@ function injectSyncButton() {
 
   console.log('AddFlashcard: Share button found!', shareButton);
 
-  // Create sync button
+  // Create sync button (match the working console snippet closely)
   syncButton = document.createElement('div');
   syncButton.className = 'addflashcard-notion-sync-button';
+  syncButton.innerText = 'Sync Card';
   syncButton.setAttribute('role', 'button');
   syncButton.setAttribute('tabindex', '0');
   syncButton.setAttribute('data-addflashcard', 'sync-button');
-  
-  syncButton.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 28px; 
-                border-radius: 6px; background: rgb(46, 170, 220); color: white; 
-                font-size: 13px; font-weight: 500; cursor: pointer; 
-                transition: background 0.2s ease; margin-right: 8px;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M13.5 2h-11C1.67 2 1 2.67 1 3.5v9c0 .83.67 1.5 1.5 1.5h11c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zm-11 1h11c.28 0 .5.22.5.5v2H2v-2c0-.28.22-.5.5-.5zm11 10h-11c-.28 0-.5-.22-.5-.5V7h12v5.5c0 .28-.22.5-.5.5z"/>
-        <path d="M4 9h3v1H4zm0 2h5v1H4z"/>
-      </svg>
-      <span class="sync-button-text">Sync cards</span>
-    </div>
-  `;
+  syncButton.style.userSelect = 'none';
+  syncButton.style.cursor = 'pointer';
+  syncButton.style.display = 'inline-flex';
+  syncButton.style.alignItems = 'center';
+  syncButton.style.height = '28px';
+  syncButton.style.paddingInline = '8px';
+  syncButton.style.borderRadius = '6px';
+  syncButton.style.whiteSpace = 'nowrap';
+  syncButton.style.fontSize = '14px';
+  syncButton.style.fontWeight = '400';
+  syncButton.style.lineHeight = '1.2';
+  syncButton.style.color = 'var(--c-texPri)';
+  syncButton.style.flexShrink = '0';
+  syncButton.style.minWidth = '0px';
+  syncButton.style.marginInline = '6px';
+  syncButton.style.background = 'var(--c-bgPri, #f0f0f0)';
 
-  // Add hover effect
-  const buttonInner = syncButton.querySelector('div');
+  // Hover feedback
   syncButton.addEventListener('mouseenter', () => {
-    if (!isSyncing) {
-      buttonInner.style.background = 'rgb(35, 131, 226)';
-    }
+    if (!isSyncing) syncButton.style.background = 'var(--c-bgSec, #e9e9e9)';
   });
   syncButton.addEventListener('mouseleave', () => {
-    if (!isSyncing) {
-      buttonInner.style.background = 'rgb(46, 170, 220)';
-    }
+    if (!isSyncing) syncButton.style.background = 'var(--c-bgPri, #f0f0f0)';
   });
 
   // Add click handler

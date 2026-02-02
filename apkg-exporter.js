@@ -9,11 +9,25 @@ class APKGExporterV2 {
 
   // Load required libraries
   async loadLibraries() {
+    // MV3 rule: extension pages cannot load remote scripts (CDN). Libraries must be bundled.
+    // Put these files in: vendor/
+    //   - vendor/jszip.min.js
+    //   - vendor/sql-wasm.js
+    //   - vendor/sql-wasm.wasm
+    // (See VENDOR-LIBS.md for exact download links.)
+
+    const jszipUrl = (typeof chrome !== 'undefined' && chrome.runtime)
+      ? chrome.runtime.getURL('vendor/jszip.min.js')
+      : 'vendor/jszip.min.js';
+    const sqlUrl = (typeof chrome !== 'undefined' && chrome.runtime)
+      ? chrome.runtime.getURL('vendor/sql-wasm.js')
+      : 'vendor/sql-wasm.js';
+
     if (!window.JSZip) {
-      await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      await this.loadScript(jszipUrl);
     }
     if (!window.initSqlJs) {
-      await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js');
+      await this.loadScript(sqlUrl);
     }
     await this.ensureSqlReady();
   }
@@ -35,8 +49,12 @@ class APKGExporterV2 {
       throw new Error('sql.js not loaded');
     }
     
+    const base = (typeof chrome !== 'undefined' && chrome.runtime)
+      ? chrome.runtime.getURL('vendor/')
+      : 'vendor/';
+
     this.SQL_INSTANCE = await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+      locateFile: (file) => `${base}${file}`
     });
     this.sqlReady = true;
   }
