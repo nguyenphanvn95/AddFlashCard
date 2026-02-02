@@ -37,6 +37,29 @@ let allDecks = [];
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   setupEventListeners();
+
+  // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
+  // so the manager reflects changes immediately without manual reload.
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+
+    let needsRender = false;
+
+    if (changes.cards) {
+      allCards = changes.cards.newValue || [];
+      needsRender = true;
+    }
+
+    if (changes.decks) {
+      allDecks = changes.decks.newValue || ['Default'];
+      needsRender = true;
+    }
+
+    if (needsRender) {
+      renderDecks();
+      renderCards();
+    }
+  });
 });
 
 // Load all data

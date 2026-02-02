@@ -228,12 +228,17 @@ window.addEventListener('message', (event) => {
 
 // Chèn nội dung vào editor
 function insertContent(editor, content) {
-  if (content.isImage) {
+  // Prefer rich HTML payload to preserve formatting (bold/links/lists, etc.)
+  // Supported: text/html (selection), image/link/video from context menu.
+  if (content && content.dataHtml) {
+    const fragment = htmlToSafeFragment(content.dataHtml);
+    editor.appendChild(fragment);
+  } else if (content && (content.isImage || content.mediaType === 'image') && content.data) {
     const img = document.createElement('img');
     img.src = content.data;
     img.style.maxWidth = '100%';
     editor.appendChild(img);
-  } else {
+  } else if (content && content.data) {
     const p = document.createElement('p');
     p.textContent = content.data;
     editor.appendChild(p);
@@ -241,6 +246,42 @@ function insertContent(editor, content) {
   
   editor.focus();
   showNotification('Content added!', 'success');
+}
+
+/**
+ * Convert HTML string to a safe DocumentFragment.
+ * - strips <script>/<style>
+ * - removes event handler attrs (on*)
+ * - keeps formatting tags so “Send to Front/Back” preserves layout
+ */
+function htmlToSafeFragment(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(String(html || ''), 'text/html');
+
+  // Remove scripts/styles
+  doc.querySelectorAll('script, style').forEach(el => el.remove());
+
+  // Remove on* attributes and javascript: URLs
+  doc.querySelectorAll('*').forEach(el => {
+    [...el.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const val = String(attr.value || '');
+
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        return;
+      }
+      if ((name === 'href' || name === 'src') && val.trim().toLowerCase().startsWith('javascript:')) {
+        el.removeAttribute(attr.name);
+        return;
+      }
+    });
+  });
+
+  const frag = document.createDocumentFragment();
+  // Keep body children to avoid wrapping <html><body> artifacts
+  [...doc.body.childNodes].forEach(n => frag.appendChild(n));
+  return frag;
 }
 
 // Add card
