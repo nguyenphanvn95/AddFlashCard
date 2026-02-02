@@ -645,6 +645,11 @@ video { max-width: 100%; height: auto; }`,
     return blob;
   }
 
+  // Alias for backward compatibility
+  async exportMultipleDecks(decksData, parentDeckName = 'AddFlashcard Export', onProgress = null) {
+    return this.exportMultipleDecksWithMedia(decksData, parentDeckName, onProgress);
+  }
+
   downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -659,3 +664,4 @@ video { max-width: 100%; height: auto; }`,
 
 // Export singleton
 window.apkgExporterV2 = new APKGExporterV2();
+window.apkgExporter = window.apkgExporterV2; // Alias for backward compatibility
