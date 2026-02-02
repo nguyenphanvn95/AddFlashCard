@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.0.0",
-  "description": "Tạo flashcard từ văn bản/ảnh trên web với sidebar và quản lý decks",
+  "version": "2.1.0",
+  "description": "Tạo flashcard từ văn bản/ảnh trên web, PDF và Notion với sidebar và quản lý decks",
   "permissions": [
     "contextMenus",
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,8 +24,18 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["sidebar.css"]
+      "js": ["content.js"]
+    },
+    {
+      "matches": ["*://*.notion.so/*", "*://notion.so/*"],
+      "js": ["notion-sync.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["pdf-support.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [

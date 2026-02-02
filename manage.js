@@ -37,6 +37,29 @@ let allDecks = [];
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   setupEventListeners();
+
+  // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
+  // so the manager reflects changes immediately without manual reload.
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+
+    let needsRender = false;
+
+    if (changes.cards) {
+      allCards = changes.cards.newValue || [];
+      needsRender = true;
+    }
+
+    if (changes.decks) {
+      allDecks = changes.decks.newValue || ['Default'];
+      needsRender = true;
+    }
+
+    if (needsRender) {
+      renderDecks();
+      renderCards();
+    }
+  });
 });
 
 // Load all data
@@ -345,25 +368,13 @@ function closePreviewModal() {
 
 // Edit card
 function editCard(id) {
-  currentCard = allCards.find(c => c.id === id);
-  if (!currentCard) return;
-  
-  // Populate modal
-  modalDeckSelect.innerHTML = '';
-  allDecks.forEach(deck => {
-    const option = document.createElement('option');
-    option.value = deck;
-    option.textContent = deck;
-    if (deck === currentCard.deck) {
-      option.selected = true;
-    }
-    modalDeckSelect.appendChild(option);
-  });
-  
-  modalFrontEditor.innerHTML = currentCard.front;
-  modalBackEditor.innerHTML = currentCard.back;
-  
-  editModal.classList.add('active');
+  const card = allCards.find(c => c.id === id);
+  if (!card) return;
+
+  // Send card data to sidebar window for editing.
+  // This allows using the same rich editors (and browser input features)
+  // as the normal "Add card" workflow.
+  chrome.runtime.sendMessage({ action: 'openEditCard', card });
 }
 
 // Close edit modal
