@@ -1,50 +1,215 @@
 // Biến global để theo dõi sidebar
+let sidebarHost = null;   // host element living in Shadow DOM
+let sidebarShadow = null; // shadow root
 let sidebarIframe = null;
+let sidebarOverlay = null; // dim background overlay
+let isPinned = false; // pinned sidebar state
+let dockSide = "right"; // "right" | "left"
+let overlayOpacity = 0.38; // 0..0.8
+
+// Sidebar sizing (keep in sync with CSS below)
+const SIDEBAR_WIDTH = 420;
 
 // Inject sidebar vào trang
+function getOpenTransform() {
+  return 'translateX(0px)';
+}
+function getClosedTransform() {
+  // When docked right, move out to the right; when left, move out to the left
+  return dockSide === 'left' ? `translateX(-${SIDEBAR_WIDTH}px)` : `translateX(${SIDEBAR_WIDTH}px)`;
+}
+function applyDockSide() {
+  if (!sidebarHost || !sidebarShadow) return;
+
+  // Host positioning
+  sidebarHost.style.right = dockSide === 'right' ? '0' : 'auto';
+  sidebarHost.style.left  = dockSide === 'left'  ? '0' : 'auto';
+
+  // Update wrap positioning and box shadow direction via CSS variables
+  const wrap = sidebarShadow.querySelector('.wrap');
+  if (wrap) {
+    if (dockSide === 'left') {
+      wrap.style.left = '0';
+      wrap.style.right = 'auto';
+      wrap.style.boxShadow = '4px 0 20px rgba(0, 0, 0, 0.3)';
+    } else {
+      wrap.style.right = '0';
+      wrap.style.left = 'auto';
+      wrap.style.boxShadow = '-4px 0 20px rgba(0, 0, 0, 0.3)';
+    }
+  }
+
+  // Keep current open/closed state consistent
+  const isOpen = sidebarHost.style.pointerEvents === 'auto' && sidebarHost.style.transform === getOpenTransform();
+  sidebarHost.style.transform = isOpen ? getOpenTransform() : getClosedTransform();
+}
+function applyOverlayOpacity() {
+  if (!sidebarOverlay) return;
+  const o = Math.max(0, Math.min(0.8, Number(overlayOpacity) || 0));
+  sidebarOverlay.style.background = `rgba(0,0,0,${o})`;
+}
+async function loadUiSettings() {
+  try {
+    const res = await chrome.storage.local.get(['afc_sidebar_pinned','afc_overlay_opacity','afc_dock_side']);
+    if (typeof res.afc_sidebar_pinned === 'boolean') isPinned = res.afc_sidebar_pinned;
+    if (typeof res.afc_overlay_opacity !== 'undefined') {
+      const v = Number(res.afc_overlay_opacity);
+      if (!Number.isNaN(v)) overlayOpacity = v;
+    }
+    if (res.afc_dock_side === 'left' || res.afc_dock_side === 'right') dockSide = res.afc_dock_side;
+  } catch (e) {}
+}
+
 function createSidebar() {
-  if (sidebarIframe) {
+  if (sidebarIframe && sidebarHost) {
     return; // Sidebar đã tồn tại
   }
 
-  // Tạo iframe cho sidebar
+  // Host element (so website CSS can't affect our iframe)
+  sidebarHost = document.createElement('div');
+  sidebarHost.id = 'addflashcard-sidebar-host';
+  sidebarHost.style.cssText = `
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: auto;
+    width: ${SIDEBAR_WIDTH}px;
+    height: 100%;
+    z-index: 2147483647;
+    pointer-events: none; /* enable only when open */
+    transform: translateX(${SIDEBAR_WIDTH}px);
+    transition: transform 0.3s ease-in-out;
+  `;
+
+  // Shadow root to isolate styles
+  sidebarShadow = sidebarHost.attachShadow({ mode: 'open' });
+
+  // Local styles inside shadow DOM
+  const style = document.createElement('style');
+  style.setAttribute('data-afc','host-style');
+  style.textContent = `
+    :host { all: initial; }
+    .wrap {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      left: auto;
+      width: ${SIDEBAR_WIDTH}px;
+      height: 100%;
+      pointer-events: auto;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: transparent;
+    }
+  `;
+  sidebarShadow.appendChild(style);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'wrap';
+
+  // Iframe for sidebar UI
   sidebarIframe = document.createElement('iframe');
   sidebarIframe.id = 'addflashcard-sidebar';
   sidebarIframe.src = chrome.runtime.getURL('sidebar.html');
-  sidebarIframe.style.cssText = `
+  wrap.appendChild(sidebarIframe);
+  sidebarShadow.appendChild(wrap);
+
+  // Append to <html> so it still works on pages with body overflow tricks
+  (document.documentElement || document.body).appendChild(sidebarHost);
+
+  // Apply dock + initial closed transform
+  applyDockSide();
+  sidebarHost.style.transform = getClosedTransform();
+}
+
+
+
+function createOverlay() {
+  if (sidebarOverlay) return;
+  sidebarOverlay = document.createElement('div');
+  sidebarOverlay.id = 'addflashcard-sidebar-overlay';
+  sidebarOverlay.style.cssText = `
     position: fixed;
-    top: 0;
-    right: -420px;
-    width: 420px;
-    height: 100%;
-    border: none;
-    z-index: 2147483647;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
-    transition: right 0.3s ease-in-out;
+    inset: 0;
+    background: rgba(0,0,0,0.38);
+    z-index: 2147483646;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
   `;
-  
-  document.body.appendChild(sidebarIframe);
+  sidebarOverlay.addEventListener('click', () => {
+    // Click on dim background closes sidebar only when not pinned
+    if (!isPinned) closeSidebar();
+  });
+  (document.documentElement || document.body).appendChild(sidebarOverlay);
+  applyOverlayOpacity();
+}
+
+
+function showOverlay() {
+  createOverlay();
+  if (!sidebarOverlay) return;
+  sidebarOverlay.style.opacity = '1';
+  sidebarOverlay.style.pointerEvents = 'auto';
+}
+
+function hideOverlay() {
+  if (!sidebarOverlay) return;
+  sidebarOverlay.style.opacity = '0';
+  sidebarOverlay.style.pointerEvents = 'none';
 }
 
 // Mở sidebar
 function openSidebar() {
   if (!sidebarIframe) {
     createSidebar();
+  applyDockSide();
     // Đợi iframe load xong
     setTimeout(() => {
-      if (sidebarIframe) {
-        sidebarIframe.style.right = '0';
+      if (sidebarHost) {
+        sidebarHost.style.pointerEvents = 'auto';
+        sidebarHost.style.transform = getOpenTransform();
       }
     }, 100);
   } else {
-    sidebarIframe.style.right = '0';
+    sidebarHost.style.pointerEvents = 'auto';
+    sidebarHost.style.transform = getOpenTransform();
   }
+  // Overlay dim background (only when not pinned)
+  if (isPinned) {
+    hideOverlay();
+  } else {
+    showOverlay();
+  }
+
+  // Sync pin state to iframe UI
+  try {
+    if (sidebarIframe && sidebarIframe.contentWindow) {
+      sidebarIframe.contentWindow.postMessage({ action: 'setPinned', pinned: isPinned }, '*');
+      sidebarIframe.contentWindow.postMessage({ action: 'setDockSide', side: dockSide }, '*');
+      sidebarIframe.contentWindow.postMessage({ action: 'setOverlayOpacity', opacity: overlayOpacity }, '*');
+    }
+  } catch (e) {}
+
 }
 
 // Đóng sidebar
 function closeSidebar() {
-  if (sidebarIframe) {
-    sidebarIframe.style.right = '-420px';
+  hideOverlay();
+  if (sidebarHost) {
+    sidebarHost.style.transform = getClosedTransform();
+    // After animation, disable pointer events so page is fully clickable
+    setTimeout(() => {
+      if (sidebarHost && sidebarHost.style.transform.includes(`${SIDEBAR_WIDTH}`)) {
+        sidebarHost.style.pointerEvents = 'none';
+      }
+    }, 320);
   }
 }
 
@@ -100,7 +265,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   
   if (message.action === "toggleSidebar") {
-    if (sidebarIframe && sidebarIframe.style.right === '0px') {
+    const isOpen = !!sidebarHost && sidebarHost.style.transform === getOpenTransform();
+    if (isOpen) {
       closeSidebar();
     } else {
       openSidebar();
@@ -112,22 +278,88 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Lắng nghe message từ sidebar iframe
 window.addEventListener('message', (event) => {
-  // Kiểm tra nguồn gốc message
-  if (event.source === sidebarIframe?.contentWindow) {
-    if (event.data.action === "closeSidebar") {
-      closeSidebar();
-    } else if (event.data.action === "openManagePage") {
-      chrome.runtime.sendMessage({ action: "openManagePage" });
+  // Only accept messages from our sidebar iframe
+  if (event.source !== sidebarIframe?.contentWindow) return;
+
+  if (event.data?.action === "closeSidebar") {
+    // Allow close only when not pinned (or when sidebar explicitly requests close after unpin)
+    if (!isPinned) closeSidebar();
+  } else if (event.data?.action === "openManagePage") {
+    chrome.runtime.sendMessage({ action: "openManagePage" });
+  } else if (event.data?.action === "togglePin") {
+    isPinned = !!event.data.pinned;
+    try { chrome.storage.local.set({ afc_sidebar_pinned: isPinned }); } catch (e) {}
+
+    // Update overlay + keep open when pinned
+    if (isPinned) {
+      openSidebar(); // ensures it's open and syncs UI
+      hideOverlay();
+    } else {
+      // If sidebar is open, re-enable overlay
+      const isOpen = !!sidebarHost && sidebarHost.style.transform === getOpenTransform();
+      if (isOpen) showOverlay();
     }
+
+    // Echo pin state back to iframe (in case it needs sync)
+    try {
+      sidebarIframe?.contentWindow?.postMessage({ action: 'setPinned', pinned: isPinned }, '*');
+    } catch (e) {}
+} else if (event.data?.action === "setOverlayOpacity") {
+  const v = Number(event.data.opacity);
+  if (!Number.isNaN(v)) {
+    overlayOpacity = Math.max(0, Math.min(0.8, v));
+    try { chrome.storage.local.set({ afc_overlay_opacity: overlayOpacity }); } catch (e) {}
+    applyOverlayOpacity();
+    // Sync back to iframe UI
+    try { sidebarIframe?.contentWindow?.postMessage({ action: 'setOverlayOpacity', opacity: overlayOpacity }, '*'); } catch (e) {}
+  }
+} else if (event.data?.action === "toggleDock") {
+  dockSide = dockSide === 'left' ? 'right' : 'left';
+  try { chrome.storage.local.set({ afc_dock_side: dockSide }); } catch (e) {}
+  applyDockSide();
+  // If open and not pinned, overlay stays
+  // Sync back to iframe UI
+  try { sidebarIframe?.contentWindow?.postMessage({ action: 'setDockSide', side: dockSide }, '*'); } catch (e) {}
+} else if (event.data?.action === "setDockSide") {
+  const side = event.data.side;
+  if (side === 'left' || side === 'right') {
+    dockSide = side;
+    try { chrome.storage.local.set({ afc_dock_side: dockSide }); } catch (e) {}
+    applyDockSide();
+    try { sidebarIframe?.contentWindow?.postMessage({ action: 'setDockSide', side: dockSide }, '*'); } catch (e) {}
+  }
+
   }
 });
+
+
+
+async function initUiState() {
+  await loadUiSettings();
+  // If pinned, restore sidebar on page load
+  if (isPinned) {
+    createSidebar();
+    // Ensure dock + overlay settings applied
+    applyDockSide();
+    createOverlay();
+    applyOverlayOpacity();
+    // Open without dim overlay when pinned
+    setTimeout(() => {
+      openSidebar();
+      hideOverlay();
+    }, 50);
+  }
+}
+initUiState();
+
 
 // Global keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   // Alt+Q: Toggle sidebar
   if (e.altKey && e.key.toLowerCase() === 'q') {
     e.preventDefault();
-    if (sidebarIframe && sidebarIframe.style.right === '0px') {
+    const isOpen = !!sidebarHost && sidebarHost.style.transform === getOpenTransform();
+    if (isOpen) {
       closeSidebar();
     } else {
       openSidebar();
@@ -162,8 +394,9 @@ document.addEventListener('keydown', (e) => {
         if (!sidebarIframe) {
           createSidebar();
           setTimeout(() => {
-            if (sidebarIframe) {
-              sidebarIframe.style.right = '0';
+            if (sidebarHost && sidebarIframe) {
+              sidebarHost.style.pointerEvents = 'auto';
+              sidebarHost.style.transform = getOpenTransform();
               setTimeout(() => {
                 sidebarIframe.contentWindow.postMessage({
                   action: "addToFront",
@@ -215,8 +448,9 @@ document.addEventListener('keydown', (e) => {
         if (!sidebarIframe) {
           createSidebar();
           setTimeout(() => {
-            if (sidebarIframe) {
-              sidebarIframe.style.right = '0';
+            if (sidebarHost && sidebarIframe) {
+              sidebarHost.style.pointerEvents = 'auto';
+              sidebarHost.style.transform = getOpenTransform();
               setTimeout(() => {
                 sidebarIframe.contentWindow.postMessage({
                   action: "addToBack",

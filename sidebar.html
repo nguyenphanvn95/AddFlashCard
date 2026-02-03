@@ -18,7 +18,13 @@
         </svg>
         <h1>Add Card</h1>
       </div>
-      <button class="close-btn" id="closeSidebarBtn" title="Close">✕</button>
+      
+      <div class="header-right">
+        <button class="dock-btn" id="dockBtn" title="Dock left/right">⟷</button>
+        <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
+        <button class="pin-btn" id="pinBtn" title="Pin sidebar">📌</button>
+        <button class="close-btn" id="closeSidebarBtn" title="Close">✕</button>
+      </div>
     </div>
 
     <div class="sidebar-content">
@@ -113,7 +119,45 @@
       </button>
     </div>
   </div>
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsBackdrop" style="display:none;">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-header">
+      <div class="modal-title" id="settingsTitle">Settings</div>
+      <button class="modal-close" id="settingsCloseBtn" title="Close">✕</button>
+    </div>
 
+    <div class="modal-body">
+      <div class="setting-row">
+        <div class="setting-label">
+          <div class="setting-name">Overlay opacity</div>
+          <div class="setting-desc">Dim background when sidebar is open (not pinned)</div>
+        </div>
+        <div class="setting-control">
+          <input type="range" id="overlayOpacityRange" min="0" max="80" step="1" value="38">
+          <div class="setting-value"><span id="overlayOpacityValue">38</span>%</div>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <div class="setting-name">Dock side</div>
+          <div class="setting-desc">Choose default dock side</div>
+        </div>
+        <div class="setting-control">
+          <div class="segmented">
+            <button class="seg-btn" id="dockLeftBtn" type="button">Left</button>
+            <button class="seg-btn" id="dockRightBtn" type="button">Right</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-row">
+        Tip: Use the ⟷ button to switch dock side instantly.
+      </div>
+    </div>
+  </div>
+</div>
   <script src="media-handler.js"></script>
   <script src="sidebar.js"></script>
 </body>

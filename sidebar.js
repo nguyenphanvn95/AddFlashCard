@@ -4,6 +4,18 @@ const backEditor = document.getElementById('backEditor');
 const deckSelect = document.getElementById('deckSelect');
 const addCardBtn = document.getElementById('addCardBtn');
 const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+const pinBtn = document.getElementById('pinBtn');
+const dockBtn = document.getElementById('dockBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const overlayOpacityRange = document.getElementById('overlayOpacityRange');
+const overlayOpacityValue = document.getElementById('overlayOpacityValue');
+const dockLeftBtn = document.getElementById('dockLeftBtn');
+const dockRightBtn = document.getElementById('dockRightBtn');
+
+let currentDockSide = 'right';
+let currentOverlayOpacity = 0.38;
 const newDeckBtn = document.getElementById('newDeckBtn');
 const manageBtn = document.getElementById('manageBtn');
 const statsContent = document.getElementById('statsContent');
@@ -16,6 +28,102 @@ let isEditMode = false;
 let editingCardId = null;
 let editingCreatedAt = null;
 let currentTags = [];
+
+function setPinUI(pinned){
+  isPinned = !!pinned;
+  if (!pinBtn) return;
+  pinBtn.classList.toggle('pinned', isPinned);
+  pinBtn.textContent = isPinned ? '📍' : '📌';
+  pinBtn.title = isPinned ? 'Unpin sidebar' : 'Pin sidebar';
+}
+
+if (pinBtn){
+  pinBtn.addEventListener('click', () => {
+    const next = !isPinned;
+    setPinUI(next);
+    // Notify content script (parent) to persist pin + control overlay
+    window.parent.postMessage({ action: 'togglePin', pinned: next }, '*');
+  });
+/* Dock + Settings controls */
+if (dockBtn) {
+  dockBtn.addEventListener('click', () => {
+    window.parent.postMessage({ action: 'toggleDock' }, '*');
+  });
+}
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', openSettings);
+}
+if (settingsCloseBtn) {
+  settingsCloseBtn.addEventListener('click', closeSettings);
+}
+if (settingsBackdrop) {
+  settingsBackdrop.addEventListener('click', (e) => {
+    if (e.target === settingsBackdrop) closeSettings();
+  });
+}
+
+if (overlayOpacityRange) {
+  overlayOpacityRange.addEventListener('input', () => {
+    const pct = Number(overlayOpacityRange.value);
+    const o = Math.max(0, Math.min(0.8, pct / 100));
+    setOverlayOpacityUI(o);
+    window.parent.postMessage({ action: 'setOverlayOpacity', opacity: o }, '*');
+  });
+}
+
+if (dockLeftBtn) {
+  dockLeftBtn.addEventListener('click', () => {
+    setDockSideUI('left');
+    window.parent.postMessage({ action: 'setDockSide', side: 'left' }, '*');
+  });
+}
+if (dockRightBtn) {
+  dockRightBtn.addEventListener('click', () => {
+    setDockSideUI('right');
+    window.parent.postMessage({ action: 'setDockSide', side: 'right' }, '*');
+  });
+}
+
+// Load saved UI settings (best-effort; content script will also push authoritative values)
+try {
+  chrome.storage.local.get(['afc_overlay_opacity','afc_dock_side'], (res) => {
+    if (typeof res.afc_overlay_opacity !== 'undefined') setOverlayOpacityUI(res.afc_overlay_opacity);
+    if (res.afc_dock_side === 'left' || res.afc_dock_side === 'right') setDockSideUI(res.afc_dock_side);
+  });
+} catch (e) {}
+
+}
+
+
+// Pin state (controlled by content script)
+let isPinned = false;
+function setDockSideUI(side) {
+  currentDockSide = (side === 'left' ? 'left' : 'right');
+  if (dockBtn) dockBtn.classList.toggle('active', currentDockSide === 'left');
+  if (dockLeftBtn && dockRightBtn) {
+    dockLeftBtn.classList.toggle('active', currentDockSide === 'left');
+    dockRightBtn.classList.toggle('active', currentDockSide === 'right');
+  }
+  // Optional indicator
+  if (dockBtn) dockBtn.textContent = currentDockSide === 'left' ? '⟷ L' : '⟷ R';
+}
+
+function setOverlayOpacityUI(opacity) {
+  const o = Math.max(0, Math.min(0.8, Number(opacity) || 0));
+  currentOverlayOpacity = o;
+  if (overlayOpacityRange) overlayOpacityRange.value = String(Math.round(o * 100));
+  if (overlayOpacityValue) overlayOpacityValue.textContent = String(Math.round(o * 100));
+}
+
+function openSettings() {
+  if (!settingsBackdrop) return;
+  settingsBackdrop.style.display = 'flex';
+}
+function closeSettings() {
+  if (!settingsBackdrop) return;
+  settingsBackdrop.style.display = 'none';
+}
+
 
 // Toolbar buttons
 const toolbarBtns = document.querySelectorAll('.toolbar-btn[data-command]');
@@ -220,6 +328,17 @@ function setupEditors() {
 
 // Lắng nghe message từ parent window (content script)
 window.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'setPinned') {
+    setPinUI(!!event.data.pinned);
+  }
+
+if (event.data && event.data.action === 'setDockSide') {
+  setDockSideUI(event.data.side);
+}
+if (event.data && event.data.action === 'setOverlayOpacity') {
+  setOverlayOpacityUI(event.data.opacity);
+}
+
   // Handle old-style addContent with type field
   if (event.data.action === 'addContent') {
     const content = event.data.content;
@@ -569,6 +688,10 @@ closeSidebarBtn.addEventListener('click', () => {
   if (window.top === window.self) {
     window.close();
   } else {
+    if (isPinned) {
+      window.parent.postMessage({ action: 'togglePin', pinned: false }, '*');
+      setPinUI(false);
+    }
     window.parent.postMessage({ action: 'closeSidebar' }, '*');
   }
 });
