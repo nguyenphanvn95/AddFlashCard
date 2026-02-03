@@ -13,6 +13,8 @@ const overlayOpacityRange = document.getElementById('overlayOpacityRange');
 const overlayOpacityValue = document.getElementById('overlayOpacityValue');
 const dockLeftBtn = document.getElementById('dockLeftBtn');
 const dockRightBtn = document.getElementById('dockRightBtn');
+const themeDayBtn = document.getElementById('themeDayBtn');
+const themeNightBtn = document.getElementById('themeNightBtn');
 
 let currentDockSide = 'right';
 let currentOverlayOpacity = 0.38;
@@ -84,6 +86,19 @@ if (dockRightBtn) {
   });
 }
 
+if (themeDayBtn) {
+  themeDayBtn.addEventListener('click', () => {
+    setThemeUI('day');
+    window.parent.postMessage({ action: 'setTheme', theme: 'day' }, '*');
+  });
+}
+if (themeNightBtn) {
+  themeNightBtn.addEventListener('click', () => {
+    setThemeUI('night');
+    window.parent.postMessage({ action: 'setTheme', theme: 'night' }, '*');
+  });
+}
+
 // Load saved UI settings (best-effort; content script will also push authoritative values)
 try {
   chrome.storage.local.get(['afc_overlay_opacity','afc_dock_side'], (res) => {
@@ -113,6 +128,35 @@ function setOverlayOpacityUI(opacity) {
   currentOverlayOpacity = o;
   if (overlayOpacityRange) overlayOpacityRange.value = String(Math.round(o * 100));
   if (overlayOpacityValue) overlayOpacityValue.textContent = String(Math.round(o * 100));
+}
+
+function setThemeUI(theme) {
+  const t = (theme === 'day') ? 'day' : 'night';
+  // Apply class to multiple roots to ensure styles take effect
+  try {
+    document.documentElement.classList.toggle('theme-day', t === 'day');
+    document.documentElement.classList.toggle('theme-night', t === 'night');
+  } catch (e) {}
+  try {
+    document.body.classList.toggle('theme-day', t === 'day');
+    document.body.classList.toggle('theme-night', t === 'night');
+  } catch (e) {}
+  try {
+    const container = document.querySelector('.sidebar-container');
+    if (container) {
+      container.classList.toggle('theme-day', t === 'day');
+      container.classList.toggle('theme-night', t === 'night');
+    }
+  } catch (e) {}
+
+  if (themeDayBtn && themeNightBtn) {
+    themeDayBtn.classList.toggle('active', t === 'day');
+    themeNightBtn.classList.toggle('active', t === 'night');
+  }
+
+  try {
+    chrome.storage.local.set({ afc_theme: t });
+  } catch (e) {}
 }
 
 function openSettings() {
@@ -323,6 +367,13 @@ function setupEditors() {
         editor.innerHTML = '';
       }
     });
+
+    // Load theme preference
+    try {
+      chrome.storage.local.get(['afc_theme'], (res) => {
+        setThemeUI(res.afc_theme || 'night');
+      });
+    } catch (e) {}
   });
 }
 
@@ -337,6 +388,9 @@ if (event.data && event.data.action === 'setDockSide') {
 }
 if (event.data && event.data.action === 'setOverlayOpacity') {
   setOverlayOpacityUI(event.data.opacity);
+}
+if (event.data && event.data.action === 'setTheme') {
+  setThemeUI(event.data.theme);
 }
 
   // Handle old-style addContent with type field

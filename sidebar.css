@@ -9,9 +9,95 @@ body {
   background-color: #1e293b;
   color: #e2e8f0;
   width: 420px;
-  height: 100vh;
-  overflow: hidden;
-}
+  /* Theme: Day - improved contrast and component styles */
+  body.theme-day {
+    background-color: #f3f7fb; /* very light gray */
+    color: #0b1220; /* dark text */
+  }
+
+  body.theme-day .sidebar-container {
+    background-color: #ffffff;
+  }
+
+  body.theme-day .sidebar-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e6eef6;
+    box-shadow: 0 1px 0 rgba(16,24,40,0.04);
+  }
+
+  body.theme-day .sidebar-header h1 {
+    color: #0b1220;
+  }
+
+  body.theme-day .header-right button,
+  body.theme-day .close-btn,
+  body.theme-day .pin-btn {
+    background: rgba(2,6,23,0.04);
+    color: #0b1220;
+    border: 1px solid rgba(2,6,23,0.04);
+  }
+
+  body.theme-day .deck-select,
+  body.theme-day .editor,
+  body.theme-day .toolbar,
+  body.theme-day .statistics,
+  body.theme-day .modal {
+    background-color: #ffffff;
+    border-color: #e6eef6;
+    color: #0b1220;
+  }
+
+  body.theme-day .toolbar-btn { color: #0b1220; }
+  body.theme-day .toolbar-btn:hover { background-color: rgba(59,130,246,0.06); }
+
+  body.theme-day .editor {
+    background-color: #ffffff;
+    color: #0b1220;
+  }
+  body.theme-day .editor:empty:before { color: #94a3b8; }
+
+  body.theme-day .tags-input {
+    background-color: #07112a; /* dark tag input like screenshot */
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  body.theme-day .tags-input::placeholder { color: rgba(255,255,255,0.6); }
+
+  body.theme-day .add-card-btn { background-color: #06c167; color: #ffffff; }
+  body.theme-day .add-card-btn:hover { background-color: #05a857; }
+
+  body.theme-day .new-deck-btn { background-color: #f8fafc; color: #0b1220; border-color: #e6eef6; }
+  body.theme-day .manage-btn { background-color: #f8fafc; color: #0b1220; border-color: #e6eef6; }
+
+  body.theme-day .stat-item { background-color: #f8fbff; }
+  body.theme-day .stat-deck { color: #0b1220; }
+  body.theme-day .stat-count { background-color: #1d4ed8; color: #fff; }
+
+  body.theme-day .tag { background-color: #2563eb; color: #fff; }
+
+  body.theme-day .seg-btn {
+    background: #ffffff;
+    color: #0b1220;
+    border-left: 1px solid rgba(11,17,32,0.04);
+  }
+  body.theme-day .seg-btn:first-child { border-left: none; }
+  body.theme-day .seg-btn.active {
+    background: #eff6ff;
+    color: #0b1220;
+    box-shadow: none;
+    border-color: rgba(37,99,235,0.12);
+  }
+
+  /* Modal backdrop lighter for day theme so content remains visible */
+  body.theme-day .modal-backdrop {
+    background: rgba(15,23,42,0.06);
+  }
+
+  /* Notification adjustments for day */
+  body.theme-day .notification { color: #fff; }
+
+  /* Theme: Night explicit class (keeps default dark look) */
+  body.theme-night { }
 
 .sidebar-container {
   display: flex;
