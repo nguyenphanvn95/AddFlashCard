@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Flashcards - Home</title>
+  <link rel="stylesheet" href="manage.css">
+  <link rel="stylesheet" href="manage-theme.css">
+  <link rel="stylesheet" href="manage-home.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-left">
+          <svg class="logo" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+          <div>
+            <h1>AddFlashcard Manager</h1>
+            <p class="subtitle">Home</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="sortBtn" title="Sort decks">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="6" y1="12" x2="18" y2="12"></line>
+              <line x1="8" y1="18" x2="16" y2="18"></line>
+            </svg>
+            Sort
+          </button>
+          <button class="btn btn-secondary" id="importBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="home-content">
+      <!-- Decks Grid -->
+      <div class="decks-grid" id="decksGrid">
+        <!-- Deck cards will be inserted here dynamically -->
+      </div>
+
+      <!-- New Deck Card -->
+      <div class="deck-card new-deck-card" id="newDeckCard">
+        <div class="new-deck-content">
+          <div class="new-deck-icon">+</div>
+          <div class="new-deck-text">New deck</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Deck Modal -->
+  <div class="modal-backdrop" id="deckModalBackdrop" style="display: none;">
+    <div class="deck-modal">
+      <div class="deck-modal-header">
+        <h3 id="deckModalTitle">Create deck</h3>
+        <button class="modal-close" id="deckModalClose">Close</button>
+      </div>
+
+      <div class="deck-modal-body">
+        <!-- Emoji/Icon Picker -->
+        <div class="form-group">
+          <div class="emoji-picker">
+            <button class="emoji-btn active" data-emoji="😊">😊</button>
+            <button class="emoji-btn" data-emoji="📚">📚</button>
+            <button class="emoji-btn" data-emoji="🎓">🎓</button>
+            <button class="emoji-btn" data-emoji="💡">💡</button>
+            <button class="emoji-btn" data-emoji="🚀">🚀</button>
+            <button class="emoji-btn" data-emoji="⚡">⚡</button>
+            <button class="emoji-btn" data-emoji="🔬">🔬</button>
+            <button class="emoji-btn" data-emoji="🎨">🎨</button>
+            <button class="emoji-btn" data-emoji="🌟">🌟</button>
+            <button class="emoji-btn" data-emoji="🎯">🎯</button>
+            <button class="emoji-btn" data-emoji="🏆">🏆</button>
+            <button class="emoji-btn" data-emoji="📖">📖</button>
+          </div>
+        </div>
+
+        <!-- Deck Name -->
+        <div class="form-group">
+          <label for="deckNameInput">Name your deck (e.g. BIOCHEM101)</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            id="deckNameInput" 
+            placeholder="Enter deck name"
+            maxlength="50"
+          >
+        </div>
+
+        <!-- Deck Description -->
+        <div class="form-group">
+          <label for="deckDescInput">Description (e.g. Cards for Sem 2)</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            id="deckDescInput" 
+            placeholder="Enter description (optional)"
+            maxlength="100"
+          >
+        </div>
+
+        <!-- Color Picker -->
+        <div class="form-group">
+          <label>Color</label>
+          <div class="color-palette">
+            <button class="color-btn" data-color="#ef4444" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);"></button>
+            <button class="color-btn" data-color="#ec4899" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);"></button>
+            <button class="color-btn" data-color="#a855f7" style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);"></button>
+            <button class="color-btn" data-color="#8b5cf6" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);"></button>
+            <button class="color-btn" data-color="#3b82f6" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"></button>
+            <button class="color-btn" data-color="#06b6d4" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);"></button>
+            <button class="color-btn" data-color="#14b8a6" style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);"></button>
+            <button class="color-btn active" data-color="#10b981" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);"></button>
+            <button class="color-btn" data-color="#84cc16" style="background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);"></button>
+            <button class="color-btn" data-color="#f59e0b" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"></button>
+            <button class="color-btn" data-color="#f97316" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);"></button>
+            <button class="color-btn" data-color="#f43f5e" style="background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);"></button>
+            
+            <!-- Row 2 -->
+            <button class="color-btn" data-color="#fb7185" style="background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);"></button>
+            <button class="color-btn" data-color="#fb923c" style="background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);"></button>
+            <button class="color-btn" data-color="#a78bfa" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);"></button>
+            <button class="color-btn" data-color="#22d3ee" style="background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);"></button>
+            <button class="color-btn" data-color="#2dd4bf" style="background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%);"></button>
+            <button class="color-btn" data-color="#4ade80" style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);"></button>
+            <button class="color-btn" data-color="#facc15" style="background: linear-gradient(135deg, #facc15 0%, #eab308 100%);"></button>
+            <button class="color-btn" data-color="#fbbf24" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);"></button>
+            <button class="color-btn" data-color="#94a3b8" style="background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);"></button>
+          </div>
+        </div>
+
+        <!-- Pinned Option -->
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="deckPinnedCheckbox">
+            <span>Pinned</span>
+          </label>
+          <small>Pinned decks appear at the top</small>
+        </div>
+      </div>
+
+      <div class="deck-modal-footer">
+        <button class="btn btn-primary btn-large" id="deckModalSave">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deck Options Menu (contextmenu) -->
+  <div class="context-menu" id="deckContextMenu" style="display: none;">
+    <button class="context-menu-item" id="contextEdit">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+      Edit deck
+    </button>
+    <button class="context-menu-item" id="contextStudy">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+      </svg>
+      Study mode
+    </button>
+    <button class="context-menu-item" id="contextExport">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      Export deck
+    </button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item danger" id="contextDelete">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      Delete deck
+    </button>
+  </div>
+
+  <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+  <script src="manage-home.js"></script>
+</body>
+</html>
