@@ -1475,4 +1475,52 @@ function formatAsCode() {
   selection.addRange(newRange);
 }
 
+// ==================== THEME MANAGEMENT ====================
+function initTheme() {
+  // Load saved theme
+  chrome.storage.local.get(['afc_theme'], (res) => {
+    const theme = res.afc_theme || 'light';
+    applyTheme(theme);
+  });
+  
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeQuery.addEventListener('change', () => {
+      chrome.storage.local.get(['afc_theme'], (res) => {
+        if (res.afc_theme === 'system') {
+          applyTheme('system');
+        }
+      });
+    });
+  }
+  
+  // Listen for theme changes from other pages
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.afc_theme) {
+      applyTheme(changes.afc_theme.newValue);
+    }
+  });
+}
+
+function applyTheme(theme) {
+  let effectiveTheme = theme;
+  
+  // Handle 'system' theme
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    effectiveTheme = prefersDark ? 'dark' : 'light';
+  } else {
+    effectiveTheme = (theme === 'light') ? 'light' : 'dark';
+  }
+  
+  // Apply theme classes
+  document.documentElement.classList.toggle('theme-light', effectiveTheme === 'light');
+  document.documentElement.classList.toggle('theme-dark', effectiveTheme === 'dark');
+  document.body.classList.toggle('theme-light', effectiveTheme === 'light');
+  document.body.classList.toggle('theme-dark', effectiveTheme === 'dark');
+}
+
+// Initialize theme on load
+initTheme();
 

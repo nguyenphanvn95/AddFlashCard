@@ -285,6 +285,11 @@ class StudySession {
     
     // Save progress
     this.saveProgress();
+    
+    // Update queue counts immediately after answering
+    if (typeof updateQueueCounts === 'function') {
+      updateQueueCounts();
+    }
   }
 
   // Save progress to storage
@@ -750,3 +755,72 @@ function setupEventListeners() {
     if (e.target === settingsModal) closeSettings();
   });
 }
+
+// ==================== THEME MANAGEMENT ====================
+function initTheme() {
+  const themeSystemBtn = document.getElementById('themeSystemBtn');
+  const themeLightBtn = document.getElementById('themeLightBtn');
+  const themeDarkBtn = document.getElementById('themeDarkBtn');
+  
+  if (!themeSystemBtn || !themeLightBtn || !themeDarkBtn) return;
+  
+  // Load saved theme
+  chrome.storage.local.get(['afc_theme'], (res) => {
+    const theme = res.afc_theme || 'light';
+    applyTheme(theme);
+  });
+  
+  // Theme button event listeners
+  themeSystemBtn.addEventListener('click', () => setTheme('system'));
+  themeLightBtn.addEventListener('click', () => setTheme('light'));
+  themeDarkBtn.addEventListener('click', () => setTheme('dark'));
+  
+  // Listen for system theme changes
+  if (window.matchMedia) {
+    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    systemThemeQuery.addEventListener('change', () => {
+      chrome.storage.local.get(['afc_theme'], (res) => {
+        if (res.afc_theme === 'system') {
+          applyTheme('system');
+        }
+      });
+    });
+  }
+}
+
+function setTheme(theme) {
+  applyTheme(theme);
+  chrome.storage.local.set({ afc_theme: theme });
+}
+
+function applyTheme(theme) {
+  let effectiveTheme = theme;
+  
+  // Handle 'system' theme
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    effectiveTheme = prefersDark ? 'dark' : 'light';
+  } else {
+    effectiveTheme = (theme === 'light') ? 'light' : 'dark';
+  }
+  
+  // Apply theme classes
+  document.documentElement.classList.toggle('theme-light', effectiveTheme === 'light');
+  document.documentElement.classList.toggle('theme-dark', effectiveTheme === 'dark');
+  document.body.classList.toggle('theme-light', effectiveTheme === 'light');
+  document.body.classList.toggle('theme-dark', effectiveTheme === 'dark');
+  
+  // Update button states
+  const themeSystemBtn = document.getElementById('themeSystemBtn');
+  const themeLightBtn = document.getElementById('themeLightBtn');
+  const themeDarkBtn = document.getElementById('themeDarkBtn');
+  
+  if (themeSystemBtn && themeLightBtn && themeDarkBtn) {
+    themeSystemBtn.classList.toggle('active', theme === 'system');
+    themeLightBtn.classList.toggle('active', theme === 'light');
+    themeDarkBtn.classList.toggle('active', theme === 'dark');
+  }
+}
+
+// Initialize theme on load
+initTheme();

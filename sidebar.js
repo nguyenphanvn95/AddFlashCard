@@ -13,8 +13,9 @@ const overlayOpacityRange = document.getElementById('overlayOpacityRange');
 const overlayOpacityValue = document.getElementById('overlayOpacityValue');
 const dockLeftBtn = document.getElementById('dockLeftBtn');
 const dockRightBtn = document.getElementById('dockRightBtn');
-const themeDayBtn = document.getElementById('themeDayBtn');
-const themeNightBtn = document.getElementById('themeNightBtn');
+const themeSystemBtn = document.getElementById('themeSystemBtn');
+const themeLightBtn = document.getElementById('themeLightBtn');
+const themeDarkBtn = document.getElementById('themeDarkBtn');
 
 let currentDockSide = 'right';
 let currentOverlayOpacity = 0.38;
@@ -86,24 +87,32 @@ if (dockRightBtn) {
   });
 }
 
-if (themeDayBtn) {
-  themeDayBtn.addEventListener('click', () => {
-    setThemeUI('day');
-    window.parent.postMessage({ action: 'setTheme', theme: 'day' }, '*');
+if (themeSystemBtn) {
+  themeSystemBtn.addEventListener('click', () => {
+    setThemeUI('system');
+    window.parent.postMessage({ action: 'setTheme', theme: 'system' }, '*');
   });
 }
-if (themeNightBtn) {
-  themeNightBtn.addEventListener('click', () => {
-    setThemeUI('night');
-    window.parent.postMessage({ action: 'setTheme', theme: 'night' }, '*');
+if (themeLightBtn) {
+  themeLightBtn.addEventListener('click', () => {
+    setThemeUI('light');
+    window.parent.postMessage({ action: 'setTheme', theme: 'light' }, '*');
+  });
+}
+if (themeDarkBtn) {
+  themeDarkBtn.addEventListener('click', () => {
+    setThemeUI('dark');
+    window.parent.postMessage({ action: 'setTheme', theme: 'dark' }, '*');
   });
 }
 
 // Load saved UI settings (best-effort; content script will also push authoritative values)
 try {
-  chrome.storage.local.get(['afc_overlay_opacity','afc_dock_side'], (res) => {
+  chrome.storage.local.get(['afc_overlay_opacity','afc_dock_side','afc_theme'], (res) => {
     if (typeof res.afc_overlay_opacity !== 'undefined') setOverlayOpacityUI(res.afc_overlay_opacity);
     if (res.afc_dock_side === 'left' || res.afc_dock_side === 'right') setDockSideUI(res.afc_dock_side);
+    if (res.afc_theme) setThemeUI(res.afc_theme);
+    else setThemeUI('light'); // Default to light theme
   });
 } catch (e) {}
 
@@ -131,32 +140,57 @@ function setOverlayOpacityUI(opacity) {
 }
 
 function setThemeUI(theme) {
-  const t = (theme === 'day') ? 'day' : 'night';
+  let effectiveTheme = theme;
+  
+  // Handle 'system' theme
+  if (theme === 'system') {
+    // Check system preference
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    effectiveTheme = prefersDark ? 'dark' : 'light';
+  } else {
+    effectiveTheme = (theme === 'light') ? 'light' : 'dark';
+  }
+  
   // Apply class to multiple roots to ensure styles take effect
   try {
-    document.documentElement.classList.toggle('theme-day', t === 'day');
-    document.documentElement.classList.toggle('theme-night', t === 'night');
+    document.documentElement.classList.toggle('theme-light', effectiveTheme === 'light');
+    document.documentElement.classList.toggle('theme-dark', effectiveTheme === 'dark');
   } catch (e) {}
   try {
-    document.body.classList.toggle('theme-day', t === 'day');
-    document.body.classList.toggle('theme-night', t === 'night');
+    document.body.classList.toggle('theme-light', effectiveTheme === 'light');
+    document.body.classList.toggle('theme-dark', effectiveTheme === 'dark');
   } catch (e) {}
   try {
     const container = document.querySelector('.sidebar-container');
     if (container) {
-      container.classList.toggle('theme-day', t === 'day');
-      container.classList.toggle('theme-night', t === 'night');
+      container.classList.toggle('theme-light', effectiveTheme === 'light');
+      container.classList.toggle('theme-dark', effectiveTheme === 'dark');
     }
   } catch (e) {}
 
-  if (themeDayBtn && themeNightBtn) {
-    themeDayBtn.classList.toggle('active', t === 'day');
-    themeNightBtn.classList.toggle('active', t === 'night');
+  // Update button states
+  if (themeSystemBtn && themeLightBtn && themeDarkBtn) {
+    themeSystemBtn.classList.toggle('active', theme === 'system');
+    themeLightBtn.classList.toggle('active', theme === 'light');
+    themeDarkBtn.classList.toggle('active', theme === 'dark');
   }
 
+  // Save the preference
   try {
-    chrome.storage.local.set({ afc_theme: t });
+    chrome.storage.local.set({ afc_theme: theme });
   } catch (e) {}
+}
+
+// Listen for system theme changes when 'system' is selected
+if (window.matchMedia) {
+  const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  systemThemeQuery.addEventListener('change', () => {
+    chrome.storage.local.get(['afc_theme'], (res) => {
+      if (res.afc_theme === 'system') {
+        setThemeUI('system');
+      }
+    });
+  });
 }
 
 function openSettings() {

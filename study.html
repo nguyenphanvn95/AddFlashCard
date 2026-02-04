@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Study Mode - Spaced Repetition</title>
   <link rel="stylesheet" href="study.css">
+  <link rel="stylesheet" href="study-theme.css">
 </head>
 <body>
   <div class="study-container">
@@ -183,6 +184,21 @@
             Filter by tags
             <input type="text" id="tagsFilterInput" placeholder="Enter tags (comma-separated)" class="form-input">
           </label>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">Theme</label>
+          <div class="theme-selector">
+            <button class="theme-btn" id="themeSystemBtn" data-theme="system">
+              <span>System</span>
+            </button>
+            <button class="theme-btn active" id="themeLightBtn" data-theme="light">
+              <span>Light</span>
+            </button>
+            <button class="theme-btn" id="themeDarkBtn" data-theme="dark">
+              <span>Dark</span>
+            </button>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
