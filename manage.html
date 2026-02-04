@@ -178,6 +178,41 @@
       -webkit-box-orient: vertical;
     }
 
+    .deck-card .deck-actions {
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .deck-card:hover .deck-actions {
+      opacity: 1;
+    }
+
+    .deck-card .deck-action-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .deck-card .deck-action-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .deck-card .deck-action-btn.delete:hover {
+      background: rgba(239, 68, 68, 0.4);
+    }
+
     .deck-footer {
       display: flex;
       align-items: center;
