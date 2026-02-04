@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.5.0",
-  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Export APKG và sync với Anki qua AnkiConnect",
+  "version": "2.6.0",
+  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Export APKG và sync với Anki qua AnkiConnect. Hỗ trợ PDF Viewer tích hợp.",
   "permissions": [
     "contextMenus",
     "storage",
@@ -10,18 +10,22 @@
     "scripting",
     "tabs"
   ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "optional_permissions": [
     "https://www.notion.so/*",
     "https://*.notion.so/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; object-src 'self'"
   },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "AddFlashcard"
+    "default_title": "AddFlashcard",
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -31,7 +35,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_idle"
     },
     {
       "matches": ["*://*.notion.so/*", "*://notion.so/*"],
@@ -52,10 +57,14 @@
         "sidebar.html", 
         "sidebar.css", 
         "sidebar.js", 
-        "media-handler.js", 
+        "media-handler.js",
+        "pdf-viewer.html",
         "study.html", 
         "study.css", 
         "study.js",
+        "manage.html",
+        "manage.css",
+        "manage.js",
         "vendor/jszip.min.js",
         "vendor/sql-wasm.js",
         "vendor/sql-wasm.wasm",
@@ -66,5 +75,21 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "send-to-front": {
+      "suggested_key": {
+        "default": "Alt+A",
+        "mac": "Alt+A"
+      },
+      "description": "Thêm văn bản đã chọn vào Front"
+    },
+    "send-to-back": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
+      "description": "Thêm văn bản đã chọn vào Back"
+    }
+  }
 }

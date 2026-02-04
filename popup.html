@@ -3,121 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add a Card</title>
+  <title>AddFlashcard</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
+  <div class="popup-container">
     <div class="header">
-      <div class="header-left">
-        <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-          <path d="M2 17l10 5 10-5"></path>
-          <path d="M2 12l10 5 10-5"></path>
-        </svg>
-        <h1>Add a card</h1>
+      <img src="icons/icon48.png" alt="AddFlashcard" class="logo">
+      <h1>AddFlashcard</h1>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-label">Tổng thẻ</div>
+        <div class="stat-value" id="total-cards">0</div>
       </div>
-      <div class="header-right">
-        <button class="icon-btn" id="clearBtn" title="Clear all">🗑️</button>
+      <div class="stat-item">
+        <div class="stat-label">Hôm nay</div>
+        <div class="stat-value" id="today-cards">0</div>
       </div>
     </div>
 
-    <!-- Deck Selection -->
-    <div class="deck-selection">
-      <select id="deckSelect" class="deck-select">
-        <option value="">Choose a deck...</option>
-      </select>
-      <input type="text" id="deckInput" placeholder="Or add a new deck" />
+    <div class="actions">
+      <button class="action-btn primary" id="manage-btn">
+        <span class="icon">📚</span>
+        <span>Quản lý thẻ</span>
+      </button>
+
+      <button class="action-btn" id="study-btn">
+        <span class="icon">📖</span>
+        <span>Học thẻ</span>
+      </button>
+
+      <button class="action-btn pdf-btn" id="pdf-viewer-btn">
+        <span class="icon">📄</span>
+        <span>PDF Viewer</span>
+      </button>
+
+      <button class="action-btn" id="export-btn">
+        <span class="icon">💾</span>
+        <span>Export APKG</span>
+      </button>
+
+      <button class="action-btn" id="anki-sync-btn">
+        <span class="icon">🔄</span>
+        <span>Sync Anki</span>
+      </button>
     </div>
 
-    <!-- FRONT Section -->
-    <div class="card-section">
-      <label class="section-label">FRONT</label>
-      
-      <!-- Toolbar Front -->
-      <div class="toolbar">
-        <select id="frontStyle" class="style-select">
-          <option value="normal">Normal</option>
-          <option value="heading1">Heading 1</option>
-          <option value="heading2">Heading 2</option>
-        </select>
-        
-        <button class="toolbar-btn" data-command="bold" data-target="front"><b>B</b></button>
-        <button class="toolbar-btn" data-command="italic" data-target="front"><i>I</i></button>
-        <button class="toolbar-btn" data-command="underline" data-target="front"><u>U</u></button>
-        <button class="toolbar-btn" data-command="strikethrough" data-target="front"><s>S</s></button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" data-command="insertUnorderedList" data-target="front">☰</button>
-        <button class="toolbar-btn" data-command="insertOrderedList" data-target="front">≡</button>
-        <button class="toolbar-btn" data-command="indent" data-target="front">→</button>
-        <button class="toolbar-btn" data-command="outdent" data-target="front">←</button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" data-command="superscript" data-target="front">x²</button>
-        <button class="toolbar-btn" data-command="subscript" data-target="front">x₂</button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" id="linkBtnFront">🔗</button>
-        <button class="toolbar-btn" id="imageBtnFront">🖼️</button>
-        <button class="toolbar-btn" id="codeBtnFront">&lt;/&gt;</button>
-      </div>
-
-      <!-- Editor Front -->
-      <div class="editor" id="frontEditor" contenteditable="true" data-placeholder="Write a question here..."></div>
+    <div class="quick-actions">
+      <button class="quick-btn" id="settings-btn" title="Cài đặt">⚙️</button>
+      <button class="quick-btn" id="help-btn" title="Hướng dẫn">❓</button>
     </div>
 
-    <!-- BACK Section -->
-    <div class="card-section">
-      <label class="section-label">BACK</label>
-      
-      <!-- Toolbar Back -->
-      <div class="toolbar">
-        <select id="backStyle" class="style-select">
-          <option value="normal">Normal</option>
-          <option value="heading1">Heading 1</option>
-          <option value="heading2">Heading 2</option>
-        </select>
-        
-        <button class="toolbar-btn" data-command="bold" data-target="back"><b>B</b></button>
-        <button class="toolbar-btn" data-command="italic" data-target="back"><i>I</i></button>
-        <button class="toolbar-btn" data-command="underline" data-target="back"><u>U</u></button>
-        <button class="toolbar-btn" data-command="strikethrough" data-target="back"><s>S</s></button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" data-command="insertUnorderedList" data-target="back">☰</button>
-        <button class="toolbar-btn" data-command="insertOrderedList" data-target="back">≡</button>
-        <button class="toolbar-btn" data-command="indent" data-target="back">→</button>
-        <button class="toolbar-btn" data-command="outdent" data-target="back">←</button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" data-command="superscript" data-target="back">x²</button>
-        <button class="toolbar-btn" data-command="subscript" data-target="back">x₂</button>
-        
-        <div class="toolbar-divider"></div>
-        
-        <button class="toolbar-btn" id="linkBtnBack">🔗</button>
-        <button class="toolbar-btn" id="imageBtnBack">🖼️</button>
-        <button class="toolbar-btn" id="codeBtnBack">&lt;/&gt;</button>
-      </div>
-
-      <!-- Editor Back -->
-      <div class="editor" id="backEditor" contenteditable="true" data-placeholder="Write the answer here..."></div>
+    <div class="footer">
+      <span class="version">v2.5.0</span>
+      <span class="separator">•</span>
+      <a href="#" id="notion-link">Notion Sync</a>
     </div>
-
-    <!-- Add Card Button -->
-    <button class="add-card-btn" id="addCardBtn">ADD CARD</button>
-
-    <!-- Cards List -->
-    <div class="cards-list" id="cardsList"></div>
   </div>
 
   <script src="popup.js"></script>
+
+  <style>
+    /* PDF Button Special Style */
+    .action-btn.pdf-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.pdf-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.pdf-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.pdf-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.pdf-btn .icon {
+      font-size: 20px;
+    }
+  </style>
 </body>
 </html>

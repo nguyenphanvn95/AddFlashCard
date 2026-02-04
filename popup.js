@@ -1,361 +1,202 @@
-// DOM Elements
-const frontEditor = document.getElementById('frontEditor');
-const backEditor = document.getElementById('backEditor');
-const deckSelect = document.getElementById('deckSelect');
-const deckInput = document.getElementById('deckInput');
-const addCardBtn = document.getElementById('addCardBtn');
-const cardsList = document.getElementById('cardsList');
-const clearBtn = document.getElementById('clearBtn');
+// Popup.js - Enhanced with PDF Viewer button
 
-// Toolbar buttons
-const toolbarBtns = document.querySelectorAll('.toolbar-btn[data-command]');
-const frontStyle = document.getElementById('frontStyle');
-const backStyle = document.getElementById('backStyle');
-
-// Khởi tạo khi mở popup
-document.addEventListener('DOMContentLoaded', () => {
-  loadDecks();
-  loadCards();
-  loadPendingContent();
-  setupToolbar();
-  setupEditors();
-  setupDeckSelect();
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load stats
+  await loadStats();
+  
+  // Setup event listeners
+  setupEventListeners();
+  
+  // Update UI based on current state
+  updateUI();
 });
 
-// Xử lý pending content từ context menu
-function loadPendingContent() {
-  chrome.storage.local.get(['pendingContent'], (result) => {
-    const pending = result.pendingContent || [];
+// Load statistics
+async function loadStats() {
+  try {
+    const result = await chrome.storage.local.get(['flashcards', 'lastStudyDate']);
+    const flashcards = result.flashcards || [];
+    const today = new Date().toDateString();
     
-    if (pending.length > 0) {
-      pending.forEach(content => {
-        if (content.type === 'sendToFront') {
-          insertContent(frontEditor, content);
-        } else if (content.type === 'sendToBack') {
-          insertContent(backEditor, content);
-        }
+    document.getElementById('total-cards').textContent = flashcards.length;
+    
+    // Count cards created today
+    const todayCards = flashcards.filter(card => {
+      const cardDate = new Date(card.created || 0).toDateString();
+      return cardDate === today;
+    }).length;
+    
+    document.getElementById('today-cards').textContent = todayCards;
+  } catch (error) {
+    console.error('Error loading stats:', error);
+  }
+}
+
+// Setup event listeners
+function setupEventListeners() {
+  // Manage button
+  document.getElementById('manage-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html') });
+    window.close();
+  });
+  
+  // Study button
+  document.getElementById('study-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('study.html') });
+    window.close();
+  });
+  
+  // PDF Viewer button
+  document.getElementById('pdf-viewer-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pdf-viewer.html') });
+    window.close();
+  });
+  
+  // Export button
+  document.getElementById('export-btn').addEventListener('click', async () => {
+    try {
+      const result = await chrome.storage.local.get(['flashcards']);
+      const flashcards = result.flashcards || [];
+      
+      if (flashcards.length === 0) {
+        alert('Không có thẻ nào để export!');
+        return;
+      }
+      
+      // Send message to background to handle export
+      chrome.runtime.sendMessage({
+        action: 'exportAPKG',
+        flashcards: flashcards
       });
       
-      // Xóa pending content sau khi đã load
-      chrome.storage.local.set({ pendingContent: [] });
+      showNotification('Đang export...', 'info');
+    } catch (error) {
+      console.error('Error exporting:', error);
+      showNotification('Lỗi khi export!', 'error');
     }
   });
-}
-
-// Lắng nghe message từ background
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'addContent') {
-    const content = message.content;
-    
-    if (content.type === 'sendToFront') {
-      insertContent(frontEditor, content);
-    } else if (content.type === 'sendToBack') {
-      insertContent(backEditor, content);
-    }
-  }
-});
-
-// Chèn nội dung vào editor
-function insertContent(editor, content) {
-  if (content.isImage) {
-    // Chèn ảnh
-    const img = document.createElement('img');
-    img.src = content.data;
-    img.style.maxWidth = '100%';
-    editor.appendChild(img);
-  } else {
-    // Chèn văn bản
-    const p = document.createElement('p');
-    p.textContent = content.data;
-    editor.appendChild(p);
-  }
   
-  // Focus vào editor
-  editor.focus();
-}
-
-// Setup toolbar
-function setupToolbar() {
-  // Các nút formatting
-  toolbarBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const command = btn.getAttribute('data-command');
-      const target = btn.getAttribute('data-target');
-      const editor = target === 'front' ? frontEditor : backEditor;
+  // Anki Sync button
+  document.getElementById('anki-sync-btn').addEventListener('click', async () => {
+    try {
+      // Check AnkiConnect
+      const response = await fetch('http://127.0.0.1:8765', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'version',
+          version: 6
+        })
+      });
       
-      editor.focus();
-      document.execCommand(command, false, null);
-    });
-  });
-
-  // Style selects
-  frontStyle.addEventListener('change', (e) => {
-    applyStyle(frontEditor, e.target.value);
-  });
-
-  backStyle.addEventListener('change', (e) => {
-    applyStyle(backEditor, e.target.value);
-  });
-
-  // Link buttons
-  document.getElementById('linkBtnFront').addEventListener('click', () => {
-    insertLink(frontEditor);
-  });
-
-  document.getElementById('linkBtnBack').addEventListener('click', () => {
-    insertLink(backEditor);
-  });
-
-  // Image buttons
-  document.getElementById('imageBtnFront').addEventListener('click', () => {
-    insertImage(frontEditor);
-  });
-
-  document.getElementById('imageBtnBack').addEventListener('click', () => {
-    insertImage(backEditor);
-  });
-
-  // Code buttons
-  document.getElementById('codeBtnFront').addEventListener('click', () => {
-    insertCode(frontEditor);
-  });
-
-  document.getElementById('codeBtnBack').addEventListener('click', () => {
-    insertCode(backEditor);
-  });
-}
-
-// Apply style
-function applyStyle(editor, style) {
-  editor.focus();
-  
-  switch(style) {
-    case 'heading1':
-      document.execCommand('formatBlock', false, '<h1>');
-      break;
-    case 'heading2':
-      document.execCommand('formatBlock', false, '<h2>');
-      break;
-    default:
-      document.execCommand('formatBlock', false, '<p>');
-  }
-}
-
-// Insert link
-function insertLink(editor) {
-  const url = prompt('Enter URL:');
-  if (url) {
-    editor.focus();
-    document.execCommand('createLink', false, url);
-  }
-}
-
-// Insert image
-function insertImage(editor) {
-  const url = prompt('Enter image URL:');
-  if (url) {
-    editor.focus();
-    const img = document.createElement('img');
-    img.src = url;
-    img.style.maxWidth = '100%';
-    editor.appendChild(img);
-  }
-}
-
-// Insert code
-function insertCode(editor) {
-  editor.focus();
-  const selection = window.getSelection();
-  const selectedText = selection.toString();
-  
-  if (selectedText) {
-    const code = document.createElement('code');
-    code.textContent = selectedText;
-    
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(code);
-  } else {
-    const code = document.createElement('code');
-    code.textContent = 'code';
-    editor.appendChild(code);
-  }
-}
-
-// Setup editors
-function setupEditors() {
-  // Placeholder behavior
-  [frontEditor, backEditor].forEach(editor => {
-    editor.addEventListener('focus', () => {
-      if (editor.textContent.trim() === '') {
-        editor.textContent = '';
+      if (response.ok) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#anki-sync') });
+        window.close();
+      } else {
+        alert('Không thể kết nối với AnkiConnect. Vui lòng đảm bảo Anki đang chạy và AnkiConnect đã được cài đặt.');
       }
-    });
-
-    editor.addEventListener('blur', () => {
-      if (editor.textContent.trim() === '') {
-        editor.innerHTML = '';
-      }
-    });
-  });
-}
-
-// Add card
-addCardBtn.addEventListener('click', () => {
-  const deck = deckInput.value.trim();
-  const front = frontEditor.innerHTML.trim();
-  const back = backEditor.innerHTML.trim();
-
-  if (!front || !back) {
-    showNotification('Please fill in both front and back', 'error');
-    return;
-  }
-
-  const card = {
-    id: Date.now(),
-    deck: deck || 'Default',
-    front: front,
-    back: back,
-    createdAt: new Date().toISOString(),
-    // Study mode fields
-    status: 'new',
-    lastReviewed: null,
-    lastReview: null,
-    interval: 0,
-    repetitions: 0,
-    easiness: 2.5,
-    dueDate: Date.now()
-  };
-
-  saveCard(card);
-  
-  // Clear editors
-  frontEditor.innerHTML = '';
-  backEditor.innerHTML = '';
-  
-  showNotification('Card added successfully!');
-  loadCards();
-});
-
-// Save card to storage
-function saveCard(card) {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    cards.push(card);
-    chrome.storage.local.set({ cards: cards });
-  });
-}
-
-// Load decks from storage
-function loadDecks() {
-  chrome.storage.local.get(['decks'], (result) => {
-    let decks = result.decks || [];
-    
-    // Handle both array (legacy) and object (new) formats
-    let decksList = [];
-    if (Array.isArray(decks)) {
-      decksList = decks;
-    } else if (decks && typeof decks === 'object') {
-      // Convert object format to array format
-      decksList = Object.values(decks).map(d => d.name || d);
+    } catch (error) {
+      alert('Không thể kết nối với AnkiConnect. Vui lòng đảm bảo Anki đang chạy và AnkiConnect đã được cài đặt.');
     }
-    
-    // Populate dropdown
-    deckSelect.innerHTML = '<option value="">Choose a deck...</option>';
-    decksList.forEach(deckName => {
-      const option = document.createElement('option');
-      option.value = deckName;
-      option.textContent = deckName;
-      deckSelect.appendChild(option);
-    });
   });
-}
-
-// Setup deck select change handler
-function setupDeckSelect() {
-  if (deckSelect) {
-    deckSelect.addEventListener('change', (e) => {
-      if (e.target.value) {
-        deckInput.value = e.target.value;
-      }
-    });
-  }
-}
-
-// Load cards from storage
-function loadCards() {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    displayCards(cards);
-  });
-}
-
-// Display cards
-function displayCards(cards) {
-  cardsList.innerHTML = '';
   
-  if (cards.length === 0) {
-    cardsList.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 20px;">No cards yet. Add your first card!</p>';
-    return;
-  }
-
-  cards.reverse().forEach(card => {
-    const cardItem = document.createElement('div');
-    cardItem.className = 'card-item';
-    cardItem.innerHTML = `
-      <div class="card-item-header">
-        <span class="card-item-deck">📚 ${card.deck}</span>
-        <button class="card-item-delete" data-id="${card.id}">🗑️</button>
-      </div>
-      <div class="card-item-content">
-        <div class="card-item-front">${card.front}</div>
-        <div class="card-item-back">${card.back}</div>
-      </div>
-    `;
-    
-    cardsList.appendChild(cardItem);
+  // Settings button
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#settings') });
+    window.close();
   });
-
-  // Add delete listeners
-  document.querySelectorAll('.card-item-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const cardId = parseInt(e.target.getAttribute('data-id'));
-      deleteCard(cardId);
-    });
+  
+  // Help button
+  document.getElementById('help-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#help') });
+    window.close();
+  });
+  
+  // Notion link
+  document.getElementById('notion-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#notion') });
+    window.close();
   });
 }
 
-// Delete card
-function deleteCard(cardId) {
-  chrome.storage.local.get(['cards'], (result) => {
-    const cards = result.cards || [];
-    const updatedCards = cards.filter(card => card.id !== cardId);
-    chrome.storage.local.set({ cards: updatedCards }, () => {
-      loadCards();
-      showNotification('Card deleted');
-    });
+// Update UI based on state
+function updateUI() {
+  // Add animations or state updates here
+  const buttons = document.querySelectorAll('.action-btn');
+  buttons.forEach((btn, index) => {
+    btn.style.animationDelay = `${index * 0.05}s`;
+    btn.classList.add('fade-in');
   });
 }
-
-// Clear all cards
-clearBtn.addEventListener('click', () => {
-  if (confirm('Are you sure you want to delete all cards?')) {
-    chrome.storage.local.set({ cards: [] }, () => {
-      loadCards();
-      showNotification('All cards deleted');
-    });
-  }
-});
 
 // Show notification
-function showNotification(message, type = 'success') {
+function showNotification(message, type = 'info') {
   const notification = document.createElement('div');
   notification.className = `notification ${type}`;
   notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 20px;
+    border-radius: 6px;
+    background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+    color: white;
+    font-size: 13px;
+    z-index: 10000;
+    animation: slideDown 0.3s ease-out;
+  `;
+  
   document.body.appendChild(notification);
-
+  
   setTimeout(() => {
-    notification.remove();
-  }, 3000);
+    notification.style.animation = 'slideUp 0.3s ease-out';
+    setTimeout(() => notification.remove(), 300);
+  }, 2000);
 }
+
+// Add CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from {
+      transform: translateX(-50%) translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(-50%) translateY(-50px);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+`;
+document.head.appendChild(style);

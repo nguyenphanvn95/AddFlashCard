@@ -1,228 +1,324 @@
-// Tạo context menu khi extension được cài đặt
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('[AddFlashcard] Extension installed/updated');
+// Background Service Worker - Enhanced with PDF Viewer support
+
+// Context menu items
+const MENU_ITEMS = {
+  SEND_TO_FRONT: {
+    id: 'sendToFront',
+    title: 'Add to Front (AddFlashcard)',
+    contexts: ['selection']
+  },
+  SEND_TO_BACK: {
+    id: 'sendToBack',
+    title: 'Add to Back (AddFlashcard)',
+    contexts: ['selection']
+  },
+  OPEN_PDF_VIEWER: {
+    id: 'openPDFViewer',
+    title: 'Open in AddFlashcard PDF Viewer',
+    contexts: ['page', 'link'],
+    documentUrlPatterns: ['*://*/*.pdf', 'file:///*.pdf']
+  }
+};
+
+// Initialize extension
+chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log('AddFlashcard: Extension installed/updated', details.reason);
   
-  // Check chrome.storage availability
-  chrome.storage.local.get(null, (result) => {
-    console.log('[AddFlashcard] Storage initialized. Keys:', Object.keys(result));
-  });
+  // Create context menus
+  createContextMenus();
   
-  // Menu chính
-  chrome.contextMenus.create({
-    id: "addflashcard",
-    title: "AddFlashcard",
-    contexts: ["selection", "image", "link", "video"]
-  });
-
-  // Sub-menu: Send to Front
-  chrome.contextMenus.create({
-    id: "sendToFront",
-    parentId: "addflashcard",
-    title: "Send to Front",
-    contexts: ["selection", "image", "link", "video"]
-  });
-
-  // Sub-menu: Send to Back
-  chrome.contextMenus.create({
-    id: "sendToBack",
-    parentId: "addflashcard",
-    title: "Send to Back",
-    contexts: ["selection", "image", "link", "video"]
-  });
-});
-
-// Log storage changes in the background context so we can see writes from any page
-if (chrome && chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local') return;
-    try {
-      console.log('[AddFlashcard][background storage.onChanged] keys:', Object.keys(changes));
-      for (const k in changes) {
-        console.log('[AddFlashcard][background storage.onChanged]', k, '=>', changes[k]);
-      }
-    } catch (err) {
-      console.error('[AddFlashcard][background storage.onChanged] error:', err);
-    }
-  });
-}
-
-/**
- * Get rich selection HTML from the page to preserve formatting (bold/italic/links/lists, etc.).
- * Also normalizes relative URLs to absolute.
- */
-async function getRichSelectionFromTab(tabId) {
-  const [res] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: () => {
-      try {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) {
-          return { html: '', text: '', pageUrl: location.href, pageTitle: document.title };
-        }
-
-        const range = sel.getRangeAt(0);
-        const container = document.createElement('div');
-        container.appendChild(range.cloneContents());
-
-        // Normalize relative URLs (a/img/video/source/iframe)
-        const makeAbs = (url) => {
-          try { return new URL(url, location.href).href; } catch { return url; }
-        };
-        container.querySelectorAll('a[href]').forEach(a => a.setAttribute('href', makeAbs(a.getAttribute('href'))));
-        container.querySelectorAll('img[src]').forEach(img => img.setAttribute('src', makeAbs(img.getAttribute('src'))));
-        container.querySelectorAll('video[src]').forEach(v => v.setAttribute('src', makeAbs(v.getAttribute('src'))));
-        container.querySelectorAll('source[src]').forEach(s => s.setAttribute('src', makeAbs(s.getAttribute('src'))));
-        container.querySelectorAll('iframe[src]').forEach(f => f.setAttribute('src', makeAbs(f.getAttribute('src'))));
-
-        return {
-          html: container.innerHTML,
-          text: sel.toString(),
-          pageUrl: location.href,
-          pageTitle: document.title
-        };
-      } catch (e) {
-        return { html: '', text: '', pageUrl: location.href, pageTitle: document.title, error: String(e) };
-      }
-    }
-  });
-
-  return res && res.result ? res.result : { html: '', text: '', pageUrl: '', pageTitle: '' };
-}
-
-// Minimal escaping helpers for HTML templates
-function escapeHtml(str) {
-  return String(str || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function escapeHtmlAttr(str) {
-  // For URLs used in HTML attributes
-  return escapeHtml(str).replaceAll('`', '&#96;').replaceAll('\n', ' ');
-}
-
-// Xử lý khi click vào context menu
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "sendToFront" || info.menuItemId === "sendToBack") {
-    // Build rich payload (keep formatting, support link/image/video)
-    const buildAndSend = async () => {
-      /** @type {{type:string, dataText?:string, dataHtml?:string, mediaType?:string, srcUrl?:string, pageUrl?:string, pageTitle?:string}} */
-      const content = { type: info.menuItemId };
-
-      content.pageUrl = tab?.url || '';
-      content.pageTitle = tab?.title || '';
-
-      // 1) If user right-clicked an image/video/link, prefer direct URL from context menu
-      if (info.linkUrl) {
-        content.mediaType = 'link';
-        content.dataHtml = `<a href="${escapeHtmlAttr(info.linkUrl)}" target="_blank" rel="noopener">${escapeHtml(info.selectionText || info.linkUrl)}</a>`;
-        content.dataText = info.selectionText || info.linkUrl;
-      } else if (info.mediaType === 'video' && info.srcUrl) {
-        content.mediaType = 'video';
-        content.srcUrl = info.srcUrl;
-        content.dataHtml = `<video controls src="${escapeHtmlAttr(info.srcUrl)}" style="max-width:100%;"></video>`;
-      } else if (info.srcUrl) {
-        // image (or other media)
-        content.mediaType = info.mediaType || 'image';
-        content.srcUrl = info.srcUrl;
-        content.dataHtml = `<img src="${escapeHtmlAttr(info.srcUrl)}" style="max-width:100%;" />`;
-      }
-
-      // 2) If there is a selection, get HTML to preserve formatting (bold/links/lists, etc.)
-      if (!content.dataHtml && tab && tab.id) {
-        const rich = await getRichSelectionFromTab(tab.id);
-        if (rich && (rich.html || rich.text)) {
-          content.dataHtml = rich.html || '';
-          content.dataText = rich.text || '';
-          content.pageUrl = rich.pageUrl || content.pageUrl;
-          content.pageTitle = rich.pageTitle || content.pageTitle;
-        }
-      }
-
-      // 3) Final fallback: plain selectionText
-      if (!content.dataHtml && info.selectionText) {
-        content.dataText = info.selectionText;
-        content.dataHtml = `<p>${escapeHtml(info.selectionText)}</p>`;
-      }
-
-      // If still nothing, don't send
-      if (!content.dataHtml && !content.dataText) return;
-
-      chrome.tabs.sendMessage(tab.id, {
-        action: "openSidebarWithContent",
-        content
-      });
-    };
-
-    buildAndSend();
+  // Initialize storage
+  await initializeStorage();
+  
+  if (details.reason === 'install') {
+    // Open welcome page on first install
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html') });
   }
 });
 
-// Xử lý khi click vào icon extension
-chrome.action.onClicked.addListener((tab) => {
-  // Mở trang quản lý
-  chrome.tabs.create({
-    url: chrome.runtime.getURL('manage.html')
+// Create context menus
+function createContextMenus() {
+  // Remove existing menus first
+  chrome.contextMenus.removeAll(() => {
+    // Create selection menus
+    chrome.contextMenus.create(MENU_ITEMS.SEND_TO_FRONT);
+    chrome.contextMenus.create(MENU_ITEMS.SEND_TO_BACK);
+    
+    // Create PDF menu
+    chrome.contextMenus.create(MENU_ITEMS.OPEN_PDF_VIEWER);
+    
+    console.log('AddFlashcard: Context menus created');
   });
+}
+
+// Initialize storage with default values
+async function initializeStorage() {
+  const defaults = {
+    flashcards: [],
+    settings: {
+      theme: 'light',
+      autoSync: false,
+      ankiConnectUrl: 'http://127.0.0.1:8765',
+      defaultDeck: 'Default'
+    },
+    stats: {
+      totalCards: 0,
+      studiedToday: 0,
+      lastStudyDate: null
+    }
+  };
+  
+  const existing = await chrome.storage.local.get(Object.keys(defaults));
+  
+  for (const [key, value] of Object.entries(defaults)) {
+    if (!existing[key]) {
+      await chrome.storage.local.set({ [key]: value });
+    }
+  }
+  
+  console.log('AddFlashcard: Storage initialized');
+}
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  console.log('AddFlashcard: Context menu clicked', info.menuItemId);
+  
+  switch (info.menuItemId) {
+    case 'sendToFront':
+    case 'sendToBack':
+      await handleTextSelection(info, tab);
+      break;
+      
+    case 'openPDFViewer':
+      await handleOpenPDFViewer(info, tab);
+      break;
+  }
 });
 
-// Lắng nghe message từ content script hoặc sidebar
+// Handle text selection
+async function handleTextSelection(info, tab) {
+  if (!info.selectionText) {
+    console.log('AddFlashcard: No text selected');
+    return;
+  }
+  
+  const content = {
+    type: info.menuItemId,
+    dataText: info.selectionText,
+    dataHtml: `<p>${escapeHtml(info.selectionText)}</p>`,
+    pageUrl: info.pageUrl || tab.url,
+    pageTitle: tab.title,
+    sourceType: 'context-menu',
+    timestamp: new Date().toISOString()
+  };
+  
+  // Inject content script if needed
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+  } catch (e) {
+    console.log('AddFlashcard: Content script already injected or cannot inject');
+  }
+  
+  // Send message to open sidebar
+  try {
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'openSidebarWithContent',
+      content: content
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error sending message:', error);
+  }
+}
+
+// Handle opening PDF in viewer
+async function handleOpenPDFViewer(info, tab) {
+  let pdfUrl = info.pageUrl || tab.url;
+  
+  // If clicked on a link, use the link URL
+  if (info.linkUrl && info.linkUrl.toLowerCase().endsWith('.pdf')) {
+    pdfUrl = info.linkUrl;
+  }
+  
+  if (!pdfUrl || !pdfUrl.toLowerCase().includes('.pdf')) {
+    console.log('AddFlashcard: Not a PDF URL');
+    return;
+  }
+  
+  // Open PDF viewer in new tab
+  const viewerUrl = chrome.runtime.getURL('pdf-viewer.html') + '?file=' + encodeURIComponent(pdfUrl);
+  await chrome.tabs.create({ url: viewerUrl });
+}
+
+// Handle messages from content scripts and popups
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "openManagePage") {
-    let url = chrome.runtime.getURL('manage.html');
-    if (message.mode === 'createDeck') {
-      url += '?mode=createDeck';
-    }
-    chrome.tabs.create({
-      url: url
-    });
-  }
-
-  // Open a dedicated sidebar window to edit an existing card.
-  // The card payload is provided by manage.js.
-  if (message.action === "openEditCard") {
-    const card = message.card;
-    if (!card || typeof card.id !== 'number') {
+  console.log('AddFlashcard: Message received', message.action);
+  
+  switch (message.action) {
+    case 'openSidebarWithContent':
+      handleOpenSidebarMessage(message, sender);
+      sendResponse({ success: true });
+      break;
+      
+    case 'openPDFViewer':
+      chrome.tabs.create({ url: message.url });
+      sendResponse({ success: true });
+      break;
+      
+    case 'exportAPKG':
+      handleExportAPKG(message.flashcards);
+      sendResponse({ success: true });
+      break;
+      
+    case 'saveFlashcard':
+      handleSaveFlashcard(message.flashcard)
+        .then(() => sendResponse({ success: true }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true; // Keep channel open for async response
+      
+    case 'getFlashcards':
+      handleGetFlashcards()
+        .then(flashcards => sendResponse({ success: true, flashcards }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
-    }
-
-    // Prefer opening the in-page sidebar (same as Send to Front/Back) in the
-    // most recently used normal tab (http/https/file). This matches the user's
-    // expectation of seeing the injected sidebar UI, not a separate popup.
-    chrome.tabs.query({ lastFocusedWindow: true }, (tabs) => {
-      const candidates = (tabs || [])
-        .filter(t => t && typeof t.id === 'number')
-        .filter(t => {
-          const url = (t.url || '').toLowerCase();
-          // Exclude internal/extension pages
-          if (!url) return false;
-          if (url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('chrome://')) return false;
-          return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://');
-        })
-        .sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
-
-      const targetTab = candidates[0];
-      if (targetTab && targetTab.id) {
-        chrome.tabs.sendMessage(targetTab.id, {
-          action: 'openSidebarForEdit',
-          card
-        });
-      } else {
-        // Fallback: if no suitable tab is found, open a dedicated popup so the edit
-        // action still works.
-        chrome.storage.local.set({ editCardContext: card }, () => {
-          chrome.windows.create({
-            url: chrome.runtime.getURL('sidebar.html?mode=edit'),
-            type: 'popup',
-            width: 460,
-            height: 780
-          });
-        });
-      }
-    });
+      
+    default:
+      sendResponse({ success: false, error: 'Unknown action' });
   }
-  return true;
+  
+  return true; // Keep message channel open
 });
+
+// Handle opening sidebar from PDF
+async function handleOpenSidebarMessage(message, sender) {
+  if (!sender.tab) {
+    console.log('AddFlashcard: No sender tab');
+    return;
+  }
+  
+  try {
+    // Inject sidebar if not already present
+    await chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      files: ['content.js']
+    });
+    
+    // Send content to sidebar
+    await chrome.tabs.sendMessage(sender.tab.id, {
+      action: 'openSidebarWithContent',
+      content: message.content
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error opening sidebar:', error);
+  }
+}
+
+// Handle export APKG
+function handleExportAPKG(flashcards) {
+  // This will be handled by the manage page
+  chrome.tabs.create({ 
+    url: chrome.runtime.getURL('manage.html#export'),
+    active: true
+  });
+}
+
+// Save flashcard
+async function handleSaveFlashcard(flashcard) {
+  const result = await chrome.storage.local.get(['flashcards']);
+  const flashcards = result.flashcards || [];
+  
+  // Add timestamp if not present
+  if (!flashcard.created) {
+    flashcard.created = Date.now();
+  }
+  
+  // Add or update flashcard
+  const existingIndex = flashcards.findIndex(c => c.id === flashcard.id);
+  if (existingIndex >= 0) {
+    flashcards[existingIndex] = flashcard;
+  } else {
+    flashcard.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    flashcards.push(flashcard);
+  }
+  
+  await chrome.storage.local.set({ flashcards });
+  
+  console.log('AddFlashcard: Flashcard saved', flashcard.id);
+}
+
+// Get all flashcards
+async function handleGetFlashcards() {
+  const result = await chrome.storage.local.get(['flashcards']);
+  return result.flashcards || [];
+}
+
+// Helper: Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Keyboard shortcuts
+chrome.commands.onCommand.addListener(async (command) => {
+  console.log('AddFlashcard: Command received', command);
+  
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
+  if (!tab) return;
+  
+  switch (command) {
+    case 'send-to-front':
+    case 'send-to-back':
+      // Get selected text and create flashcard
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: (action) => {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText) {
+              chrome.runtime.sendMessage({
+                action: 'openSidebarWithContent',
+                content: {
+                  type: action,
+                  dataText: selectedText,
+                  dataHtml: `<p>${selectedText}</p>`,
+                  pageUrl: window.location.href,
+                  pageTitle: document.title,
+                  sourceType: 'keyboard-shortcut'
+                }
+              });
+            }
+          },
+          args: [command === 'send-to-front' ? 'sendToFront' : 'sendToBack']
+        });
+      } catch (error) {
+        console.error('AddFlashcard: Error executing keyboard command:', error);
+      }
+      break;
+  }
+});
+
+// Listen for tab updates to inject PDF support
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    // Check if it's a PDF
+    if (tab.url.toLowerCase().includes('.pdf')) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ['pdf-support.js']
+        });
+        console.log('AddFlashcard: PDF support injected into tab', tabId);
+      } catch (error) {
+        console.log('AddFlashcard: Could not inject PDF support:', error.message);
+      }
+    }
+  }
+});
+
+console.log('AddFlashcard: Background service worker loaded');
