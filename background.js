@@ -172,8 +172,12 @@ chrome.action.onClicked.addListener((tab) => {
 // Lắng nghe message từ content script hoặc sidebar
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "openManagePage") {
+    let url = chrome.runtime.getURL('manage.html');
+    if (message.mode === 'createDeck') {
+      url += '?mode=createDeck';
+    }
     chrome.tabs.create({
-      url: chrome.runtime.getURL('manage.html')
+      url: url
     });
   }
 

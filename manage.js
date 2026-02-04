@@ -41,6 +41,32 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   setupRichTextShortcuts();
 
+  // Check if we should open deck creation modal
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('mode') === 'createDeck') {
+    // Switch to home view and open deck modal
+    const homeTab = document.querySelector('[data-tab="home"]');
+    if (homeTab) {
+      homeTab.click(); // Switch to home view
+      
+      // Wait for integratedManager to be ready, then open modal
+      const checkAndOpen = () => {
+        if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+          console.log('Opening deck creation modal...');
+          window.integratedManager.showDeckModal();
+          // Clean up URL after opening
+          window.history.replaceState({}, document.title, chrome.runtime.getURL('manage.html'));
+        } else {
+          // Retry after a bit
+          setTimeout(checkAndOpen, 100);
+        }
+      };
+      
+      // Start checking with initial delay
+      setTimeout(checkAndOpen, 200);
+    }
+  }
+
   // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
   // so the manager reflects changes immediately without manual reload.
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -61,6 +87,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (needsRender) {
       renderDecks();
       renderCards();
+    }
+  });
+
+  // Handle messages from sidebar to open manager in create deck mode
+  window.addEventListener('message', (event) => {
+    if (event.data.action === 'openManagePage' && event.data.mode === 'createDeck') {
+      // Switch to home view and open deck modal
+      const homeTab = document.querySelector('[data-tab="home"]');
+      const cardsTab = document.querySelector('[data-tab="cards"]');
+      
+      if (homeTab && cardsTab) {
+        homeTab.click(); // Switch to home view
+        
+        // Wait a moment for view to switch, then open modal
+        setTimeout(() => {
+          if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+            window.integratedManager.showDeckModal();
+          }
+        }, 100);
+      }
     }
   });
 });
@@ -1583,5 +1629,22 @@ window.manageApp = {
   selectDeck,
   loadData,
   allCards: () => allCards,
-  allDecks: () => allDecks
+  allDecks: () => allDecks,
+  checkAndOpenDeckModal: () => {
+    // Called by integrated-manager after initialization
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'createDeck') {
+      const homeTab = document.querySelector('[data-tab="home"]');
+      if (homeTab) {
+        homeTab.click();
+        setTimeout(() => {
+          if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+            console.log('Opening deck modal from integratedManager');
+            window.integratedManager.showDeckModal();
+            window.history.replaceState({}, document.title, chrome.runtime.getURL('manage.html'));
+          }
+        }, 50);
+      }
+    }
+  }
 };

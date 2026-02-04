@@ -323,23 +323,19 @@ function loadDecks() {
 
 // Create new deck
 newDeckBtn.addEventListener('click', () => {
-  const deckName = prompt('Enter deck name:');
-  if (deckName && deckName.trim()) {
-    chrome.storage.local.get(['decks'], (result) => {
-      const decks = result.decks || ['Default'];
-      
-      if (decks.includes(deckName.trim())) {
-        showNotification('Deck already exists!', 'error');
-        return;
-      }
-      
-      decks.push(deckName.trim());
-      chrome.storage.local.set({ decks: decks }, () => {
-        loadDecks();
-        deckSelect.value = deckName.trim();
-        showNotification('Deck created!', 'success');
-      });
+  // Open manage page in create deck mode
+  if (window.top === window.self) {
+    // Running standalone - send message to background
+    chrome.runtime.sendMessage({ 
+      action: 'openManagePage',
+      mode: 'createDeck'
     });
+  } else {
+    // Running in iframe - post message to parent
+    window.parent.postMessage({ 
+      action: 'openManagePage',
+      mode: 'createDeck'
+    }, '*');
   }
 });
 

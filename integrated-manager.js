@@ -26,6 +26,12 @@ class IntegratedManager {
     this.bindEvents();
     console.log('About to load decks, currentView:', this.currentView);
     this.loadDecks();
+    
+    // Call manage.js callback if it exists (for openManagePage mode=createDeck)
+    if (window.manageApp && typeof window.manageApp.checkAndOpenDeckModal === 'function') {
+      console.log('Calling checkAndOpenDeckModal from manageApp');
+      window.manageApp.checkAndOpenDeckModal();
+    }
   }
 
   bindEvents() {
