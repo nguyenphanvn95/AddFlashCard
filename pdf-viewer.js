@@ -80,10 +80,11 @@ function initializePDFViewer() {
 
   // Keyboard Shortcuts
   document.addEventListener('keydown', (e) => {
-    if (e.altKey && e.key === 'a') {
+    const key = (e.key || '').toLowerCase();
+    if (e.altKey && key === 'a') {
       e.preventDefault();
       handleSelection('front');
-    } else if (e.altKey && e.key === 's') {
+    } else if (e.altKey && key === 'b') {
       e.preventDefault();
       handleSelection('back');
     } else if (e.key === 'ArrowLeft' && pdfDoc) {

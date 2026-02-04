@@ -4,12 +4,12 @@
 const MENU_ITEMS = {
   SEND_TO_FRONT: {
     id: 'sendToFront',
-    title: 'Add to Front (AddFlashcard)',
+    title: 'Send to Front',
     contexts: ['selection']
   },
   SEND_TO_BACK: {
     id: 'sendToBack',
-    title: 'Add to Back (AddFlashcard)',
+    title: 'Send to Back',
     contexts: ['selection']
   },
   OPEN_PDF_VIEWER: {
@@ -102,10 +102,40 @@ async function handleTextSelection(info, tab) {
     return;
   }
   
+  // Try to extract the selected HTML from the page (so formatting/media is preserved)
+  let selectionResult = null;
+  try {
+    const extracted = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        try {
+          const selection = window.getSelection();
+          if (!selection || selection.rangeCount === 0) return { html: '', text: '' };
+          const range = selection.getRangeAt(0);
+          const container = document.createElement('div');
+          container.appendChild(range.cloneContents());
+          return { html: container.innerHTML || '', text: selection.toString() };
+        } catch (err) {
+          return { html: '', text: '' };
+        }
+      }
+    });
+
+    if (extracted && extracted[0] && extracted[0].result) {
+      selectionResult = extracted[0].result;
+    }
+  } catch (err) {
+    console.warn('AddFlashcard: Could not extract selection HTML:', err);
+  }
+
+  const selectedHtml = (selectionResult && selectionResult.html) ? selectionResult.html : `<p>${info.selectionText}</p>`;
+  const selectedText = (selectionResult && selectionResult.text) ? selectionResult.text : info.selectionText;
+
   const content = {
     type: info.menuItemId,
-    dataText: info.selectionText,
-    dataHtml: `<p>${escapeHtml(info.selectionText)}</p>`,
+    dataText: selectedText,
+    // Use the extracted HTML when available so sidebar can preserve formatting/media
+    dataHtml: selectedHtml,
     pageUrl: info.pageUrl || tab.url,
     pageTitle: tab.title,
     sourceType: 'context-menu',
@@ -272,11 +302,15 @@ async function handleGetFlashcards() {
   return result.flashcards || [];
 }
 
-// Helper: Escape HTML
+// Helper: Escape HTML (string-only, safe for service worker context)
 function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  if (text === undefined || text === null) return '';
+  const s = String(text);
+  return s.replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#39;');
 }
 
 // Keyboard shortcuts

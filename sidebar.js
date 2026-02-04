@@ -32,6 +32,33 @@ let editingCardId = null;
 let editingCreatedAt = null;
 let currentTags = [];
 
+// Open occlusion editor with context extracted from the sidebar
+function openOcclusionEditorFromImg(imgEl) {
+  if (!imgEl) return;
+  const imgSrc = imgEl.getAttribute('src') || imgEl.src || '';
+  const deck = (deckSelect && deckSelect.value) ? deckSelect.value : '';
+  // collect tags from tagsDisplay / tagsInput if available
+  let tags = [];
+  try {
+    if (currentTags && currentTags.length) tags = currentTags.slice();
+    else if (tagsDisplay && tagsDisplay.textContent) tags = tagsDisplay.textContent.split(',').map(s => s.trim()).filter(Boolean);
+  } catch (e) { tags = []; }
+
+  // base back HTML (existing back editor content)
+  const baseBackHtml = backEditor ? backEditor.innerHTML : '';
+
+  // persist context for the occlusion editor page to read
+  chrome.storage.local.set({ afc_occlusion_context: { imgSrc, deck, tags, baseBackHtml } }, () => {
+    // open the occlusion editor in a new tab
+    try {
+      chrome.tabs.create({ url: chrome.runtime.getURL('occlusion-editor.html') });
+    } catch (err) {
+      // fallback to window.open if chrome.tabs is not available
+      window.open(chrome.runtime.getURL('occlusion-editor.html'));
+    }
+  });
+}
+
 function setPinUI(pinned){
   isPinned = !!pinned;
   if (!pinBtn) return;
@@ -416,6 +443,24 @@ function setupEditors() {
       });
     } catch (e) {}
   });
+
+  // VIP++: click an image in FRONT to open Image Occlusion editor
+  if (frontEditor) {
+    frontEditor.addEventListener('click', (ev) => {
+      try {
+        const node = ev.target;
+        if (node && node.tagName === 'IMG') {
+          openOcclusionEditorFromImg(node);
+        } else {
+          // if clicked on nested element, look for ancestor IMG
+          const img = node.closest && node.closest('img');
+          if (img) openOcclusionEditorFromImg(img);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, true);
+  }
 }
 
 // Lắng nghe message từ parent window (content script)
