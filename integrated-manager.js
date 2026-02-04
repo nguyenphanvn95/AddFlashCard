@@ -310,6 +310,10 @@ class IntegratedManager {
           <h3 class="deck-name">${this.escapeHtml(deck.name)}</h3>
           ${deck.description ? `<p class="deck-description">${this.escapeHtml(deck.description)}</p>` : ''}
         </div>
+        <div class="deck-actions">
+          <button class="deck-action-btn edit" data-deck-id="${deck.id}" title="Edit deck">✏️</button>
+          <button class="deck-action-btn delete" data-deck-id="${deck.id}" title="Delete deck">🗑️</button>
+        </div>
       </div>
       <div class="deck-footer">
         <div class="deck-stats">
@@ -323,12 +327,57 @@ class IntegratedManager {
       </div>
     `;
 
-    card.addEventListener('click', () => {
+    // Click to view cards in deck
+    card.addEventListener('click', (e) => {
+      // Don't navigate if clicking action buttons
+      if (e.target.closest('.deck-actions')) {
+        e.stopPropagation();
+        return;
+      }
       this.currentDeckId = deck.id;
       this.switchToCardsView(deck.id);
     });
 
+    // Edit deck button
+    const editBtn = card.querySelector('.deck-action-btn.edit');
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showDeckModal(deck.id);
+      });
+    }
+
+    // Delete deck button
+    const deleteBtn = card.querySelector('.deck-action-btn.delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete deck "${deck.name}"? This will not delete the cards.`)) {
+          this.deleteDeck(deck.id);
+        }
+      });
+    }
+
     return card;
+  }
+
+  async deleteDeck(deckId) {
+    try {
+      const result = await chrome.storage.local.get(['decks']);
+      const decks = result.decks || {};
+      
+      delete decks[deckId];
+      
+      await chrome.storage.local.set({ decks });
+      
+      // Reload decks to refresh UI
+      this.loadDecks();
+      
+      console.log('Deck deleted:', deckId);
+    } catch (error) {
+      console.error('Error deleting deck:', error);
+      alert('Failed to delete deck');
+    }
   }
 
   showDeckModal(deckId = null) {
