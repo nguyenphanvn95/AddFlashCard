@@ -145,7 +145,11 @@
       user-select: text;
     }
 
-    .pdf-text-layer > div {
+    /* PDF.js text layer usually renders <span> nodes (not <div>). */
+    .pdf-text-layer > span,
+    .pdf-text-layer span,
+    .pdf-text-layer > div,
+    .pdf-text-layer div {
       color: transparent;
       position: absolute;
       white-space: pre;

@@ -1,6 +1,10 @@
 // PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('vendor/pdfjs/pdf.worker.min.js');
 
+// Debug marker so you can verify the patched viewer is actually loaded.
+// Open DevTools Console on pdf-viewer.html and you should see this log.
+console.log('[AddFlashcard] pdf-viewer patch v3 loaded');
+
 // State
 let pdfDoc = null;
 let currentPage = 1;
@@ -33,6 +37,12 @@ function initializePDFViewer() {
   const addToFrontBtn = document.getElementById('add-to-front-btn');
   const addToBackBtn = document.getElementById('add-to-back-btn');
   const fileUploadBtn = document.getElementById('file-upload-btn');
+
+  // Visual marker to confirm this patched version is running
+  if (pdfTitle && !pdfTitle.dataset.patched) {
+    pdfTitle.dataset.patched = 'v3';
+    pdfTitle.textContent = (pdfTitle.textContent || 'PDF Viewer') + ' (patch v3)';
+  }
 
   // Event Listeners
   fileInput.addEventListener('change', handleFileSelect);
@@ -227,12 +237,13 @@ async function renderPage(pageNum) {
     };
     await page.render(renderContext).promise;
     
-    // Create text layer
+    // Create text layer (must share the same coordinate space as the canvas)
     const textLayerDiv = document.createElement('div');
-    textLayerDiv.className = 'pdf-text-layer';
+    // Add both custom class and pdf.js default class for better compatibility
+    textLayerDiv.className = 'pdf-text-layer textLayer';
 
-    // Use pdf.js helper to set dimensions and scale factor so text divs
-    // are positioned correctly relative to the canvas.
+    // Use pdf.js helper to set dimensions. Also set --scale-factor because
+    // PDF.js uses it to correctly position text spans (esp. when zoom changes).
     try {
       pdfjsLib.setLayerDimensions(textLayerDiv, viewport);
     } catch (err) {
@@ -241,15 +252,19 @@ async function renderPage(pageNum) {
       textLayerDiv.style.height = viewport.height + 'px';
     }
 
+    // Critical: keep CSS scale factor in sync with viewport.scale
+    textLayerDiv.style.setProperty('--scale-factor', String(viewport.scale || scale || 1));
+
     // Render text layer
     const textContent = await page.getTextContent();
-    pdfjsLib.renderTextLayer({
+    // Await so the DOM is fully ready before user interacts (selection, etc.)
+    await pdfjsLib.renderTextLayer({
       textContentSource: textContent,
       container: textLayerDiv,
       viewport: viewport,
       textDivs: [],
       enhanceTextSelection: true
-    });
+    }).promise;
     
     wrapper.appendChild(canvas);
     wrapper.appendChild(textLayerDiv);
