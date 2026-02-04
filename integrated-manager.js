@@ -197,12 +197,16 @@ class IntegratedManager {
       const deckArray = Object.entries(decks).map(([id, deck]) => {
         // Count cards by deckId field, falling back to deck name
         const deckCards = cards.filter(c => c.deckId === id || c.deck === deck.name);
+        
+        // Count new cards - cards without lastReviewed or with no study history
+        const newCards = deckCards.filter(c => !c.lastReviewed && !c.lastReview).length;
+        
         return {
           id,
           ...deck,
           deckCards, // Pass the actual cards array
           cardCount: deckCards.length,
-          newCards: deckCards.filter(c => !c.lastReviewed).length,
+          newCards: newCards,
           dueCards: this.getDueCards(deckCards)
         };
       });
