@@ -67,22 +67,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load all data
 function loadData() {
-  chrome.storage.local.get(['cards', 'decks'], (result) => {
-    allCards = result.cards || [];
-    let decks = result.decks;
-    
-    // Handle both array (legacy) and object (new) formats
-    if (Array.isArray(decks)) {
-      allDecks = decks;
-    } else if (decks && typeof decks === 'object') {
-      // Convert object format to array format for manage.js compatibility
-      allDecks = Object.values(decks).map(d => d.name || d);
-    } else {
-      allDecks = ['Default'];
-    }
-    
-    renderDecks();
-    renderCards();
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['cards', 'decks'], (result) => {
+      allCards = result.cards || [];
+      let decks = result.decks;
+      
+      // Handle both array (legacy) and object (new) formats
+      if (Array.isArray(decks)) {
+        allDecks = decks;
+      } else if (decks && typeof decks === 'object') {
+        // Convert object format to array format for manage.js compatibility
+        allDecks = Object.values(decks).map(d => d.name || d);
+      } else {
+        allDecks = ['Default'];
+      }
+      
+      console.log('loadData: allDecks after update =', allDecks);
+      console.log('loadData: allCards after update =', allCards);
+      
+      renderDecks();
+      renderCards();
+      resolve();
+    });
   });
 }
 
@@ -201,7 +207,15 @@ function insertImage(editor) {
 
 // Render decks
 function renderDecks() {
-  if (allDecks.length === 0) {
+  // Handle both array (legacy) and object (new) formats
+  let decksList = [];
+  if (Array.isArray(allDecks)) {
+    decksList = allDecks;
+  } else if (typeof allDecks === 'object') {
+    decksList = Object.values(allDecks).map(d => d.name || d);
+  }
+  
+  if (decksList.length === 0) {
     deckList.innerHTML = '<div class="deck-loading">No decks yet</div>';
     return;
   }
@@ -220,7 +234,7 @@ function renderDecks() {
   `;
   
   // Individual decks
-  allDecks.forEach(deck => {
+  decksList.forEach(deck => {
     const count = allCards.filter(c => c.deck === deck).length;
     html += `
       <div class="deck-item ${currentDeck === deck ? 'active' : ''}" data-deck="${deck}">
@@ -1555,6 +1569,7 @@ window.manageApp = {
   renderCards,
   renderDecks,
   selectDeck,
+  loadData,
   allCards: () => allCards,
   allDecks: () => allDecks
 };

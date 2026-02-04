@@ -373,6 +373,11 @@ class IntegratedManager {
       // Reload decks to refresh UI
       this.loadDecks();
       
+      // Reload manage.js data too - wait for it to complete
+      if (window.manageApp?.loadData) {
+        await window.manageApp.loadData();
+      }
+      
       console.log('Deck deleted:', deckId);
     } catch (error) {
       console.error('Error deleting deck:', error);
@@ -481,9 +486,10 @@ class IntegratedManager {
       this.hideDeckModal();
       this.loadDecks();
 
-      // Reload sidebar in cards view
-      if (window.manageApp) {
-        window.manageApp.loadDecks();
+      // Reload sidebar in cards view - reload manage.js data and wait for it
+      if (window.manageApp?.loadData) {
+        console.log('Reloading manage.js data after deck save');
+        await window.manageApp.loadData();
       }
 
     } catch (error) {

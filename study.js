@@ -216,27 +216,35 @@ class StudySession {
 
   // Organize cards into queues
   organizeQueues() {
-    this.newQueue = [];
-    this.learningQueue = [];
-    this.reviewQueue = [];
+    let newCards = [];
+    let learningCards = [];
+    let reviewCards = [];
     
     const now = Date.now();
     
     this.cards.forEach(card => {
       if (card.status === 'new') {
-        this.newQueue.push(card);
+        newCards.push(card);
       } else if (card.isDue()) {
         if (card.status === 'learning' || card.status === 'relearning') {
-          this.learningQueue.push(card);
+          learningCards.push(card);
         } else {
-          this.reviewQueue.push(card);
+          reviewCards.push(card);
         }
       }
     });
     
-    // Apply limits
-    this.newQueue = this.newQueue.slice(0, this.settings.newCardsLimit);
-    this.reviewQueue = this.reviewQueue.slice(0, this.settings.reviewCardsLimit);
+    // Store total counts (before applying limits)
+    this.totalCounts = {
+      new: newCards.length,
+      learning: learningCards.length,
+      review: reviewCards.length
+    };
+    
+    // Apply limits for session
+    this.newQueue = newCards.slice(0, this.settings.newCardsLimit);
+    this.learningQueue = learningCards;
+    this.reviewQueue = reviewCards.slice(0, this.settings.reviewCardsLimit);
     
     // Randomize if enabled
     if (this.settings.randomize) {
@@ -303,11 +311,12 @@ class StudySession {
 
   // Get queue counts
   getQueueCounts() {
+    // Return total available counts, not just loaded in session
     return {
-      new: this.newQueue.length,
-      learning: this.learningQueue.length,
-      review: this.reviewQueue.length,
-      total: this.newQueue.length + this.learningQueue.length + this.reviewQueue.length
+      new: this.totalCounts?.new || this.newQueue.length,
+      learning: this.totalCounts?.learning || this.learningQueue.length,
+      review: this.totalCounts?.review || this.reviewQueue.length,
+      total: (this.totalCounts?.new || 0) + (this.totalCounts?.learning || 0) + (this.totalCounts?.review || 0)
     };
   }
 

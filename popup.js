@@ -1,6 +1,7 @@
 // DOM Elements
 const frontEditor = document.getElementById('frontEditor');
 const backEditor = document.getElementById('backEditor');
+const deckSelect = document.getElementById('deckSelect');
 const deckInput = document.getElementById('deckInput');
 const addCardBtn = document.getElementById('addCardBtn');
 const cardsList = document.getElementById('cardsList');
@@ -13,10 +14,12 @@ const backStyle = document.getElementById('backStyle');
 
 // Khởi tạo khi mở popup
 document.addEventListener('DOMContentLoaded', () => {
+  loadDecks();
   loadCards();
   loadPendingContent();
   setupToolbar();
   setupEditors();
+  setupDeckSelect();
 });
 
 // Xử lý pending content từ context menu
@@ -214,7 +217,15 @@ addCardBtn.addEventListener('click', () => {
     deck: deck || 'Default',
     front: front,
     back: back,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    // Study mode fields
+    status: 'new',
+    lastReviewed: null,
+    lastReview: null,
+    interval: 0,
+    repetitions: 0,
+    easiness: 2.5,
+    dueDate: Date.now()
   };
 
   saveCard(card);
@@ -234,6 +245,42 @@ function saveCard(card) {
     cards.push(card);
     chrome.storage.local.set({ cards: cards });
   });
+}
+
+// Load decks from storage
+function loadDecks() {
+  chrome.storage.local.get(['decks'], (result) => {
+    let decks = result.decks || [];
+    
+    // Handle both array (legacy) and object (new) formats
+    let decksList = [];
+    if (Array.isArray(decks)) {
+      decksList = decks;
+    } else if (decks && typeof decks === 'object') {
+      // Convert object format to array format
+      decksList = Object.values(decks).map(d => d.name || d);
+    }
+    
+    // Populate dropdown
+    deckSelect.innerHTML = '<option value="">Choose a deck...</option>';
+    decksList.forEach(deckName => {
+      const option = document.createElement('option');
+      option.value = deckName;
+      option.textContent = deckName;
+      deckSelect.appendChild(option);
+    });
+  });
+}
+
+// Setup deck select change handler
+function setupDeckSelect() {
+  if (deckSelect) {
+    deckSelect.addEventListener('change', (e) => {
+      if (e.target.value) {
+        deckInput.value = e.target.value;
+      }
+    });
+  }
 }
 
 // Load cards from storage
