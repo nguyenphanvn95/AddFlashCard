@@ -273,6 +273,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
   
+  // Handle settings updates from popup
+  if (message.action === "settingsUpdated") {
+    const settings = message.settings || {};
+    if (settings.opacity !== undefined) {
+      overlayOpacity = settings.opacity;
+      try { sidebarIframe?.contentWindow?.postMessage({ action: 'setOverlayOpacity', opacity: overlayOpacity }, '*'); } catch (e) {}
+      applyOverlayOpacity();
+    }
+    if (settings.dockSide) {
+      dockSide = settings.dockSide;
+      try { sidebarIframe?.contentWindow?.postMessage({ action: 'setDockSide', side: dockSide }, '*'); } catch (e) {}
+      applyDockSide();
+    }
+    if (settings.theme) {
+      try { sidebarIframe?.contentWindow?.postMessage({ action: 'setTheme', theme: settings.theme }, '*'); } catch (e) {}
+    }
+  }
+  
   return true;
 });
 
@@ -327,6 +345,13 @@ window.addEventListener('message', (event) => {
     try { chrome.storage.local.set({ afc_dock_side: dockSide }); } catch (e) {}
     applyDockSide();
     try { sidebarIframe?.contentWindow?.postMessage({ action: 'setDockSide', side: dockSide }, '*'); } catch (e) {}
+  }
+} else if (event.data?.action === "setTheme") {
+  const theme = event.data.theme;
+  if (theme === 'light' || theme === 'dark' || theme === 'system') {
+    try { chrome.storage.local.set({ afc_theme: theme }); } catch (e) {}
+    // Sync back to iframe UI
+    try { sidebarIframe?.contentWindow?.postMessage({ action: 'setTheme', theme: theme }, '*'); } catch (e) {}
   }
 
   }

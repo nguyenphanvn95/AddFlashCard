@@ -59,53 +59,15 @@ function setupEventListeners() {
   });
   
   // Export button
-  document.getElementById('export-btn').addEventListener('click', async () => {
-    try {
-      const result = await chrome.storage.local.get(['flashcards']);
-      const flashcards = result.flashcards || [];
-      
-      if (flashcards.length === 0) {
-        alert('Không có thẻ nào để export!');
-        return;
-      }
-      
-      // Send message to background to handle export
-      chrome.runtime.sendMessage({
-        action: 'exportAPKG',
-        flashcards: flashcards
-      });
-      
-      showNotification('Đang export...', 'info');
-    } catch (error) {
-      console.error('Error exporting:', error);
-      showNotification('Lỗi khi export!', 'error');
-    }
+  document.getElementById('export-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#export') });
+    window.close();
   });
   
   // Anki Sync button
-  document.getElementById('anki-sync-btn').addEventListener('click', async () => {
-    try {
-      // Check AnkiConnect
-      const response = await fetch('http://127.0.0.1:8765', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'version',
-          version: 6
-        })
-      });
-      
-      if (response.ok) {
-        chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#anki-sync') });
-        window.close();
-      } else {
-        alert('Không thể kết nối với AnkiConnect. Vui lòng đảm bảo Anki đang chạy và AnkiConnect đã được cài đặt.');
-      }
-    } catch (error) {
-      alert('Không thể kết nối với AnkiConnect. Vui lòng đảm bảo Anki đang chạy và AnkiConnect đã được cài đặt.');
-    }
+  document.getElementById('anki-sync-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#anki-sync') });
+    window.close();
   });
   
   // Settings button
@@ -233,44 +195,57 @@ function openSettingsModal() {
     border-radius: 12px;
     padding: 20px;
     width: 90%;
-    max-width: 400px;
+    max-width: 420px;
     color: #ecf0f1;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   `;
   
   modal.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2 style="font-size: 18px; margin: 0;">⚙️ Cài đặt</h2>
+      <h2 style="font-size: 18px; margin: 0;">⚙️ Settings</h2>
       <button class="close-modal-btn" style="background: none; border: none; color: #ecf0f1; font-size: 24px; cursor: pointer; padding: 0;">&times;</button>
     </div>
     
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-        <span style="font-weight: 500;">Theme:</span>
+    <!-- Overlay Opacity -->
+    <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #3d5266;">
+      <label style="display: block; margin-bottom: 10px;">
+        <div style="font-weight: 600; margin-bottom: 4px;">Overlay opacity</div>
+        <div style="font-size: 12px; color: #95a5a6;">Dim background when sidebar is open (not pinned)</div>
       </label>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-left: 0;">
-        <button class="theme-btn" data-theme="light" style="padding: 8px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s;">☀️ Light</button>
-        <button class="theme-btn" data-theme="dark" style="padding: 8px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s;">🌙 Dark</button>
-        <button class="theme-btn" data-theme="system" style="padding: 8px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s;">🖥️ System</button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="range" id="popupOverlayOpacity" min="0" max="80" step="1" value="38" style="flex: 1; cursor: pointer;">
+        <span id="popupOpacityValue" style="color: #5dade2; font-weight: 600; min-width: 40px;">38%</span>
       </div>
-      
-      <hr style="border: none; border-top: 1px solid #3d5266; margin: 12px 0;">
-      
-      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-        <input type="checkbox" id="notificationsToggle" style="width: 18px; height: 18px; cursor: pointer;">
-        <span style="font-weight: 500;">Bật thông báo</span>
+    </div>
+    
+    <!-- Dock Side -->
+    <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #3d5266;">
+      <label style="display: block; margin-bottom: 10px;">
+        <div style="font-weight: 600; margin-bottom: 4px;">Dock side</div>
+        <div style="font-size: 12px; color: #95a5a6;">Choose default dock side</div>
       </label>
-      
-      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-        <input type="checkbox" id="autoSyncToggle" style="width: 18px; height: 18px; cursor: pointer;">
-        <span style="font-weight: 500;">Tự động đồng bộ Anki</span>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button class="dock-btn" data-side="left" style="padding: 10px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s; font-weight: 500;">Left</button>
+        <button class="dock-btn" data-side="right" style="padding: 10px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s; font-weight: 500;">Right</button>
+      </div>
+    </div>
+    
+    <!-- Theme -->
+    <div style="margin-bottom: 20px;">
+      <label style="display: block; margin-bottom: 10px;">
+        <div style="font-weight: 600; margin-bottom: 4px;">Theme</div>
+        <div style="font-size: 12px; color: #95a5a6;">Choose appearance theme for all pages</div>
       </label>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <button class="theme-btn" data-theme="system" style="padding: 10px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s; font-weight: 500;">System</button>
+        <button class="theme-btn" data-theme="light" style="padding: 10px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s; font-weight: 500;">Light</button>
+        <button class="theme-btn" data-theme="dark" style="padding: 10px 12px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer; transition: all 0.2s; font-weight: 500;">Dark</button>
+      </div>
     </div>
     
     <div style="display: flex; gap: 10px; margin-top: 20px;">
-      <button class="close-modal-btn" style="flex: 1; padding: 10px; background: #34495e; border: 1px solid #4a5f7f; border-radius: 6px; color: #ecf0f1; cursor: pointer; font-weight: 500;">Đóng</button>
-      <button class="save-settings-btn" style="flex: 1; padding: 10px; background: #5dade2; border: 1px solid #5dade2; border-radius: 6px; color: white; cursor: pointer; font-weight: 500;">Lưu</button>
+      <button class="close-modal-btn" style="flex: 1; padding: 10px; background: #34495e; border: 1px solid #4a5f7f; border-radius: 6px; color: #ecf0f1; cursor: pointer; font-weight: 500;">Close</button>
+      <button class="save-settings-btn" style="flex: 1; padding: 10px; background: #5dade2; border: 1px solid #5dade2; border-radius: 6px; color: white; cursor: pointer; font-weight: 500;">Save</button>
     </div>
   `;
   
@@ -278,25 +253,55 @@ function openSettingsModal() {
   document.body.appendChild(overlay);
   
   // Load saved settings
-  chrome.storage.local.get(['afc_theme', 'afc_notifications', 'afc_auto_sync'], (result) => {
+  chrome.storage.local.get(['afc_overlay_opacity', 'afc_dock_side', 'afc_theme'], (result) => {
+    const opacity = result.afc_overlay_opacity || 0.38;
+    const dockSide = result.afc_dock_side || 'right';
     const theme = result.afc_theme || 'light';
+    
+    // Set opacity
+    const opacitySlider = document.getElementById('popupOverlayOpacity');
+    const opacityValue = document.getElementById('popupOpacityValue');
+    opacitySlider.value = Math.round(opacity * 100);
+    opacityValue.textContent = Math.round(opacity * 100) + '%';
+    
+    // Set dock side
+    document.querySelectorAll('.dock-btn').forEach(btn => {
+      if (btn.getAttribute('data-side') === dockSide) {
+        btn.style.background = '#5dade2';
+        btn.style.borderColor = '#5dade2';
+      }
+    });
+    
+    // Set theme
     document.querySelectorAll('.theme-btn').forEach(btn => {
       if (btn.getAttribute('data-theme') === theme) {
         btn.style.background = '#5dade2';
         btn.style.borderColor = '#5dade2';
       }
     });
-    
-    const notificationsCheckbox = document.getElementById('notificationsToggle');
-    const autoSyncCheckbox = document.getElementById('autoSyncToggle');
-    if (notificationsCheckbox) notificationsCheckbox.checked = result.afc_notifications !== false;
-    if (autoSyncCheckbox) autoSyncCheckbox.checked = result.afc_auto_sync === true;
+  });
+  
+  // Opacity slider
+  document.getElementById('popupOverlayOpacity').addEventListener('input', (e) => {
+    const value = e.target.value;
+    document.getElementById('popupOpacityValue').textContent = value + '%';
+  });
+  
+  // Dock side buttons
+  document.querySelectorAll('.dock-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.dock-btn').forEach(b => {
+        b.style.background = '#34495e';
+        b.style.borderColor = '#4a5f7f';
+      });
+      e.target.style.background = '#5dade2';
+      e.target.style.borderColor = '#5dade2';
+    });
   });
   
   // Theme buttons
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const theme = e.target.getAttribute('data-theme');
       document.querySelectorAll('.theme-btn').forEach(b => {
         b.style.background = '#34495e';
         b.style.borderColor = '#4a5f7f';
@@ -308,18 +313,34 @@ function openSettingsModal() {
   
   // Save settings
   document.querySelector('.save-settings-btn').addEventListener('click', () => {
+    const opacity = parseFloat(document.getElementById('popupOverlayOpacity').value) / 100;
+    const dockSide = document.querySelector('.dock-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-side') || 'right';
     const theme = document.querySelector('.theme-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-theme') || 'light';
-    const notificationsCheckbox = document.getElementById('notificationsToggle');
-    const autoSyncCheckbox = document.getElementById('autoSyncToggle');
     
+    // Save to storage
     chrome.storage.local.set({
-      afc_theme: theme,
-      afc_notifications: notificationsCheckbox.checked,
-      afc_auto_sync: autoSyncCheckbox.checked
+      afc_overlay_opacity: opacity,
+      afc_dock_side: dockSide,
+      afc_theme: theme
     });
     
+    // Notify sidebar to update (if it's open)
+    try {
+      // Try to send message to all tabs (sidebar might be in an iframe)
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'settingsUpdated',
+            settings: { opacity, dockSide, theme }
+          }).catch(() => {
+            // Tab might not have content script
+          });
+        });
+      });
+    } catch (e) {}
+    
     overlay.remove();
-    showNotification('Cài đặt đã được lưu!', 'success');
+    showNotification('Settings saved!', 'success');
   });
   
   // Close modal
