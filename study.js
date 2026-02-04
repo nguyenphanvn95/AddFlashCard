@@ -1,145 +1,419 @@
-// Study Mode Logic
-let studyCards = [];
-let currentIndex = 0;
-let isFlipped = false;
-let studyProgress = {
-  studied: 0,
-  hard: 0,
-  good: 0,
-  easy: 0
-};
-let startTime = Date.now();
-let timerInterval;
-let autoFlipTimeout;
+// Spaced Repetition Study Mode with SM-2 Algorithm
+// Based on SuperMemo SM-2 algorithm
 
-// DOM Elements
-const flashcard = document.getElementById('flashcard');
-const cardInner = document.getElementById('cardInner');
-const frontContent = document.getElementById('frontContent');
-const backContent = document.getElementById('backContent');
-const cardTagsFront = document.getElementById('cardTagsFront');
-const cardTagsBack = document.getElementById('cardTagsBack');
-const currentCardNumber = document.getElementById('currentCardNumber');
-const totalCards = document.getElementById('totalCards');
-const studiedCount = document.getElementById('studiedCount');
-const remainingCount = document.getElementById('remainingCount');
-const sessionTime = document.getElementById('sessionTime');
-const progressBar = document.getElementById('progressBar');
-const flipBtn = document.getElementById('flipBtn');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const difficultyControls = document.getElementById('difficultyControls');
-const exitStudyBtn = document.getElementById('exitStudyBtn');
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsModal = document.getElementById('settingsModal');
-const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-const applySettingsBtn = document.getElementById('applySettingsBtn');
-const resetProgressBtn = document.getElementById('resetProgressBtn');
-const completionModal = document.getElementById('completionModal');
-const exitFromCompletionBtn = document.getElementById('exitFromCompletionBtn');
-const restartStudyBtn = document.getElementById('restartStudyBtn');
-const studyDeckName = document.getElementById('studyDeckName');
+// ==================== SM-2 ALGORITHM ====================
+class SM2Card {
+  constructor(card) {
+    this.id = card.id;
+    this.front = card.front;
+    this.back = card.back;
+    this.deck = card.deck;
+    this.tags = card.tags || [];
+    
+    // SM-2 parameters
+    this.easiness = card.easiness || 2.5; // E-Factor (1.3 to 2.5+)
+    this.interval = card.interval || 0; // Days until next review
+    this.repetitions = card.repetitions || 0; // Consecutive correct answers
+    this.dueDate = card.dueDate || Date.now(); // When to review next
+    this.lastReview = card.lastReview || null; // Last review timestamp
+    
+    // Study statistics
+    this.reviews = card.reviews || 0; // Total review count
+    this.lapses = card.lapses || 0; // Times failed
+    this.status = card.status || 'new'; // new, learning, review, relearning
+  }
 
-// Settings elements
-const randomizeCheck = document.getElementById('randomizeCheck');
-const autoFlipCheck = document.getElementById('autoFlipCheck');
-const autoFlipDelay = document.getElementById('autoFlipDelay');
-const deckFilterSelect = document.getElementById('deckFilterSelect');
-const tagsFilterInput = document.getElementById('tagsFilterInput');
+  // Calculate next interval based on quality (1-4)
+  calculateInterval(quality) {
+    // Quality: 1=Again, 2=Hard, 3=Good, 4=Easy
+    
+    if (quality < 3) {
+      // Failed - restart
+      this.repetitions = 0;
+      this.interval = 1 / 1440; // 1 minute in days
+      this.status = this.reviews === 0 ? 'learning' : 'relearning';
+      this.lapses++;
+    } else {
+      // Passed - calculate next interval
+      if (this.repetitions === 0) {
+        this.interval = 1; // 1 day
+      } else if (this.repetitions === 1) {
+        this.interval = 6; // 6 days
+      } else {
+        this.interval = Math.round(this.interval * this.easiness);
+      }
+      
+      this.repetitions++;
+      
+      // Update easiness factor
+      this.easiness = Math.max(
+        1.3,
+        this.easiness + (0.1 - (4 - quality) * (0.08 + (4 - quality) * 0.02))
+      );
+      
+      // Adjust interval based on quality
+      if (quality === 2) {
+        // Hard - multiply by 1.2
+        this.interval = Math.round(this.interval * 1.2);
+      } else if (quality === 4) {
+        // Easy - multiply by 1.3
+        this.interval = Math.round(this.interval * 1.3);
+      }
+      
+      // Update status
+      if (this.repetitions >= 2 && this.interval >= 21) {
+        this.status = 'review';
+      } else {
+        this.status = 'learning';
+      }
+    }
+    
+    // Calculate next due date
+    this.dueDate = Date.now() + (this.interval * 24 * 60 * 60 * 1000);
+    this.lastReview = Date.now();
+    this.reviews++;
+    
+    return this.interval;
+  }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadStudySession();
-  setupEventListeners();
-  startTimer();
-});
+  // Get the scheduled intervals for each quality rating
+  getScheduledIntervals() {
+    const intervals = {};
+    
+    // Simulate each quality
+    for (let quality = 1; quality <= 4; quality++) {
+      const tempCard = new SM2Card({
+        ...this,
+        easiness: this.easiness,
+        interval: this.interval,
+        repetitions: this.repetitions
+      });
+      
+      tempCard.calculateInterval(quality);
+      intervals[quality] = tempCard.interval;
+    }
+    
+    return intervals;
+  }
 
-// Load study session
-function loadStudySession() {
-  // Get URL parameters
-  const params = new URLSearchParams(window.location.search);
-  const deck = params.get('deck');
-  const tags = params.get('tags');
-  const cardId = params.get('cardId');
-  
-  chrome.storage.local.get(['cards', 'decks', 'studySettings'], (result) => {
-    let allCards = result.cards || [];
-    const allDecks = result.decks || ['Default'];
-    const settings = result.studySettings || {
+  // Check if card is due for review
+  isDue() {
+    return Date.now() >= this.dueDate;
+  }
+
+  // Get card data for storage
+  toJSON() {
+    return {
+      id: this.id,
+      front: this.front,
+      back: this.back,
+      deck: this.deck,
+      tags: this.tags,
+      easiness: this.easiness,
+      interval: this.interval,
+      repetitions: this.repetitions,
+      dueDate: this.dueDate,
+      lastReview: this.lastReview,
+      reviews: this.reviews,
+      lapses: this.lapses,
+      status: this.status
+    };
+  }
+}
+
+// ==================== STUDY SESSION ====================
+class StudySession {
+  constructor() {
+    this.cards = [];
+    this.currentIndex = 0;
+    this.isFlipped = false;
+    
+    // Session statistics
+    this.sessionStats = {
+      studied: 0,
+      again: 0,
+      hard: 0,
+      good: 0,
+      easy: 0,
+      startTime: Date.now()
+    };
+    
+    // Settings
+    this.settings = {
+      newCardsLimit: 20,
+      reviewCardsLimit: 100,
       randomize: false,
-      autoFlip: false,
-      autoFlipDelay: 5,
       selectedDeck: '',
       selectedTags: ''
     };
     
-    // Populate deck filter
-    populateDeckFilter(allDecks);
-    
-    // Apply saved settings
-    randomizeCheck.checked = settings.randomize;
-    autoFlipCheck.checked = settings.autoFlip;
-    autoFlipDelay.value = settings.autoFlipDelay || 5;
-    deckFilterSelect.value = deck || settings.selectedDeck || '';
-    tagsFilterInput.value = tags || settings.selectedTags || '';
-    
-    // If a specific cardId is requested, study only that card
-    if (cardId) {
-      const single = (allCards || []).find(c => String(c.id) === String(cardId));
-      studyCards = single ? [single] : [];
-      studyDeckName.textContent = single ? 'Study Mode - Single Card' : 'Study Mode - Card not found';
+    // Queue management
+    this.newQueue = [];
+    this.learningQueue = [];
+    this.reviewQueue = [];
+  }
 
-      if (studyCards.length === 0) {
-        showNoCardsMessage();
-        return;
-      }
+  // Load cards from storage
+  async loadCards(filters = {}) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['cards', 'studySettings'], (result) => {
+        let allCards = result.cards || [];
+        // Normalize stored cards format (array/object/json-string) for compatibility
+        if (typeof allCards === 'string') {
+          try { allCards = JSON.parse(allCards); } catch (e) { allCards = []; }
+        }
+        if (allCards && !Array.isArray(allCards) && typeof allCards === 'object') {
+          // If stored as an id->card map, convert to array
+          allCards = Object.values(allCards);
+        }
+        if (!Array.isArray(allCards)) allCards = [];
 
-      totalCards.textContent = studyCards.length;
-      remainingCount.textContent = studyCards.length;
-      displayCard();
-      updateProgress();
-      return;
-    }
-
-    // Filter cards by deck
-    if (deck) {
-      allCards = allCards.filter(card => card.deck === deck);
-      studyDeckName.textContent = `Studying: ${deck}`;
-    } else {
-      studyDeckName.textContent = 'Study Mode - All Cards';
-    }
-    
-    // Filter cards by tags
-    if (tags) {
-      const tagsList = tags.split(',').map(t => t.trim().toLowerCase());
-      allCards = allCards.filter(card => {
-        if (!card.tags || card.tags.length === 0) return false;
-        return card.tags.some(tag => tagsList.includes(tag.toLowerCase()));
+        // Ensure each card has scheduling fields expected by study mode
+        allCards = allCards.map((c) => {
+          if (!c || typeof c !== 'object') return c;
+          // Support alternative field names
+          if (c.deckName && !c.deck) c.deck = c.deckName;
+          // Derive status if missing
+          if (!c.status) {
+            const reps = Number(c.repetitions ?? 0);
+            const interval = Number(c.interval ?? 0);
+            if (reps <= 0) c.status = 'new';
+            else if (interval <= 1) c.status = 'learning';
+            else c.status = 'review';
+          }
+          // dueDate should be a number timestamp
+          if (c.dueDate == null) c.dueDate = Date.now();
+          if (typeof c.dueDate === 'string') {
+            const d = Date.parse(c.dueDate);
+            c.dueDate = Number.isFinite(d) ? d : Date.now();
+          }
+          return c;
+        });
+        this.settings = { ...this.settings, ...(result.studySettings || {}) };
+        
+        // Apply filters
+        if (filters.deck) {
+          allCards = allCards.filter(c => c.deck === filters.deck);
+        }
+        
+        if (filters.tags) {
+          const tagsList = filters.tags.split(',').map(t => t.trim().toLowerCase());
+          allCards = allCards.filter(c => 
+            c.tags && c.tags.some(tag => tagsList.includes(tag.toLowerCase()))
+          );
+        }
+        
+        // Convert to SM2Card objects
+        this.cards = allCards.map(c => new SM2Card(c));
+        
+        // Organize into queues
+        this.organizeQueues();
+        
+        resolve(this.cards);
       });
-    }
+    });
+  }
+
+  // Organize cards into queues
+  organizeQueues() {
+    this.newQueue = [];
+    this.learningQueue = [];
+    this.reviewQueue = [];
     
-    studyCards = allCards;
+    const now = Date.now();
+    
+    this.cards.forEach(card => {
+      if (card.status === 'new') {
+        this.newQueue.push(card);
+      } else if (card.isDue()) {
+        if (card.status === 'learning' || card.status === 'relearning') {
+          this.learningQueue.push(card);
+        } else {
+          this.reviewQueue.push(card);
+        }
+      }
+    });
+    
+    // Apply limits
+    this.newQueue = this.newQueue.slice(0, this.settings.newCardsLimit);
+    this.reviewQueue = this.reviewQueue.slice(0, this.settings.reviewCardsLimit);
     
     // Randomize if enabled
-    if (settings.randomize) {
-      shuffleArray(studyCards);
+    if (this.settings.randomize) {
+      this.shuffle(this.newQueue);
+      this.shuffle(this.learningQueue);
+      this.shuffle(this.reviewQueue);
+    } else {
+      // Sort by due date
+      this.learningQueue.sort((a, b) => a.dueDate - b.dueDate);
+      this.reviewQueue.sort((a, b) => a.dueDate - b.dueDate);
+    }
+  }
+
+  // Get next card to study
+  getNextCard() {
+    // Priority: learning > review > new
+    if (this.learningQueue.length > 0) {
+      return this.learningQueue.shift();
+    }
+    if (this.reviewQueue.length > 0) {
+      return this.reviewQueue.shift();
+    }
+    if (this.newQueue.length > 0) {
+      return this.newQueue.shift();
+    }
+    return null;
+  }
+
+  // Answer card with quality rating
+  answerCard(card, quality) {
+    card.calculateInterval(quality);
+    
+    // Update session stats
+    this.sessionStats.studied++;
+    if (quality === 1) this.sessionStats.again++;
+    else if (quality === 2) this.sessionStats.hard++;
+    else if (quality === 3) this.sessionStats.good++;
+    else if (quality === 4) this.sessionStats.easy++;
+    
+    // If failed or hard, add back to learning queue
+    if (quality < 3) {
+      this.learningQueue.push(card);
+      // Sort learning queue
+      this.learningQueue.sort((a, b) => a.dueDate - b.dueDate);
     }
     
-    if (studyCards.length === 0) {
-      showNoCardsMessage();
-      return;
+    // Save progress
+    this.saveProgress();
+  }
+
+  // Save progress to storage
+  async saveProgress() {
+    const cardsData = this.cards.map(c => c.toJSON());
+    
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ cards: cardsData }, resolve);
+    });
+  }
+
+  // Get queue counts
+  getQueueCounts() {
+    return {
+      new: this.newQueue.length,
+      learning: this.learningQueue.length,
+      review: this.reviewQueue.length,
+      total: this.newQueue.length + this.learningQueue.length + this.reviewQueue.length
+    };
+  }
+
+  // Get session statistics
+  getSessionStats() {
+    const elapsed = Date.now() - this.sessionStats.startTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    
+    return {
+      ...this.sessionStats,
+      timeSpent: `${minutes}:${seconds.toString().padStart(2, '0')}`,
+      successRate: this.sessionStats.studied > 0
+        ? Math.round(((this.sessionStats.good + this.sessionStats.easy) / this.sessionStats.studied) * 100)
+        : 0
+    };
+  }
+
+  // Shuffle array
+  shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
     }
-    
-    totalCards.textContent = studyCards.length;
-    remainingCount.textContent = studyCards.length;
-    
-    displayCard();
-    updateProgress();
-  });
+  }
 }
 
-// Populate deck filter
-function populateDeckFilter(decks) {
+// ==================== UI CONTROLLER ====================
+const session = new StudySession();
+let currentCard = null;
+let timerInterval = null;
+
+// DOM Elements
+const studyContainer = document.querySelector('.study-container');
+const studyStatus = document.getElementById('studyStatus');
+const cardDisplay = document.getElementById('cardDisplay');
+const flashcard = document.getElementById('flashcard');
+const frontContent = document.getElementById('frontContent');
+const backContent = document.getElementById('backContent');
+const cardTagsFront = document.getElementById('cardTagsFront');
+const cardTagsBack = document.getElementById('cardTagsBack');
+const cardStudyInfo = document.getElementById('cardStudyInfo');
+const showAnswerContainer = document.getElementById('showAnswerContainer');
+const showAnswerBtn = document.getElementById('showAnswerBtn');
+const ratingControls = document.getElementById('ratingControls');
+const cardStatusBadge = document.getElementById('cardStatusBadge');
+const currentCardNumber = document.getElementById('currentCardNumber');
+const totalCards = document.getElementById('totalCards');
+const progressBar = document.getElementById('progressBar');
+
+// Header elements
+const studyDeckName = document.getElementById('studyDeckName');
+const newCount = document.getElementById('newCount');
+const learningCount = document.getElementById('learningCount');
+const reviewCount = document.getElementById('reviewCount');
+const sessionCards = document.getElementById('sessionCards');
+const sessionTime = document.getElementById('sessionTime');
+
+// Settings modal
+const settingsModal = document.getElementById('settingsModal');
+const settingsBtn = document.getElementById('settingsBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const applySettingsBtn = document.getElementById('applySettingsBtn');
+const resetProgressBtn = document.getElementById('resetProgressBtn');
+const newCardsLimitInput = document.getElementById('newCardsLimit');
+const reviewCardsLimitInput = document.getElementById('reviewCardsLimit');
+const randomizeCheck = document.getElementById('randomizeCheck');
+const deckFilterSelect = document.getElementById('deckFilterSelect');
+const tagsFilterInput = document.getElementById('tagsFilterInput');
+
+// Buttons
+const exitStudyBtn = document.getElementById('exitStudyBtn');
+
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeStudy();
+  setupEventListeners();
+  startTimer();
+});
+
+async function initializeStudy() {
+  // Get URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const filters = {
+    deck: params.get('deck') || '',
+    tags: params.get('tags') || ''
+  };
+  
+  // Load cards
+  await session.loadCards(filters);
+  
+  // Update UI
+  if (filters.deck) {
+    studyDeckName.textContent = `Studying: ${filters.deck}`;
+  }
+  
+  // Populate settings
+  await populateSettings();
+  
+  // Show first card or completion message
+  updateQueueCounts();
+  showNextCard();
+}
+
+async function populateSettings() {
+  // Load decks
+  const result = await chrome.storage.local.get(['decks', 'studySettings']);
+  const decks = result.decks || ['Default'];
+  const settings = result.studySettings || {};
+  
+  // Populate deck filter
   deckFilterSelect.innerHTML = '<option value="">All Decks</option>';
   decks.forEach(deck => {
     const option = document.createElement('option');
@@ -147,325 +421,332 @@ function populateDeckFilter(decks) {
     option.textContent = deck;
     deckFilterSelect.appendChild(option);
   });
+  
+  // Apply settings
+  newCardsLimitInput.value = settings.newCardsLimit || 20;
+  reviewCardsLimitInput.value = settings.reviewCardsLimit || 100;
+  randomizeCheck.checked = settings.randomize || false;
+  deckFilterSelect.value = settings.selectedDeck || '';
+  tagsFilterInput.value = settings.selectedTags || '';
 }
 
-// Display current card
-function displayCard() {
-  if (currentIndex >= studyCards.length) {
-    showCompletionModal();
+// ==================== CARD DISPLAY ====================
+function showNextCard() {
+  currentCard = session.getNextCard();
+  
+  if (!currentCard) {
+    showCompletionStatus();
     return;
   }
   
-  const card = studyCards[currentIndex];
+  // Hide status, show card
+  studyStatus.style.display = 'none';
+  cardDisplay.style.display = 'block';
   
   // Reset flip state
-  isFlipped = false;
+  session.isFlipped = false;
   flashcard.classList.remove('flipped');
-  difficultyControls.style.display = 'none';
   
   // Display content
-  frontContent.innerHTML = card.front;
-  backContent.innerHTML = card.back;
+  frontContent.innerHTML = currentCard.front;
+  backContent.innerHTML = currentCard.back;
   
   // Display tags
-  displayTags(card.tags, cardTagsFront);
-  displayTags(card.tags, cardTagsBack);
+  displayTags(currentCard.tags, cardTagsFront);
+  displayTags(currentCard.tags, cardTagsBack);
   
-  // Update navigation
-  currentCardNumber.textContent = currentIndex + 1;
-  prevBtn.disabled = currentIndex === 0;
+  // Display study info
+  displayStudyInfo(currentCard);
   
-  // Clear any existing auto-flip timeout
-  clearTimeout(autoFlipTimeout);
+  // Update card status badge
+  updateCardStatusBadge(currentCard);
   
-  // Auto-flip if enabled
-  if (autoFlipCheck.checked) {
-    const delay = parseInt(autoFlipDelay.value) * 1000;
-    autoFlipTimeout = setTimeout(() => {
-      if (!isFlipped) flipCard();
-    }, delay);
-  }
+  // Show answer button, hide rating
+  showAnswerContainer.style.display = 'flex';
+  ratingControls.style.display = 'none';
+  
+  // Update counts
+  updateQueueCounts();
+  updateProgress();
 }
 
-// Display tags
 function displayTags(tags, container) {
   container.innerHTML = '';
   if (!tags || tags.length === 0) return;
   
   tags.forEach(tag => {
     const tagEl = document.createElement('span');
-    tagEl.className = 'card-tag';
+    tagEl.className = 'tag';
     tagEl.textContent = tag;
     container.appendChild(tagEl);
   });
 }
 
-// Flip card
+function displayStudyInfo(card) {
+  const info = [];
+  
+  if (card.reviews > 0) {
+    info.push(`Reviews: ${card.reviews}`);
+  }
+  
+  if (card.lapses > 0) {
+    info.push(`Lapses: ${card.lapses}`);
+  }
+  
+  if (card.interval > 0) {
+    const days = Math.round(card.interval);
+    info.push(`Interval: ${days}d`);
+  }
+  
+  if (card.easiness) {
+    info.push(`Ease: ${Math.round(card.easiness * 100)}%`);
+  }
+  
+  cardStudyInfo.innerHTML = info.length > 0 
+    ? `<div class="study-info-text">${info.join(' • ')}</div>`
+    : '';
+}
+
+function updateCardStatusBadge(card) {
+  const statusMap = {
+    'new': { text: 'New Card', class: 'badge-new' },
+    'learning': { text: 'Learning', class: 'badge-learning' },
+    'review': { text: 'Review', class: 'badge-review' },
+    'relearning': { text: 'Relearning', class: 'badge-relearning' }
+  };
+  
+  const status = statusMap[card.status] || statusMap['new'];
+  cardStatusBadge.textContent = status.text;
+  cardStatusBadge.className = 'card-status-badge ' + status.class;
+}
+
+function updateQueueCounts() {
+  const counts = session.getQueueCounts();
+  
+  newCount.textContent = `${counts.new} New`;
+  learningCount.textContent = `${counts.learning} Learning`;
+  reviewCount.textContent = `${counts.review} Review`;
+  
+  totalCards.textContent = counts.total;
+  currentCardNumber.textContent = session.sessionStats.studied + 1;
+  sessionCards.textContent = session.sessionStats.studied;
+}
+
+function updateProgress() {
+  const stats = session.getSessionStats();
+  const initialTotal = session.cards.length;
+  const remaining = session.getQueueCounts().total;
+  const studied = initialTotal - remaining;
+  
+  if (initialTotal > 0) {
+    const progressPercent = (studied / initialTotal) * 100;
+    progressBar.style.width = progressPercent + '%';
+  }
+}
+
+// ==================== CARD INTERACTION ====================
 function flipCard() {
-  isFlipped = !isFlipped;
+  if (!currentCard) return;
+  
+  session.isFlipped = !session.isFlipped;
   flashcard.classList.toggle('flipped');
   
-  // Show difficulty buttons after flip to back
-  if (isFlipped) {
-    difficultyControls.style.display = 'flex';
+  if (session.isFlipped) {
+    // Show rating buttons with intervals
+    showRatingButtons();
+    showAnswerContainer.style.display = 'none';
+    ratingControls.style.display = 'flex';
   } else {
-    difficultyControls.style.display = 'none';
+    showAnswerContainer.style.display = 'flex';
+    ratingControls.style.display = 'none';
   }
+}
+
+function showRatingButtons() {
+  if (!currentCard) return;
   
-  // Clear auto-flip timeout
-  clearTimeout(autoFlipTimeout);
+  const intervals = currentCard.getScheduledIntervals();
+  
+  // Update button labels with intervals
+  document.getElementById('againTime').textContent = formatInterval(intervals[1]);
+  document.getElementById('hardTime').textContent = formatInterval(intervals[2]);
+  document.getElementById('goodTime').textContent = formatInterval(intervals[3]);
+  document.getElementById('easyTime').textContent = formatInterval(intervals[4]);
 }
 
-// Navigate to previous card
-function goToPrevious() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    displayCard();
-    updateProgress();
-  }
+function formatInterval(days) {
+  if (days < 1 / 1440) return '< 1m';
+  if (days < 1 / 24) return `< ${Math.round(days * 1440)}m`;
+  if (days < 1) return `< ${Math.round(days * 24)}h`;
+  if (days < 30) return `${Math.round(days)}d`;
+  if (days < 365) return `${Math.round(days / 30)}mo`;
+  return `${Math.round(days / 365)}y`;
 }
 
-// Navigate to next card
-function goToNext() {
-  if (currentIndex < studyCards.length - 1) {
-    currentIndex++;
-    studyProgress.studied = Math.max(studyProgress.studied, currentIndex);
-    displayCard();
-    updateProgress();
+function rateCard(quality) {
+  if (!currentCard || !session.isFlipped) return;
+  
+  session.answerCard(currentCard, quality);
+  
+  // Show next card
+  setTimeout(() => {
+    showNextCard();
+  }, 200);
+}
+
+// ==================== COMPLETION ====================
+function showCompletionStatus() {
+  cardDisplay.style.display = 'none';
+  studyStatus.style.display = 'flex';
+  
+  const stats = session.getSessionStats();
+  
+  if (stats.studied === 0) {
+    document.getElementById('statusTitle').textContent = 'No Cards to Study';
+    document.getElementById('statusMessage').textContent = 'All cards are up to date! Come back later or adjust your settings.';
+    document.getElementById('statusActionBtn').textContent = 'Change Settings';
   } else {
-    showCompletionModal();
+    document.getElementById('statusTitle').textContent = 'Great Job!';
+    document.getElementById('statusMessage').textContent = `You studied ${stats.studied} cards in ${stats.timeSpent}. Success rate: ${stats.successRate}%`;
+    document.getElementById('statusActionBtn').textContent = 'Study More';
   }
 }
 
-// Handle difficulty rating
-function rateDifficulty(difficulty) {
-  studyProgress[difficulty]++;
-  studyProgress.studied = Math.max(studyProgress.studied, currentIndex + 1);
-  
-  // Move to next card
-  if (currentIndex < studyCards.length - 1) {
-    currentIndex++;
-    displayCard();
-    updateProgress();
-  } else {
-    showCompletionModal();
-  }
-}
-
-// Update progress
-function updateProgress() {
-  studiedCount.textContent = studyProgress.studied;
-  remainingCount.textContent = studyCards.length - studyProgress.studied;
-  
-  const progressPercent = (studyProgress.studied / studyCards.length) * 100;
-  progressBar.style.width = progressPercent + '%';
-}
-
-// Start timer
+// ==================== TIMER ====================
 function startTimer() {
   timerInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
-    sessionTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const elapsed = Date.now() - session.sessionStats.startTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    sessionTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, 1000);
 }
 
-// Show completion modal
-function showCompletionModal() {
-  const totalTime = Math.floor((Date.now() - startTime) / 1000);
-  const minutes = Math.floor(totalTime / 60);
-  const seconds = totalTime % 60;
-  
-  document.getElementById('completionCardsStudied').textContent = studyProgress.studied;
-  document.getElementById('completionTimeSpent').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  
-  // Calculate confidence (easy and good answers)
-  const goodAnswers = studyProgress.easy + studyProgress.good;
-  const confidence = studyCards.length > 0 
-    ? Math.round((goodAnswers / studyCards.length) * 100)
-    : 0;
-  document.getElementById('completionAccuracy').textContent = confidence + '%';
-  
-  completionModal.classList.add('active');
+// ==================== SETTINGS ====================
+function openSettings() {
+  settingsModal.classList.add('active');
 }
 
-// Shuffle array
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
+function closeSettings() {
+  settingsModal.classList.remove('active');
 }
 
-// Show no cards message
-function showNoCardsMessage() {
-  frontContent.innerHTML = '<div style="text-align: center;"><h2>No cards to study</h2><p>Add some cards or adjust your filters</p></div>';
-  backContent.innerHTML = '';
-  totalCards.textContent = '0';
-  remainingCount.textContent = '0';
-  flipBtn.disabled = true;
-  prevBtn.disabled = true;
-  nextBtn.disabled = true;
-}
-
-// Save and apply settings
-function applySettings() {
+async function applySettings() {
   const settings = {
+    newCardsLimit: parseInt(newCardsLimitInput.value),
+    reviewCardsLimit: parseInt(reviewCardsLimitInput.value),
     randomize: randomizeCheck.checked,
-    autoFlip: autoFlipCheck.checked,
-    autoFlipDelay: parseInt(autoFlipDelay.value),
     selectedDeck: deckFilterSelect.value,
     selectedTags: tagsFilterInput.value
   };
   
-  chrome.storage.local.set({ studySettings: settings }, () => {
-    // Restart study session with new settings
-    const params = new URLSearchParams();
-    if (settings.selectedDeck) params.set('deck', settings.selectedDeck);
-    if (settings.selectedTags) params.set('tags', settings.selectedTags);
-    
-    window.location.href = 'study.html' + (params.toString() ? '?' + params.toString() : '');
-  });
+  await chrome.storage.local.set({ studySettings: settings });
+  
+  // Restart session with new settings
+  const params = new URLSearchParams();
+  if (settings.selectedDeck) params.set('deck', settings.selectedDeck);
+  if (settings.selectedTags) params.set('tags', settings.selectedTags);
+  
+  window.location.href = 'study-new.html' + (params.toString() ? '?' + params.toString() : '');
 }
 
-// Reset progress
-function resetProgress() {
-  if (confirm('Are you sure you want to reset your study progress?')) {
-    currentIndex = 0;
-    studyProgress = {
-      studied: 0,
-      hard: 0,
-      good: 0,
-      easy: 0
-    };
-    startTime = Date.now();
-    
-    if (randomizeCheck.checked) {
-      shuffleArray(studyCards);
-    }
-    
-    displayCard();
-    updateProgress();
-    closeModal(settingsModal);
+async function resetProgress() {
+  if (!confirm('This will reset ALL study progress for all cards. Are you sure?')) {
+    return;
   }
+  
+  const result = await chrome.storage.local.get(['cards']);
+  const cards = result.cards || [];
+  
+  // Reset all cards
+  const resetCards = cards.map(card => ({
+    ...card,
+    easiness: 2.5,
+    interval: 0,
+    repetitions: 0,
+    dueDate: Date.now(),
+    lastReview: null,
+    reviews: 0,
+    lapses: 0,
+    status: 'new'
+  }));
+  
+  await chrome.storage.local.set({ cards: resetCards });
+  
+  alert('Progress reset successfully!');
+  window.location.reload();
 }
 
-// Exit study mode
-function exitStudy() {
-  if (confirm('Exit study mode? Your progress will be lost.')) {
-    clearInterval(timerInterval);
-    clearTimeout(autoFlipTimeout);
-    window.close();
-    
-    // If can't close (not opened by script), navigate to manage page
-    setTimeout(() => {
-      window.location.href = 'manage.html';
-    }, 100);
-  }
-}
-
-// Modal controls
-function closeModal(modal) {
-  modal.classList.remove('active');
-}
-
-function openModal(modal) {
-  modal.classList.add('active');
-}
-
-// Setup event listeners
+// ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-  // Card navigation
-  flipBtn.addEventListener('click', flipCard);
-  prevBtn.addEventListener('click', goToPrevious);
-  nextBtn.addEventListener('click', goToNext);
+  // Show answer
+  showAnswerBtn.addEventListener('click', flipCard);
   
-  // Flashcard click to flip
-  flashcard.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-tag')) {
-      flipCard();
+  // Rating buttons
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rating = parseInt(btn.dataset.rating);
+      rateCard(rating);
+    });
+  });
+  
+  // Settings
+  settingsBtn.addEventListener('click', openSettings);
+  closeSettingsBtn.addEventListener('click', closeSettings);
+  applySettingsBtn.addEventListener('click', applySettings);
+  resetProgressBtn.addEventListener('click', resetProgress);
+  
+  // Exit
+  exitStudyBtn.addEventListener('click', () => {
+    if (confirm('Exit study mode? Progress has been saved.')) {
+      clearInterval(timerInterval);
+      window.location.href = 'manage.html';
     }
   });
   
-  // Difficulty buttons
-  document.querySelectorAll('.difficulty-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const difficulty = btn.dataset.difficulty;
-      rateDifficulty(difficulty);
-    });
+  // Status buttons
+  document.getElementById('statusActionBtn').addEventListener('click', () => {
+    if (session.sessionStats.studied === 0) {
+      openSettings();
+    } else {
+      window.location.reload();
+    }
+  });
+  
+  document.getElementById('exitFromStatusBtn').addEventListener('click', () => {
+    clearInterval(timerInterval);
+    window.location.href = 'manage.html';
   });
   
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    if (settingsModal.classList.contains('active') || 
-        completionModal.classList.contains('active')) return;
+    if (settingsModal.classList.contains('active')) return;
     
     switch(e.key) {
       case ' ':
       case 'Enter':
         e.preventDefault();
-        flipCard();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        goToPrevious();
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        goToNext();
+        if (!session.isFlipped) {
+          flipCard();
+        }
         break;
       case '1':
-        if (isFlipped) rateDifficulty('hard');
+        if (session.isFlipped) rateCard(1);
         break;
       case '2':
-        if (isFlipped) rateDifficulty('good');
+        if (session.isFlipped) rateCard(2);
         break;
       case '3':
-        if (isFlipped) rateDifficulty('easy');
+        if (session.isFlipped) rateCard(3);
         break;
-      case 'Escape':
-        exitStudy();
+      case '4':
+        if (session.isFlipped) rateCard(4);
         break;
     }
   });
   
-  // Exit button
-  exitStudyBtn.addEventListener('click', exitStudy);
-  
-  // Settings modal
-  settingsBtn.addEventListener('click', () => openModal(settingsModal));
-  closeSettingsBtn.addEventListener('click', () => closeModal(settingsModal));
-  applySettingsBtn.addEventListener('click', applySettings);
-  resetProgressBtn.addEventListener('click', resetProgress);
-  
-  // Completion modal
-  exitFromCompletionBtn.addEventListener('click', exitStudy);
-  restartStudyBtn.addEventListener('click', () => {
-    completionModal.classList.remove('active');
-    currentIndex = 0;
-    studyProgress = {
-      studied: 0,
-      hard: 0,
-      good: 0,
-      easy: 0
-    };
-    startTime = Date.now();
-    
-    if (randomizeCheck.checked) {
-      shuffleArray(studyCards);
-    }
-    
-    displayCard();
-    updateProgress();
-  });
-  
-  // Close modals on backdrop click
+  // Close modal on backdrop click
   settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) closeModal(settingsModal);
-  });
-  
-  completionModal.addEventListener('click', (e) => {
-    if (e.target === completionModal) closeModal(completionModal);
+    if (e.target === settingsModal) closeSettings();
   });
 }

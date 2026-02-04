@@ -87,7 +87,7 @@ function createSyncButton() {
   
   // Create icon element - Refresh emoji
   const iconEl = document.createElement('span');
-  iconEl.textContent = '🔄';
+  iconEl.textContent = '↻';
   iconEl.className = 'addflashcard-button-icon';
   iconEl.style.fontSize = '14px';
   iconEl.style.lineHeight = '1';
