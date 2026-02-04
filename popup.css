@@ -9,7 +9,183 @@ body {
   background-color: #2c3e50;
   color: #ecf0f1;
   width: 600px;
-  min-height: 400px;
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+/* Popup Container */
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #2c3e50;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 1px solid #3d5266;
+}
+
+.header .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ecf0f1;
+  margin: 0;
+}
+
+/* Stats Section */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 15px 20px;
+  background-color: #34495e;
+  border-bottom: 1px solid #3d5266;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #95a5a6;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #5dade2;
+}
+
+/* Actions Section */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #34495e;
+  border: 1px solid #4a5f7f;
+  border-radius: 8px;
+  color: #ecf0f1;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #3d5266;
+  border-color: #5dade2;
+  transform: translateX(4px);
+}
+
+.action-btn:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.action-btn.primary {
+  background-color: #5dade2;
+  border-color: #5dade2;
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background-color: #6bb8e8;
+  box-shadow: 0 4px 12px rgba(93, 173, 226, 0.3);
+}
+
+.action-btn .icon {
+  font-size: 18px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.action-btn span:last-child {
+  flex: 1;
+  text-align: left;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #3d5266;
+  justify-content: flex-end;
+}
+
+.quick-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background-color: #34495e;
+  border: 1px solid #4a5f7f;
+  color: #ecf0f1;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-btn:hover {
+  background-color: #3d5266;
+  border-color: #5dade2;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #3d5266;
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.footer .version {
+  color: #95a5a6;
+}
+
+.footer a {
+  color: #5dade2;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer a:hover {
+  color: #6bb8e8;
+  text-decoration: underline;
 }
 
 .container {

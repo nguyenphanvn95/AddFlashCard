@@ -51,79 +51,33 @@ function createContextMenus() {
   });
 }
 
-// Initialize storage with default values and migrate legacy keys if needed
+// Initialize storage with default values
 async function initializeStorage() {
-  // Desired keys used by the UI/logic
-  const expectedKeys = ['cards', 'decks', 'settings', 'stats'];
-
-  // Fetch any existing keys
-  const existingAll = await chrome.storage.local.get();
-
-  // Migration: if old `flashcards` exists but `cards` does not, migrate it
-  if (existingAll.flashcards && !existingAll.cards) {
-    try {
-      await chrome.storage.local.set({ cards: existingAll.flashcards });
-      console.log('AddFlashcard: Migrated `flashcards` -> `cards`');
-    } catch (e) {
-      console.error('AddFlashcard: Migration failed', e);
-    }
-  }
-
-  // Ensure `decks` exists (expected format: array or object)
-  if (!existingAll.decks) {
-    await chrome.storage.local.set({ decks: ['Default'] });
-  }
-
-  // Ensure `settings` exists
-  if (!existingAll.settings) {
-    await chrome.storage.local.set({ settings: {
+  const defaults = {
+    flashcards: [],
+    settings: {
       theme: 'light',
       autoSync: false,
       ankiConnectUrl: 'http://127.0.0.1:8765',
       defaultDeck: 'Default'
-    }});
-  }
-
-  // Ensure `stats` exists
-  if (!existingAll.stats) {
-    await chrome.storage.local.set({ stats: {
+    },
+    stats: {
       totalCards: 0,
       studiedToday: 0,
       lastStudyDate: null
-    }});
+    }
+  };
+  
+  const existing = await chrome.storage.local.get(Object.keys(defaults));
+  
+  for (const [key, value] of Object.entries(defaults)) {
+    if (!existing[key]) {
+      await chrome.storage.local.set({ [key]: value });
+    }
   }
-
-  // Ensure `cards` exists (default empty array)
-  const nowExisting = await chrome.storage.local.get(['cards']);
-  if (!nowExisting.cards) {
-    await chrome.storage.local.set({ cards: [] });
-  }
-
-  console.log('AddFlashcard: Storage initialized (with migrations)');
+  
+  console.log('AddFlashcard: Storage initialized');
 }
-
-// Keep legacy `flashcards` and new `cards` keys in sync for compatibility with older modules
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return;
-
-  // If cards changed and flashcards differs, mirror it
-  if (changes.cards && changes.cards.newValue !== undefined) {
-    chrome.storage.local.get(['flashcards']).then(existing => {
-      if (!existing.flashcards || JSON.stringify(existing.flashcards) !== JSON.stringify(changes.cards.newValue)) {
-        chrome.storage.local.set({ flashcards: changes.cards.newValue }).catch(() => {});
-      }
-    }).catch(() => {});
-  }
-
-  // If flashcards changed and cards differs, mirror it
-  if (changes.flashcards && changes.flashcards.newValue !== undefined) {
-    chrome.storage.local.get(['cards']).then(existing => {
-      if (!existing.cards || JSON.stringify(existing.cards) !== JSON.stringify(changes.flashcards.newValue)) {
-        chrome.storage.local.set({ cards: changes.flashcards.newValue }).catch(() => {});
-      }
-    }).catch(() => {});
-  }
-});
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -229,6 +183,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .then(flashcards => sendResponse({ success: true, flashcards }))
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
+      
+    case 'openManagePage':
+      chrome.tabs.create({ 
+        url: chrome.runtime.getURL('manage.html'),
+        active: true
+      });
+      if (message.mode === 'createDeck') {
+        // Send message to manage.html to focus on create deck mode after it loads
+        setTimeout(() => {
+          chrome.tabs.query({ url: chrome.runtime.getURL('manage.html') }, (tabs) => {
+            if (tabs.length > 0) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: 'focusCreateDeck' });
+            }
+          });
+        }, 500);
+      }
+      sendResponse({ success: true });
+      break;
       
     default:
       sendResponse({ success: false, error: 'Unknown action' });

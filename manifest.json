@@ -68,8 +68,6 @@
         "vendor/jszip.min.js",
         "vendor/sql-wasm.js",
         "vendor/sql-wasm.wasm",
-        "vendor/pdfjs/pdf.min.js",
-        "vendor/pdfjs/pdf.worker.min.js",
         "notion-sync.css",
         "icons/icon16.png",
         "icons/icon48.png",

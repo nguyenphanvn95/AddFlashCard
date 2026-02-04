@@ -86,12 +86,14 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.theme-light .card-item {
+.theme-light .card-item,
+.theme-light .card {
   background: var(--light-bg-card);
   border: 1px solid var(--light-border);
 }
 
-.theme-light .card-item:hover {
+.theme-light .card-item:hover,
+.theme-light .card:hover {
   box-shadow: var(--light-shadow);
   border-color: #3b82f6;
 }
@@ -99,6 +101,46 @@
 .theme-light .card-front,
 .theme-light .card-back {
   color: var(--light-text);
+  border-bottom-color: var(--light-border);
+}
+
+.theme-light .card-label {
+  color: var(--light-text-secondary);
+}
+
+.theme-light .card-text {
+  color: var(--light-text);
+}
+
+.theme-light .card-text:after {
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,1));
+}
+
+.theme-light .card-tag-small {
+  color: var(--light-text);
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--light-border);
+}
+
+.theme-light .card-actions {
+  background: rgba(247, 250, 252, 0.6);
+}
+
+.theme-light .card-btn {
+  border-color: var(--light-border);
+  background: var(--light-bg-card);
+  color: var(--light-text);
+}
+
+.theme-light .card-btn:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.theme-light .card-btn.delete-btn:hover {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
 }
 
 .theme-light .card-meta {
@@ -222,12 +264,14 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.theme-dark .card-item {
+.theme-dark .card-item,
+.theme-dark .card {
   background: var(--dark-bg-card);
   border: 1px solid var(--dark-border);
 }
 
-.theme-dark .card-item:hover {
+.theme-dark .card-item:hover,
+.theme-dark .card:hover {
   box-shadow: var(--dark-shadow);
   border-color: #3b82f6;
 }
@@ -235,6 +279,46 @@
 .theme-dark .card-front,
 .theme-dark .card-back {
   color: var(--dark-text);
+  border-bottom-color: var(--dark-border);
+}
+
+.theme-dark .card-label {
+  color: var(--dark-text-secondary);
+}
+
+.theme-dark .card-text {
+  color: var(--dark-text);
+}
+
+.theme-dark .card-text:after {
+  background: linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,1));
+}
+
+.theme-dark .card-tag-small {
+  color: var(--dark-text-secondary);
+  background: rgba(51,65,85,0.7);
+  border-color: rgba(71,85,105,0.6);
+}
+
+.theme-dark .card-actions {
+  background: rgba(15,23,42,0.55);
+}
+
+.theme-dark .card-btn {
+  border-color: rgba(71,85,105,0.55);
+  background: rgba(30,41,59,0.85);
+  color: var(--dark-text);
+}
+
+.theme-dark .card-btn:hover {
+  border-color: rgba(96,165,250,0.55);
+  background: rgba(30,58,95,0.9);
+}
+
+.theme-dark .card-btn.delete-btn:hover {
+  border-color: rgba(239,68,68,0.6);
+  background: rgba(127,29,29,0.45);
+  color: #f87171;
 }
 
 .theme-dark .card-meta {
