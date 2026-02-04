@@ -69,7 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadData() {
   chrome.storage.local.get(['cards', 'decks'], (result) => {
     allCards = result.cards || [];
-    allDecks = result.decks || ['Default'];
+    let decks = result.decks;
+    
+    // Handle both array (legacy) and object (new) formats
+    if (Array.isArray(decks)) {
+      allDecks = decks;
+    } else if (decks && typeof decks === 'object') {
+      // Convert object format to array format for manage.js compatibility
+      allDecks = Object.values(decks).map(d => d.name || d);
+    } else {
+      allDecks = ['Default'];
+    }
     
     renderDecks();
     renderCards();
@@ -264,7 +274,7 @@ function selectDeck(deck) {
 function renderCards() {
   let cards = currentDeck === null 
     ? allCards 
-    : allCards.filter(c => c.deck === currentDeck);
+    : allCards.filter(c => c.deck === currentDeck || c.deckId === currentDeck);
   
   // Search filter
   const searchTerm = searchInput.value.toLowerCase();
@@ -272,7 +282,7 @@ function renderCards() {
     cards = cards.filter(c => 
       c.front.toLowerCase().includes(searchTerm) || 
       c.back.toLowerCase().includes(searchTerm) ||
-      c.deck.toLowerCase().includes(searchTerm)
+      (c.deck ? c.deck.toLowerCase().includes(searchTerm) : false)
     );
   }
   
@@ -289,8 +299,22 @@ function renderCards() {
     return 0;
   });
   
-  // Update header
-  currentDeckName.textContent = currentDeck === null ? 'All Cards' : currentDeck;
+  // Update header - show deck name if available
+  let headerText = 'All Cards';
+  if (currentDeck !== null) {
+    // Try to find deck name from allDecks
+    if (Array.isArray(allDecks)) {
+      if (allDecks.includes(currentDeck)) {
+        headerText = currentDeck;
+      }
+    } else if (typeof allDecks === 'object') {
+      const deckObj = allDecks[currentDeck];
+      if (deckObj) {
+        headerText = deckObj.name || currentDeck;
+      }
+    }
+  }
+  currentDeckName.textContent = headerText;
   cardCount.textContent = `${cards.length} cards`;
   
   // Render
@@ -1524,3 +1548,13 @@ function applyTheme(theme) {
 // Initialize theme on load
 initTheme();
 
+// Export functions and state for external use (e.g., integrated-manager.js)
+window.manageApp = {
+  currentDeck: () => currentDeck,
+  setCurrentDeck: (deck) => { currentDeck = deck; },
+  renderCards,
+  renderDecks,
+  selectDeck,
+  allCards: () => allCards,
+  allDecks: () => allDecks
+};

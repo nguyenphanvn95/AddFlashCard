@@ -415,12 +415,20 @@ async function initializeStudy() {
 async function populateSettings() {
   // Load decks
   const result = await chrome.storage.local.get(['decks', 'studySettings']);
-  const decks = result.decks || ['Default'];
+  let decks = result.decks || {};
   const settings = result.studySettings || {};
+  
+  // Convert object format to array if needed
+  let decksList = [];
+  if (Array.isArray(decks)) {
+    decksList = decks;
+  } else if (typeof decks === 'object') {
+    decksList = Object.values(decks).map(d => d.name || d);
+  }
   
   // Populate deck filter
   deckFilterSelect.innerHTML = '<option value="">All Decks</option>';
-  decks.forEach(deck => {
+  decksList.forEach(deck => {
     const option = document.createElement('option');
     option.value = deck;
     option.textContent = deck;
