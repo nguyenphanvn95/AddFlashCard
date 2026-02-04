@@ -279,8 +279,19 @@ function exitEditMode() {
 // Load danh sách decks
 function loadDecks() {
   chrome.storage.local.get(['decks', 'cards'], (result) => {
-    const decks = result.decks || ['Default'];
+    let decks = result.decks || ['Default'];
     const cards = result.cards || [];
+
+    // Handle both array (legacy) and object (new) formats
+    let decksList = [];
+    if (Array.isArray(decks)) {
+      decksList = decks;
+    } else if (decks && typeof decks === 'object') {
+      // Convert object format to array format
+      decksList = Object.values(decks).map(d => d.name || d);
+    } else {
+      decksList = ['Default'];
+    }
 
     // Preserve selection (especially important for Edit mode)
     const preferred = isEditMode && deckSelect.value ? deckSelect.value : deckSelect.value;
@@ -289,7 +300,7 @@ function loadDecks() {
     deckSelect.innerHTML = '<option value="">Choose a deck...</option>';
     
     // Add decks
-    decks.forEach(deck => {
+    decksList.forEach(deck => {
       const option = document.createElement('option');
       option.value = deck;
       option.textContent = deck;
@@ -302,10 +313,10 @@ function loadDecks() {
     });
     
     // Restore selection if possible; otherwise select first deck
-    if (preferred && decks.includes(preferred)) {
+    if (preferred && decksList.includes(preferred)) {
       deckSelect.value = preferred;
-    } else if (decks.length > 0) {
-      deckSelect.value = decks[0];
+    } else if (decksList.length > 0) {
+      deckSelect.value = decksList[0];
     }
   });
 }
@@ -731,7 +742,18 @@ async function saveCard(card) {
 function loadStatistics() {
   chrome.storage.local.get(['cards', 'decks'], (result) => {
     const cards = result.cards || [];
-    const decks = result.decks || ['Default'];
+    let decks = result.decks || ['Default'];
+    
+    // Handle both array (legacy) and object (new) formats
+    let decksList = [];
+    if (Array.isArray(decks)) {
+      decksList = decks;
+    } else if (decks && typeof decks === 'object') {
+      // Convert object format to array format
+      decksList = Object.values(decks).map(d => d.name || d);
+    } else {
+      decksList = ['Default'];
+    }
     
     if (cards.length === 0) {
       statsContent.innerHTML = '<div class="stats-loading">No cards yet</div>';
@@ -740,7 +762,7 @@ function loadStatistics() {
     
     // Count cards by deck
     const deckCounts = {};
-    decks.forEach(deck => {
+    decksList.forEach(deck => {
       deckCounts[deck] = cards.filter(c => c.deck === deck).length;
     });
     

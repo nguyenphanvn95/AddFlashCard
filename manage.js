@@ -520,21 +520,33 @@ function openEditSidebar(card) {
   const frontEditor = document.getElementById('sidebarFrontEditor');
   const backEditor = document.getElementById('sidebarBackEditor');
   
-  // Populate deck select
+  // Populate deck select - handle both array and object formats
   deckSelect.innerHTML = '';
-  allDecks.forEach(deck => {
+  let decksList = [];
+  if (Array.isArray(allDecks)) {
+    decksList = allDecks;
+  } else if (typeof allDecks === 'object') {
+    decksList = Object.values(allDecks).map(d => d.name || d);
+  }
+  
+  decksList.forEach(deck => {
     const option = document.createElement('option');
     option.value = deck;
     option.textContent = deck;
-    if (deck === card.deck) {
+    if (card && deck === card.deck) {
       option.selected = true;
     }
     deckSelect.appendChild(option);
   });
   
   // Populate editors
-  frontEditor.innerHTML = card.front || '';
-  backEditor.innerHTML = card.back || '';
+  if (card) {
+    frontEditor.innerHTML = card.front || '';
+    backEditor.innerHTML = card.back || '';
+  } else {
+    frontEditor.innerHTML = '';
+    backEditor.innerHTML = '';
+  }
   
   // Show sidebar
   overlay.classList.add('active');
