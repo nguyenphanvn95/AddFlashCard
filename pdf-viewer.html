@@ -400,12 +400,12 @@
     </button>
   </div>
 
-  <!-- PDF.js Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- PDF.js Library (local copy) -->
+  <script src="vendor/pdfjs/pdf.min.js"></script>
   
   <script>
-    // PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    // PDF.js worker (local copy)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdfjs/pdf.worker.min.js';
 
     // State
     let pdfDoc = null;

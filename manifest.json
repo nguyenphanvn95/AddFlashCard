@@ -18,7 +18,7 @@
     "https://*.notion.so/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "background": {
     "service_worker": "background.js"
@@ -68,6 +68,8 @@
         "vendor/jszip.min.js",
         "vendor/sql-wasm.js",
         "vendor/sql-wasm.wasm",
+        "vendor/pdfjs/pdf.min.js",
+        "vendor/pdfjs/pdf.worker.min.js",
         "notion-sync.css",
         "icons/icon16.png",
         "icons/icon48.png",
