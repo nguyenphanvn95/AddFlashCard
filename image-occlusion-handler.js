@@ -61,16 +61,9 @@
       
       // Kiểm tra nếu click vào ảnh
       if (target.tagName === 'IMG') {
-        // Ignore clicks that happen immediately after the menu was closed
-        if (window.__io_recentMenuClosed && Date.now() - window.__io_recentMenuClosed < 350) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
         e.preventDefault();
         e.stopPropagation();
-
+        
         // Hiển thị menu cho ảnh
         showImageMenu(target, areaName);
       }
@@ -101,7 +94,7 @@
     const menu = document.createElement('div');
     menu.id = 'io-image-menu';
     menu.style.cssText = `
-      position: absolute;
+      position: fixed;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border: 2px solid #5a67d8;
       border-radius: 12px;
@@ -140,48 +133,77 @@
       try { imgElement.setAttribute('data-io-img-id', ioId); } catch (e) {}
     }
 
-    // Tính toán vị trí: ưu tiên đặt bên trái ảnh; nếu không đủ chỗ thì đặt bên phải; vertical align ở giữa ảnh
+    // Tính toán vị trí: ưu tiên bám bên trái ảnh; nếu không đủ chỗ thì chuyển sang phải, luôn nằm trong viewport
     const rect = imgElement.getBoundingClientRect();
 
-    // Append menu into the sidebar container so positioning matches the editor (works with iframe/scroll/transform)
-    const container = document.querySelector('.sidebar-container') || document.body;
-    // Ensure container is a positioning context
-    try {
-      const cs = window.getComputedStyle(container);
-      if (cs.position === 'static') container.style.position = 'relative';
-    } catch(e) {}
-
+    // chèn tạm để đo kích thước
     menu.style.visibility = 'hidden';
     menu.style.left = '0px';
     menu.style.top = '0px';
-    container.appendChild(menu);
+    document.body.appendChild(menu);
 
     const mrect = menu.getBoundingClientRect();
-    const cRect = container.getBoundingClientRect();
-const gap = 10;
-    // Try left first
-    let leftPos = (rect.left - cRect.left) - mrect.width - gap;
+    const gap = 10;
+
+    // ưu tiên bên trái
+    let leftPos = rect.left - mrect.width - gap;
+
+    // nếu không đủ chỗ bên trái thì chuyển sang phải ảnh
     if (leftPos < 8) {
-      // Not enough room on the left — try placing to the right of the image
-      const rightPos = (rect.right - cRect.left) + gap;
-      if (rightPos + mrect.width <= cRect.width - 8) {
-        leftPos = rightPos;
-      } else {
-        // No room both sides — clamp within viewport but center vertically to avoid overlapping important parts
-        leftPos = Math.max(8, Math.min(cRect.width - mrect.width - 8, (rect.left - cRect.left) - mrect.width - gap));
-      }
+      leftPos = rect.right + gap;
     }
 
-    // Vertical: align menu center to image center when possible
-    let topPos = (rect.top - cRect.top) + (rect.height - mrect.height) / 2;
-    if (topPos + mrect.height > cRect.height - 8) {
-      topPos = Math.max(8, cRect.height - mrect.height - 8);
+    // nếu vẫn tràn bên phải thì clamp vào viewport
+    if (leftPos + mrect.width > window.innerWidth - 8) {
+      leftPos = Math.max(8, window.innerWidth - mrect.width - 8);
     }
+
+    // canh giữa theo chiều dọc so với ảnh
+    let topPos = rect.top + (rect.height / 2) - (mrect.height / 2);
+
+    // clamp top/bottom
     if (topPos < 8) topPos = 8;
+    if (topPos + mrect.height > window.innerHeight - 8) {
+      topPos = Math.max(8, window.innerHeight - mrect.height - 8);
+    }
 
-    menu.style.left = `${leftPos}px`;
-    menu.style.top = `${topPos}px`;
+    menu.style.left = `${Math.round(leftPos)}px`;
+    menu.style.top = `${Math.round(topPos)}px`;
     menu.style.visibility = 'visible';
+
+    // Reposition on scroll/resize so it keeps "bám" theo ảnh trong .sidebar-content
+    const sidebarContent = document.querySelector('.sidebar-content');
+    const reposition = () => {
+      const img = document.querySelector(`img[data-io-img-id="${ioId}"]`) || imgElement;
+      if (!img || !document.body.contains(menu)) return;
+      const r = img.getBoundingClientRect();
+      const mr = menu.getBoundingClientRect();
+
+      let lp = r.left - mr.width - gap;
+      if (lp < 8) lp = r.right + gap;
+      if (lp + mr.width > window.innerWidth - 8) lp = Math.max(8, window.innerWidth - mr.width - 8);
+
+      let tp = r.top + (r.height / 2) - (mr.height / 2);
+      if (tp < 8) tp = 8;
+      if (tp + mr.height > window.innerHeight - 8) tp = Math.max(8, window.innerHeight - mr.height - 8);
+
+      menu.style.left = `${Math.round(lp)}px`;
+      menu.style.top = `${Math.round(tp)}px`;
+    };
+
+    try {
+      if (sidebarContent) sidebarContent.addEventListener('scroll', reposition, { passive: true });
+      window.addEventListener('scroll', reposition, { passive: true });
+      window.addEventListener('resize', reposition);
+      // cleanup listeners when menu closed
+      const cleanup = () => {
+        if (sidebarContent) sidebarContent.removeEventListener('scroll', reposition);
+        window.removeEventListener('scroll', reposition);
+        window.removeEventListener('resize', reposition);
+      };
+      menu._ioCleanup = cleanup;
+    } catch (e) {}
+
 
     // Xử lý hover effect
     menu.querySelectorAll('.io-menu-btn').forEach(btn => {
@@ -210,22 +232,21 @@ const gap = 10;
 
     menu.querySelector('[data-action="remove"]').addEventListener('click', (e) => {
       e.stopPropagation();
-      e.preventDefault();
-      // Ask for confirmation first, only then remove
+      menu.remove();
       if (!confirm('Bạn có chắc muốn xóa ảnh này?')) return;
 
       // Try to find the current image element by stable id
       let targetImg = null;
       try {
         targetImg = document.querySelector('img[data-io-img-id="' + ioId + '"]');
-      } catch (err) { targetImg = null; }
+      } catch (e) { targetImg = null; }
 
       // Fallback: match by src
       if (!targetImg) {
         try {
           const imgs = Array.from(document.querySelectorAll('img'));
           targetImg = imgs.find(i => i.src === imgElement.src);
-        } catch (err) { targetImg = null; }
+        } catch (e) { targetImg = null; }
       }
 
       // Final fallback: use original element if still connected
@@ -236,23 +257,12 @@ const gap = 10;
       } else {
         console.warn('Image Occlusion: could not find image to remove for id', ioId);
       }
-
-      // Remove menu and set a short guard so subsequent click does not act on underlying elements
-      window.__io_recentMenuClosed = Date.now();
-      menu.remove();
     });
 
     menu.querySelector('.io-close-menu').addEventListener('click', (e) => {
       e.stopPropagation();
-      e.preventDefault();
-      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-      // Hide first to avoid click-through/mutation side-effects, then remove
-      menu.style.display = 'none';
-      window.__io_recentMenuClosed = Date.now();
-      setTimeout(() => {
-        if (menu && menu.isConnected) menu.remove();
-      }, 200);
+      try { if (menu._ioCleanup) menu._ioCleanup(); } catch (err) {}
+      menu.remove();
     });
 
     // Đóng menu khi click bên ngoài
@@ -263,15 +273,9 @@ const gap = 10;
           document.removeEventListener('click', closeMenu);
           return;
         }
-
-        // If the menu was just closed, ignore this click to avoid accidental actions
-        if (window.__io_recentMenuClosed && Date.now() - window.__io_recentMenuClosed < 350) {
-          document.removeEventListener('click', closeMenu);
-          return;
-        }
-
+        
         if (!menu.contains(e.target) && e.target !== imgElement) {
-          window.__io_recentMenuClosed = Date.now();
+          try { if (menu._ioCleanup) menu._ioCleanup(); } catch (err) {}
           menu.remove();
           document.removeEventListener('click', closeMenu);
         }
@@ -283,7 +287,7 @@ const gap = 10;
   function showImageTooltip(imgElement, areaName) {
     const tooltip = document.createElement('div');
     tooltip.style.cssText = `
-      position: absolute;
+      position: fixed;
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       border: 2px solid #ff7eb3;
       border-radius: 8px;
@@ -357,7 +361,7 @@ const gap = 10;
   function viewFullImage(imgElement) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
@@ -393,7 +397,7 @@ const gap = 10;
   function showLoadingOverlay(message) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
@@ -451,7 +455,7 @@ const gap = 10;
   function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 20px;
       right: 20px;
       background: ${type === 'success' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'};

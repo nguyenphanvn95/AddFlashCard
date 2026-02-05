@@ -51,6 +51,16 @@ body {
   flex-shrink: 0;
 }
 
+/* Logo image shown in toolbar */
+.toolbar-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: block;
+}
+
 .toolbar-upload {
   display: flex;
   align-items: center;
@@ -373,6 +383,12 @@ body {
     height: 16px;
   }
 
+  .toolbar-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+
   .tool-btn {
     padding: 7px 10px;
     font-size: 12px;
@@ -543,6 +559,12 @@ body {
   .toolbar-upload svg {
     width: 13px;
     height: 13px;
+  }
+
+  .toolbar-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
   }
 
   #cardTitle {
