@@ -40,6 +40,30 @@ async function loadStats() {
 
 // Setup event listeners
 function setupEventListeners() {
+  // Add card button - toggle sidebar on current tab
+  document.getElementById('add-card-btn').addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+      try {
+        // Try to send message to existing content script
+        await chrome.tabs.sendMessage(tab.id, { action: 'toggleSidebar' });
+      } catch (error) {
+        // Content script not loaded, inject it
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          // After injection, send the message
+          await chrome.tabs.sendMessage(tab.id, { action: 'toggleSidebar' });
+        } catch (injectionError) {
+          console.error('Failed to inject content script:', injectionError);
+        }
+      }
+    }
+    window.close();
+  });
+  
   // Manage button
   document.getElementById('manage-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('manage.html') });
@@ -84,18 +108,6 @@ function setupEventListeners() {
       chrome.tabs.create({ url: chrome.runtime.getURL('image-occlusion-editor.html') });
       window.close();
     }
-  });
-  
-  // Export button
-  document.getElementById('export-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#export') });
-    window.close();
-  });
-  
-  // Anki Sync button
-  document.getElementById('anki-sync-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#anki-sync') });
-    window.close();
   });
   
   // Settings button

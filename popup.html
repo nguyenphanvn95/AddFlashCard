@@ -31,6 +31,11 @@
     </div>
 
     <div class="actions">
+      <button class="action-btn add-card-btn" id="add-card-btn">
+        <span class="icon">✏️</span>
+        <span>Thêm thẻ mới</span>
+      </button>
+
       <button class="action-btn primary" id="manage-btn">
         <span class="icon">📚</span>
         <span>Quản lý thẻ</span>
@@ -49,16 +54,6 @@
       <button class="action-btn occlusion-btn" id="image-occlusion-btn">
         <span class="icon">🖼️</span>
         <span>Image Occlusion</span>
-      </button>
-
-      <button class="action-btn" id="export-btn">
-        <span class="icon">💾</span>
-        <span>Export APKG</span>
-      </button>
-
-      <button class="action-btn" id="anki-sync-btn">
-        <span class="icon">🔄</span>
-        <span>Sync Anki</span>
       </button>
     </div>
 
@@ -135,6 +130,39 @@
     }
 
     .action-btn.occlusion-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Add Card Button Style */
+    .action-btn.add-card-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.add-card-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.add-card-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.add-card-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.add-card-btn .icon {
       font-size: 20px;
     }
   </style>
