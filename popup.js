@@ -131,7 +131,7 @@ function setupEventListeners() {
   // Notion link
   document.getElementById('notion-link').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#notion') });
+    chrome.tabs.create({ url: 'https://github.com/nguyenphanvn95/' });
     window.close();
   });
 }
