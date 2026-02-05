@@ -1,13 +1,16 @@
 // Overlay Editor - Updated to use unified library
 // File này thay thế overlay-editor.js cũ
 
-let overlayCanvas, overlayCtx;
-let overlayImg = new Image();
-let overlayOcclusions = [];
-let selectedOverlayOcclusion = null;
-let currentOverlayTool = 'rect';
-let isOverlayDrawing = false;
-let overlayStartX, overlayStartY;
+if (!window.__afc_overlay_loaded) {
+  window.__afc_overlay_loaded = true;
+
+  let overlayCanvas, overlayCtx;
+  let overlayImg = new Image();
+  let overlayOcclusions = [];
+  let selectedOverlayOcclusion = null;
+  let currentOverlayTool = 'rect';
+  let isOverlayDrawing = false;
+  let overlayStartX, overlayStartY;
 
 // Khởi tạo canvas trong overlay
 function initializeCanvas(imageData) {
@@ -327,8 +330,9 @@ function showSuccessNotification() {
 }
 
 // Export functions to global scope cho content.js
-window.initializeCanvas = initializeCanvas;
-window.selectOverlayTool = selectOverlayTool;
-window.deleteSelectedOcclusion = deleteSelectedOcclusion;
-window.clearAllOcclusions = clearAllOcclusions;
-window.exportOverlayAnki = exportOverlayAnki;
+  window.initializeCanvas = initializeCanvas;
+  window.selectOverlayTool = selectOverlayTool;
+  window.deleteSelectedOcclusion = deleteSelectedOcclusion;
+  window.clearAllOcclusions = clearAllOcclusions;
+  window.exportOverlayAnki = exportOverlayAnki;
+}
