@@ -271,6 +271,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else {
       openSidebar();
     }
+    // Send response back to confirm sidebar toggle
+    sendResponse({ success: true, isOpen: !isOpen });
   }
   
   // Handle settings updates from popup

@@ -45,23 +45,31 @@ function setupEventListeners() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
       try {
-        // Try to send message to existing content script
+        // Try to send message to existing content script and wait for response
         await chrome.tabs.sendMessage(tab.id, { action: 'toggleSidebar' });
+        // Close popup after sidebar successfully opened
+        window.close();
       } catch (error) {
-        // Content script not loaded, inject it
+        // Content script not loaded, inject it first
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
           });
+          // Wait a moment for content script to initialize
+          await new Promise(resolve => setTimeout(resolve, 300));
           // After injection, send the message
           await chrome.tabs.sendMessage(tab.id, { action: 'toggleSidebar' });
+          // Close popup after sidebar successfully opened
+          window.close();
         } catch (injectionError) {
           console.error('Failed to inject content script:', injectionError);
+          window.close();
         }
       }
+    } else {
+      window.close();
     }
-    window.close();
   });
   
   // Manage button
@@ -250,11 +258,10 @@ function openSettingsModal() {
     <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #3d5266;">
       <label style="display: block; margin-bottom: 10px;">
         <div style="font-weight: 600; margin-bottom: 4px;">🖼️ Image Occlusion Quick Access</div>
-        <div style="font-size: 12px; color: #95a5a6;">Enable hover icon and Alt+Click on images</div>
       </label>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-size: 14px;">Alt+Click on image to create occlusion</div>
+          <div style="font-size: 14px;">Enable Alt+Click on images</div>
           <div style="display: grid; grid-auto-flow: column; grid-auto-columns: min-content; gap: 8px;">
             <button class="altclick-btn" data-value="on" style="padding: 8px 10px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer;">On</button>
             <button class="altclick-btn" data-value="off" style="padding: 8px 10px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer;">Off</button>

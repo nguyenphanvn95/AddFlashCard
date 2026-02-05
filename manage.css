@@ -570,9 +570,12 @@ body {
 
 /* Empty State */
 .empty-state {
-  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
   text-align: center;
-  padding: 80px 20px;
   color: #64748b;
 }
 

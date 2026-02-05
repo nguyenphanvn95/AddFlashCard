@@ -1,15 +1,14 @@
 // ============================================================================
-// ANKI EXPORT UNIFIED LIBRARY
-// Tạo file .apkg chuẩn cho cả overlay mode và editor.html mode
-// Sửa lỗi: "note has 7 fields, expected 6"
+// ANKI EXPORT UNIFIED LIBRARY - FIXED VERSION
+// Tạo file .apkg chuẩn theo mẫu Image Occlusion với đúng các fields và masks
 // ============================================================================
 
 // ============================================================================
-// PHẦN 1: EXPORT CHO EDITOR.HTML (Multiple Cards)
+// PHẦN 1: EXPORT CHO EDITOR.HTML (Multiple Cards - Hide 1)
 // ============================================================================
 
 /**
- * Xuất Anki từ editor.html với nhiều thẻ (mỗi khối che = 1 thẻ)
+ * Xuất Anki từ editor.html với nhiều thẻ (Hide 1: mỗi khối che = 1 thẻ)
  */
 async function exportAnkiMultiCard() {
   if (occlusions.length === 0) {
@@ -21,17 +20,30 @@ async function exportAnkiMultiCard() {
   updateStatus('Đang tạo file Anki...');
 
   try {
-    // Ảnh gốc (answer) - tạo 1 lần
+    // Ảnh gốc (Image field)
     const originalImageBlob = await canvasToBlob(canvas);
 
-    // Tạo nhiều ảnh câu hỏi: mỗi block -> 1 thẻ
-    const questionBlobs = [];
+    // Tạo data cho từng thẻ
+    const cardsData = [];
     for (let i = 0; i < occlusions.length; i++) {
-      questionBlobs.push(await createOccludedImageForIndex(i));
+      // Question Mask: chỉ có 1 block hiện tại
+      const questionMaskBlob = await createQuestionMask(i);
+      
+      // Answer Mask: các block còn lại (không có block hiện tại)
+      const answerMaskBlob = await createAnswerMask(i);
+      
+      // Original Mask: tất cả các blocks
+      const originalMaskBlob = await createOriginalMask();
+
+      cardsData.push({
+        questionMask: questionMaskBlob,
+        answerMask: answerMaskBlob,
+        originalMask: originalMaskBlob
+      });
     }
 
     // Tạo file .apkg (nhiều thẻ)
-    await createApkgMultiCard(cardTitle, originalImageBlob, questionBlobs);
+    await createApkgMultiCard(cardTitle, originalImageBlob, cardsData);
 
     updateStatus('Đã xuất file .apkg thành công!');
   } catch (error) {
@@ -42,20 +54,20 @@ async function exportAnkiMultiCard() {
 }
 
 /**
- * Tạo ảnh có khối che mờ cho 1 block (theo index)
+ * Tạo Question Mask: chỉ có block tại index (block đang được hỏi)
  */
-async function createOccludedImageForIndex(index) {
+async function createQuestionMask(index) {
   const occ = occlusions[index];
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
 
-  // Vẽ ảnh gốc
-  tempCtx.drawImage(img, 0, 0);
+  // Canvas trong suốt
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-  // Chỉ vẽ 1 khối che cho thẻ này
-  tempCtx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  // Vẽ CHỈ 1 khối che tại vị trí này
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
 
   if (occ.type === 'rect') {
     tempCtx.fillRect(occ.x, occ.y, occ.width, occ.height);
@@ -74,60 +86,59 @@ async function createOccludedImageForIndex(index) {
   return await canvasToBlob(tempCanvas);
 }
 
-// ============================================================================
-// PHẦN 2: EXPORT CHO OVERLAY MODE (Single Card)
-// ============================================================================
-
 /**
- * Xuất Anki từ overlay mode với 1 thẻ (tất cả khối che trên cùng 1 thẻ)
+ * Tạo Answer Mask: các blocks còn lại (KHÔNG có block đang được hỏi)
  */
-async function exportAnkiSingleCard(overlayCanvas, overlayImg, overlayOcclusions, cardTitle) {
-  if (overlayOcclusions.length === 0) {
-    throw new Error('Vui lòng vẽ ít nhất một khối che mờ!');
+async function createAnswerMask(currentIndex) {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // Canvas trong suốt
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+  // Vẽ TẤT CẢ các khối TRỪ khối hiện tại
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
+
+  for (let i = 0; i < occlusions.length; i++) {
+    if (i === currentIndex) continue; // Bỏ qua block hiện tại
+
+    const occ = occlusions[i];
+    if (occ.type === 'rect') {
+      tempCtx.fillRect(occ.x, occ.y, occ.width, occ.height);
+    } else if (occ.type === 'ellipse') {
+      tempCtx.beginPath();
+      tempCtx.ellipse(
+        occ.x + occ.width / 2,
+        occ.y + occ.height / 2,
+        Math.abs(occ.width / 2),
+        Math.abs(occ.height / 2),
+        0, 0, 2 * Math.PI
+      );
+      tempCtx.fill();
+    }
   }
 
-  // Tạo ảnh gốc (không có khối che)
-  const originalBlob = await createOriginalImageFromOverlay(overlayCanvas, overlayImg);
-
-  // Tạo ảnh có tất cả khối che
-  const occludedBlob = await createOccludedImageFromOverlay(
-    overlayCanvas,
-    overlayImg,
-    overlayOcclusions
-  );
-
-  // Tạo file .apkg (1 thẻ)
-  await createApkgSingleCard(cardTitle, originalBlob, occludedBlob);
-}
-
-/**
- * Tạo ảnh gốc từ overlay (không có khối che)
- */
-async function createOriginalImageFromOverlay(overlayCanvas, overlayImg) {
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = overlayCanvas.width;
-  tempCanvas.height = overlayCanvas.height;
-  const tempCtx = tempCanvas.getContext('2d');
-  
-  tempCtx.drawImage(overlayImg, 0, 0);
-  
   return await canvasToBlob(tempCanvas);
 }
 
 /**
- * Tạo ảnh có tất cả khối che từ overlay
+ * Tạo Original Mask: TẤT CẢ các blocks
  */
-async function createOccludedImageFromOverlay(overlayCanvas, overlayImg, overlayOcclusions) {
+async function createOriginalMask() {
   const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = overlayCanvas.width;
-  tempCanvas.height = overlayCanvas.height;
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
 
-  tempCtx.drawImage(overlayImg, 0, 0);
+  // Canvas trong suốt
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-  overlayOcclusions.forEach(occ => {
-    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  // Vẽ TẤT CẢ các khối
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
 
+  occlusions.forEach(occ => {
     if (occ.type === 'rect') {
       tempCtx.fillRect(occ.x, occ.y, occ.width, occ.height);
     } else if (occ.type === 'ellipse') {
@@ -147,59 +158,171 @@ async function createOccludedImageFromOverlay(overlayCanvas, overlayImg, overlay
 }
 
 // ============================================================================
+// PHẦN 2: EXPORT CHO OVERLAY MODE (Single Card - Hide All)
+// ============================================================================
+
+/**
+ * Xuất Anki từ overlay mode với 1 thẻ (Hide All: tất cả khối che trên cùng 1 thẻ)
+ */
+async function exportAnkiSingleCard(overlayCanvas, overlayImg, overlayOcclusions, cardTitle) {
+  if (overlayOcclusions.length === 0) {
+    throw new Error('Vui lòng vẽ ít nhất một khối che mờ!');
+  }
+
+  // Image: ảnh gốc (không có khối che)
+  const originalBlob = await createOriginalImageFromOverlay(overlayCanvas, overlayImg);
+
+  // Question Mask: tất cả các blocks (vì Hide All)
+  const questionMaskBlob = await createAllMasksFromOverlay(
+    overlayCanvas,
+    overlayOcclusions
+  );
+
+  // Answer Mask: rỗng (vì khi toggle thì hiện tất cả)
+  const answerMaskBlob = await createEmptyMask(overlayCanvas);
+
+  // Original Mask: tất cả các blocks (giống Question Mask)
+  const originalMaskBlob = await createAllMasksFromOverlay(
+    overlayCanvas,
+    overlayOcclusions
+  );
+
+  // Tạo file .apkg (1 thẻ)
+  await createApkgSingleCard(cardTitle, originalBlob, questionMaskBlob, answerMaskBlob, originalMaskBlob);
+}
+
+/**
+ * Tạo ảnh gốc từ overlay (không có khối che)
+ */
+async function createOriginalImageFromOverlay(overlayCanvas, overlayImg) {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = overlayCanvas.width;
+  tempCanvas.height = overlayCanvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  tempCtx.drawImage(overlayImg, 0, 0);
+  
+  return await canvasToBlob(tempCanvas);
+}
+
+/**
+ * Tạo mask với tất cả các blocks
+ */
+async function createAllMasksFromOverlay(overlayCanvas, overlayOcclusions) {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = overlayCanvas.width;
+  tempCanvas.height = overlayCanvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // Canvas trong suốt
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+  // Vẽ tất cả các khối
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)';
+
+  overlayOcclusions.forEach(occ => {
+    if (occ.type === 'rect') {
+      tempCtx.fillRect(occ.x, occ.y, occ.width, occ.height);
+    } else if (occ.type === 'ellipse') {
+      tempCtx.beginPath();
+      tempCtx.ellipse(
+        occ.x + occ.width / 2,
+        occ.y + occ.height / 2,
+        Math.abs(occ.width / 2),
+        Math.abs(occ.height / 2),
+        0, 0, 2 * Math.PI
+      );
+      tempCtx.fill();
+    }
+  });
+
+  return await canvasToBlob(tempCanvas);
+}
+
+/**
+ * Tạo mask rỗng (trong suốt hoàn toàn)
+ */
+async function createEmptyMask(overlayCanvas) {
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = overlayCanvas.width;
+  tempCanvas.height = overlayCanvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // Canvas trong suốt, không vẽ gì
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+  return await canvasToBlob(tempCanvas);
+}
+
+// ============================================================================
 // PHẦN 3: TẠO FILE .APKG
 // ============================================================================
 
 /**
- * Tạo file .apkg với nhiều thẻ (editor.html mode)
+ * Tạo file .apkg với nhiều thẻ (editor.html mode - Hide 1)
  */
-async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
+async function createApkgMultiCard(cardTitle, imageBlob, cardsData) {
   if (typeof JSZip === 'undefined') {
     alert('Vui lòng thêm thư viện JSZip vào extension!\nXem hướng dẫn trong file README.md');
     return;
   }
 
-  if (!Array.isArray(questionImages) || questionImages.length === 0) {
-    throw new Error('Không có ảnh câu hỏi để export.');
+  if (!Array.isArray(cardsData) || cardsData.length === 0) {
+    throw new Error('Không có dữ liệu thẻ để export.');
   }
 
   const zip = new JSZip();
   const ts = Date.now();
 
-  // Tên file media (dùng trong HTML và manifest)
-  const answerImageName = `image_${ts}_answer.png`;
-  const questionImageNames = questionImages.map((_, idx) => `image_${ts}_q${idx + 1}.png`);
+  // Tên file media
+  const imageName = `image_${ts}.png`;
+  
+  // Tạo media manifest và thêm file vào ZIP
+  const mediaManifest = {};
+  let mediaIndex = 0;
+
+  // Image gốc (chung cho tất cả thẻ)
+  mediaManifest[String(mediaIndex)] = imageName;
+  zip.file(String(mediaIndex), imageBlob);
+  mediaIndex++;
+
+  // Tạo tên file cho từng thẻ
+  const cardsMediaInfo = [];
+  for (let i = 0; i < cardsData.length; i++) {
+    const questionMaskName = `qmask_${ts}_${i}.png`;
+    const answerMaskName = `amask_${ts}_${i}.png`;
+    const originalMaskName = `omask_${ts}_${i}.png`;
+
+    // Thêm vào manifest và ZIP
+    mediaManifest[String(mediaIndex)] = questionMaskName;
+    zip.file(String(mediaIndex), cardsData[i].questionMask);
+    mediaIndex++;
+
+    mediaManifest[String(mediaIndex)] = answerMaskName;
+    zip.file(String(mediaIndex), cardsData[i].answerMask);
+    mediaIndex++;
+
+    mediaManifest[String(mediaIndex)] = originalMaskName;
+    zip.file(String(mediaIndex), cardsData[i].originalMask);
+    mediaIndex++;
+
+    cardsMediaInfo.push({
+      image: imageName,
+      questionMask: questionMaskName,
+      answerMask: answerMaskName,
+      originalMask: originalMaskName
+    });
+  }
 
   // Tạo collection database
   const collectionData = await createAnkiCollectionMultiCard({
     cardTitle,
     deckName: 'Anki Image Occlusion',
     modelName: 'Image Occlusion',
-    questionImageNames,
-    answerImageName,
+    cardsMediaInfo
   });
 
   zip.file('collection.anki2', collectionData);
-
-  // Thêm media files
-  // QUAN TRỌNG: File trong ZIP lưu với index số (không có extension)
-  // Manifest ánh xạ index -> filename có extension
-  const mediaManifest = {};
-  let mediaIndex = 0;
-
-  // Answer image (index 0)
-  mediaManifest[String(mediaIndex)] = answerImageName;
-  zip.file(String(mediaIndex), answerImage);  // File "0" trong ZIP
-  mediaIndex++;
-
-  // Question images (index 1, 2, 3, ...)
-  for (let i = 0; i < questionImages.length; i++) {
-    const qName = questionImageNames[i];
-    mediaManifest[String(mediaIndex)] = qName;
-    zip.file(String(mediaIndex), questionImages[i]);  // File "1", "2", "3" trong ZIP
-    mediaIndex++;
-  }
-
   zip.file('media', JSON.stringify(mediaManifest));
 
   const content = await zip.generateAsync({
@@ -212,42 +335,47 @@ async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
 }
 
 /**
- * Tạo file .apkg với 1 thẻ (overlay mode)
+ * Tạo file .apkg với 1 thẻ (overlay mode - Hide All)
  */
-async function createApkgSingleCard(cardTitle, answerImage, questionImage) {
+async function createApkgSingleCard(cardTitle, imageBlob, questionMaskBlob, answerMaskBlob, originalMaskBlob) {
   if (typeof JSZip === 'undefined') {
-    // Load JSZip dynamically cho overlay mode
     await loadJSZipDynamic();
   }
 
   const zip = new JSZip();
   const ts = Date.now();
 
-  // Tên file media (dùng trong HTML và manifest)
-  const answerImageName = `image_${ts}_answer.png`;
-  const questionImageName = `image_${ts}_question.png`;
+  // Tên file media
+  const imageName = `image_${ts}.png`;
+  const questionMaskName = `qmask_${ts}.png`;
+  const answerMaskName = `amask_${ts}.png`;
+  const originalMaskName = `omask_${ts}.png`;
+
+  // Tạo media manifest
+  const mediaManifest = {
+    '0': imageName,
+    '1': questionMaskName,
+    '2': answerMaskName,
+    '3': originalMaskName
+  };
+
+  zip.file('0', imageBlob);
+  zip.file('1', questionMaskBlob);
+  zip.file('2', answerMaskBlob);
+  zip.file('3', originalMaskBlob);
 
   // Tạo collection database
   const collectionData = await createAnkiCollectionSingleCard({
     cardTitle,
     deckName: 'Anki Image Occlusion',
     modelName: 'Image Occlusion',
-    questionImageName,
-    answerImageName,
+    image: imageName,
+    questionMask: questionMaskName,
+    answerMask: answerMaskName,
+    originalMask: originalMaskName
   });
 
   zip.file('collection.anki2', collectionData);
-
-  // Thêm media files
-  // QUAN TRỌNG: File trong ZIP lưu với index số (không có extension)
-  // Manifest ánh xạ index -> filename có extension
-  const mediaManifest = {
-    '0': answerImageName,   // Index 0 -> "image_123_answer.png"
-    '1': questionImageName  // Index 1 -> "image_123_question.png"
-  };
-
-  zip.file('0', answerImage);      // File "0" trong ZIP
-  zip.file('1', questionImage);    // File "1" trong ZIP
   zip.file('media', JSON.stringify(mediaManifest));
 
   const content = await zip.generateAsync({
@@ -278,8 +406,8 @@ async function createAnkiCollectionMultiCard(opts) {
   // Tạo các bảng cần thiết
   createAnkiTables(db);
 
-  // Tạo model với 6 fields (FIX LỖI 7 FIELDS!)
-  const models = createAnkiModel(modelId, deckId, timestamp, opts.modelName);
+  // Tạo model với đúng fields theo mẫu
+  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName);
 
   // Tạo deck
   const decks = createAnkiDeck(deckId, timestamp, opts.deckName);
@@ -304,27 +432,34 @@ async function createAnkiCollectionMultiCard(opts) {
     ]
   );
 
-  // Tạo notes và cards
-  const questionImageNames = opts.questionImageNames || [];
+  // Tạo notes và cards cho từng thẻ
+  const cardsMediaInfo = opts.cardsMediaInfo || [];
   let nextNoteId = timestampMs + 10;
   let nextCardId = nextNoteId + 1;
 
-  for (let i = 0; i < questionImageNames.length; i++) {
+  for (let i = 0; i < cardsMediaInfo.length; i++) {
     const noteId = nextNoteId;
+    const info = cardsMediaInfo[i];
 
-    // Tham chiếu media bằng TÊN FILE (không phải index số!)
-    const questionImageName = questionImageNames[i];
-    const answerImageName = opts.answerImageName;
+    // Tạo ID ngẫu nhiên theo ngày
+    const cardId = generateCardId();
 
-    // Tạo 6 fields (FIX LỖI 7 FIELDS!)
-    // Fields: Question, Answer, Header, Footer, Remarks, Extra
-    const fQ = `<img src="${questionImageName}">`;
-    const fA = `<img src="${answerImageName}">`;
-    
-    // 6 fields được ngăn cách bởi 5 dấu \x1f
-    const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
-    
-    // sfld (sort field) là text thuần túy của field đầu tiên (không có HTML)
+    // 9 fields: ID, Image, Question Mask, Answer Mask, Original Mask, Header, Footer, Remarks, Sources, Extra 1, Extra 2
+    const fields = [
+      cardId,                                    // ID
+      `<img src="${info.image}">`,              // Image
+      `<img src="${info.questionMask}">`,       // Question Mask
+      `<img src="${info.answerMask}">`,         // Answer Mask
+      `<img src="${info.originalMask}">`,       // Original Mask
+      '',                                        // Header
+      '',                                        // Footer
+      '',                                        // Remarks
+      '',                                        // Sources
+      '',                                        // Extra 1
+      ''                                         // Extra 2
+    ].join('\x1f');
+
+    // Sort field
     const sortField = `${opts.cardTitle || ''} - Card ${i + 1}`;
 
     db.run(
@@ -332,11 +467,11 @@ async function createAnkiCollectionMultiCard(opts) {
       [noteId, generateGuid(), modelId, timestamp, fields, sortField]
     );
 
-    const cardId = nextCardId;
+    const cardIdNum = nextCardId;
     const due = i + 1;
     db.run(
       `INSERT INTO cards VALUES (?, ?, ?, 0, ?, -1, 0, 0, ?, 0, 0, 0, 0, 0, 0, 0, 0, '')`,
-      [cardId, noteId, deckId, timestamp, due]
+      [cardIdNum, noteId, deckId, timestamp, due]
     );
 
     nextNoteId += 2;
@@ -364,7 +499,7 @@ async function createAnkiCollectionSingleCard(opts) {
   createAnkiTables(db);
 
   // Tạo model
-  const models = createAnkiModel(modelId, deckId, timestamp, opts.modelName);
+  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName);
 
   // Tạo deck
   const decks = createAnkiDeck(deckId, timestamp, opts.deckName);
@@ -391,18 +526,27 @@ async function createAnkiCollectionSingleCard(opts) {
 
   // Tạo 1 note và 1 card
   const noteId = timestampMs + 10;
-  const cardId = noteId + 1;
+  const cardIdNum = noteId + 1;
 
-  // Tham chiếu media bằng TÊN FILE (không phải index số!)
-  const questionImageName = opts.questionImageName;
-  const answerImageName = opts.answerImageName;
+  // Tạo ID ngẫu nhiên theo ngày
+  const cardId = generateCardId();
 
-  // Tạo 6 fields
-  const fQ = `<img src="${questionImageName}">`;
-  const fA = `<img src="${answerImageName}">`;
-  const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
-  
-  // sfld (sort field) là text thuần túy của field đầu tiên
+  // 9 fields
+  const fields = [
+    cardId,                                    // ID
+    `<img src="${opts.image}">`,              // Image
+    `<img src="${opts.questionMask}">`,       // Question Mask
+    `<img src="${opts.answerMask}">`,         // Answer Mask
+    `<img src="${opts.originalMask}">`,       // Original Mask
+    '',                                        // Header
+    '',                                        // Footer
+    '',                                        // Remarks
+    '',                                        // Sources
+    '',                                        // Extra 1
+    ''                                         // Extra 2
+  ].join('\x1f');
+
+  // Sort field
   const sortField = opts.cardTitle || 'Image Occlusion';
 
   db.run(
@@ -412,7 +556,7 @@ async function createAnkiCollectionSingleCard(opts) {
 
   db.run(
     `INSERT INTO cards VALUES (?, ?, ?, 0, ?, -1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, '')`,
-    [cardId, noteId, deckId, timestamp]
+    [cardIdNum, noteId, deckId, timestamp]
   );
 
   const data = db.export();
@@ -504,9 +648,182 @@ function createAnkiTables(db) {
 }
 
 /**
- * Tạo Anki model với 6 fields
+ * Tạo Image Occlusion model với đúng 11 fields và templates
  */
-function createAnkiModel(modelId, deckId, timestamp, modelName) {
+function createImageOcclusionModel(modelId, deckId, timestamp, modelName) {
+  // Đọc templates từ files đính kèm
+  const frontTemplate = `{{#Image}}
+<div id="io-header">{{Header}}</div>
+<div id="io-wrapper">
+  <div id="io-overlay">{{Question Mask}}</div>
+  <div id="io-original">{{Image}}</div>
+</div>
+<div id="io-footer">{{Footer}}</div>
+
+<script>
+// Prevent original image from loading before mask
+aFade = 50, qFade = 0;
+var mask = document.querySelector('#io-overlay>img');
+function loaded() {
+    var original = document.querySelector('#io-original');
+    original.style.visibility = "visible";
+}
+if (mask === null || mask.complete) {
+    loaded();
+} else {
+    mask.addEventListener('load', loaded);
+}
+</script>
+{{/Image}}`;
+
+  const backTemplate = `{{#Image}}
+<div id="io-header">{{Header}}</div>
+<div id="io-wrapper">
+  <div id="io-overlay">{{Answer Mask}}</div>
+  <div id="io-original">{{Image}}</div>
+</div>
+{{#Footer}}<div id="io-footer">{{Footer}}</div>{{/Footer}}
+<button id="io-revl-btn" onclick="toggle();">Toggle Masks</button>
+<div id="io-extra-wrapper">
+  <div id="io-extra">
+    {{#Remarks}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">Remarks</div>{{Remarks}}
+      </div>
+    {{/Remarks}}
+    {{#Sources}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">Sources</div>{{Sources}}
+      </div>
+    {{/Sources}}
+    {{#Extra 1}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">Extra 1</div>{{Extra 1}}
+      </div>
+    {{/Extra 1}}
+    {{#Extra 2}}
+      <div class="io-extra-entry">
+        <div class="io-field-descr">Extra 2</div>{{Extra 2}}
+      </div>
+    {{/Extra 2}}
+  </div>
+</div>
+
+<script>
+// Toggle answer mask on clicking the image
+var toggle = function() {
+  var amask = document.getElementById('io-overlay');
+  if (amask.style.display === 'block' || amask.style.display === '')
+    amask.style.display = 'none';
+  else
+    amask.style.display = 'block'
+}
+
+// Prevent original image from loading before mask
+aFade = 50, qFade = 0;
+var mask = document.querySelector('#io-overlay>img');
+function loaded() {
+    var original = document.querySelector('#io-original');
+    original.style.visibility = "visible";
+}
+if (mask === null || mask.complete) {
+    loaded();
+} else {
+    mask.addEventListener('load', loaded);
+}
+</script>
+{{/Image}}`;
+
+  const cssStyle = `/* GENERAL CARD STYLE */
+.card {
+  font-family: "Helvetica LT Std", Helvetica, Arial, Sans;
+  font-size: 150%;
+  text-align: center;
+  color: black;
+  background-color: white;
+}
+
+/* OCCLUSION CSS START - don't edit this */
+#io-overlay {
+  position:absolute;
+  top:0;
+  width:100%;
+  z-index:3
+}
+
+#io-original {
+  position:relative;
+  top:0;
+  width:100%;
+  z-index:2;
+  visibility: hidden;
+}
+
+#io-wrapper {
+  position:relative;
+  width: 100%;
+}
+/* OCCLUSION CSS END */
+
+/* OTHER STYLES */
+#io-header{
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+
+#io-footer{
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.8em;
+  font-style: italic;
+}
+
+#io-extra-wrapper{
+  /* the wrapper is needed to center the
+  left-aligned blocks below it */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.5em;
+}
+
+#io-extra{
+  text-align:center;
+  display: inline-block;
+}
+
+.io-extra-entry{
+  margin-top: 0.8em;
+  font-size: 0.9em;
+  text-align:left;
+}
+
+.io-field-descr{
+  margin-bottom: 0.2em;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+#io-revl-btn {
+  font-size: 0.5em;
+}
+
+/* ADJUSTMENTS FOR MOBILE DEVICES */
+
+.mobile .card, .mobile #content {
+  font-size: 120%;
+  margin: 0;
+}
+
+.mobile #io-extra-wrapper {
+  width: 95%;
+}
+
+.mobile #io-revl-btn {
+  font-size: 0.8em;
+}`;
+
   return {
     [modelId]: {
       id: modelId,
@@ -520,23 +837,28 @@ function createAnkiModel(modelId, deckId, timestamp, modelName) {
       latexPost: "\\end{document}",
       latexsvg: false,
       flds: [
-        { name: "Question", ord: 0, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
-        { name: "Answer", ord: 1, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
-        { name: "Header", ord: 2, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
-        { name: "Footer", ord: 3, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
-        { name: "Remarks", ord: 4, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
-        { name: "Extra", ord: 5, sticky: true, rtl: false, font: "Arial", size: 16, media: [] }
+        { name: "ID", ord: 0, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
+        { name: "Image", ord: 1, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
+        { name: "Question Mask", ord: 2, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
+        { name: "Answer Mask", ord: 3, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
+        { name: "Original Mask", ord: 4, sticky: false, rtl: false, font: "Arial", size: 20, media: [] },
+        { name: "Header", ord: 5, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
+        { name: "Footer", ord: 6, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
+        { name: "Remarks", ord: 7, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
+        { name: "Sources", ord: 8, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
+        { name: "Extra 1", ord: 9, sticky: true, rtl: false, font: "Arial", size: 16, media: [] },
+        { name: "Extra 2", ord: 10, sticky: true, rtl: false, font: "Arial", size: 16, media: [] }
       ],
       tmpls: [{
         name: "Card 1",
         ord: 0,
-        qfmt: "{{Header}}<br>{{Question}}",
-        afmt: "{{FrontSide}}<hr id=answer>{{Answer}}<br>{{Footer}}<br>{{Remarks}}",
+        qfmt: frontTemplate,
+        afmt: backTemplate,
         bqfmt: "",
         bafmt: "",
         did: null
       }],
-      css: ".card { font-family: arial; font-size: 20px; text-align: center; color: black; background-color: white; } img { max-width: 100%; height: auto; }",
+      css: cssStyle,
       csum: 0,
       vers: []
     }
@@ -646,6 +968,22 @@ function createAnkiCollectionConfig(deckId, modelId, timestamp) {
 // ============================================================================
 
 /**
+ * Tạo ID ngẫu nhiên theo ngày
+ */
+function generateCardId() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const random = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  
+  return `${year}${month}${day}${hours}${minutes}${seconds}${random}`;
+}
+
+/**
  * Khởi tạo sql.js
  */
 async function initializeSqlJs() {
@@ -659,11 +997,9 @@ async function initializeSqlJs() {
     const SQL = await initSqlJs({
       locateFile: file => {
         if (file.endsWith('.wasm')) {
-          // For extension, return correct vendor path
           if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
             return chrome.runtime.getURL('vendor/sql-wasm.wasm');
           }
-          // Standalone fallback
           return 'vendor/sql-wasm.wasm';
         }
         return file;
@@ -746,7 +1082,7 @@ function generateGuid() {
   });
 }
 
-// Export functions to global scope so they can be used by overlay and other scripts
+// Export functions to global scope
 if (typeof window !== 'undefined') {
   window.exportAnkiMultiCard = exportAnkiMultiCard;
   window.exportAnkiSingleCard = exportAnkiSingleCard;
@@ -755,11 +1091,14 @@ if (typeof window !== 'undefined') {
   window.createAnkiCollectionMultiCard = createAnkiCollectionMultiCard;
   window.createAnkiCollectionSingleCard = createAnkiCollectionSingleCard;
   window.initializeSqlJs = initializeSqlJs;
-  window.createOccludedImageForIndex = createOccludedImageForIndex;
+  window.createQuestionMask = createQuestionMask;
+  window.createAnswerMask = createAnswerMask;
+  window.createOriginalMask = createOriginalMask;
   window.createOriginalImageFromOverlay = createOriginalImageFromOverlay;
-  window.createOccludedImageFromOverlay = createOccludedImageFromOverlay;
+  window.createAllMasksFromOverlay = createAllMasksFromOverlay;
+  window.createEmptyMask = createEmptyMask;
   window.canvasToBlob = canvasToBlob;
 }
 
-// Mark unified export library ready for content scripts
+// Mark unified export library ready
 try { document.documentElement.setAttribute('data-afc-anki-export-ready','1'); } catch(e) {}
