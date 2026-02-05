@@ -520,8 +520,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+
+function afcSendOverlayCommand(cmdDetail, timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const reqId = String(Date.now()) + '_' + Math.random().toString(16).slice(2);
+    const detail = Object.assign({ reqId }, cmdDetail || {});
+    let timer = null;
+
+    function onResult(ev) {
+      const d = (ev && ev.detail) ? ev.detail : {};
+      if (d.reqId !== reqId) return;
+      window.removeEventListener('AFC_OVERLAY_RESULT', onResult);
+      if (timer) clearTimeout(timer);
+      if (d.ok) resolve(d);
+      else reject(new Error(d.message || 'Command failed'));
+    }
+
+    window.addEventListener('AFC_OVERLAY_RESULT', onResult);
+    try {
+      window.dispatchEvent(new CustomEvent('AFC_OVERLAY_CMD', { detail }));
+    } catch (e) {
+      window.removeEventListener('AFC_OVERLAY_RESULT', onResult);
+      reject(e);
+      return;
+    }
+
+    timer = setTimeout(() => {
+      window.removeEventListener('AFC_OVERLAY_RESULT', onResult);
+      reject(new Error('Timeout waiting for overlay response'));
+    }, timeoutMs);
+  });
+}
+
 async function ensureOverlayScriptInjected() {
-  if (window.initializeCanvas && window.exportAnkiSingleCard && window.createApkgSingleCard) {
+  if (document.documentElement.getAttribute('data-afc-overlay-ready') === '1' && document.documentElement.getAttribute('data-afc-anki-export-ready') === '1') {
     return Promise.resolve();
   }
 
@@ -554,7 +586,16 @@ async function ensureOverlayScriptInjected() {
             console.warn('Script injection timeout: some functions may not be ready', {
               hasInit, hasExportSingle, hasCreateSingle, hasExportMulti, hasHelpers
             });
-            return resolve(); // Continue anyway
+            // Try a more reliable injection path via background (MAIN world) before giving up.
+            try {
+              chrome.runtime.sendMessage({ action: 'injectOverlayDeps' }, () => {
+                // Wait a short moment and re-check
+                setTimeout(() => resolve(), 300);
+              });
+              return;
+            } catch (e) {
+              return resolve(); // Continue anyway
+            }
           }
           
           setTimeout(waitForGlobals, 100);
@@ -606,52 +647,33 @@ async function showOverlayEditorInPage(imageData) {
   btnRect.id = 'drawRectBtn';
   btnRect.textContent = 'Hình chữ nhật';
   btnRect.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnRect.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('rect', btnRect); } catch (e){} });
+  btnRect.addEventListener('click', (ev) => { ev.preventDefault(); afcSendOverlayCommand({ cmd: 'selectTool', tool: 'rect' }).catch(()=>{}); });
 
   const btnEllipse = document.createElement('button');
   btnEllipse.id = 'drawEllipseBtn';
   btnEllipse.textContent = 'Ellipse';
   btnEllipse.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnEllipse.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('ellipse', btnEllipse); } catch (e){} });
+  btnEllipse.addEventListener('click', (ev) => { ev.preventDefault(); afcSendOverlayCommand({ cmd: 'selectTool', tool: 'ellipse' }).catch(()=>{}); });
 
   const btnDelete = document.createElement('button');
   btnDelete.id = 'deleteBtn';
   btnDelete.textContent = 'Xóa';
   btnDelete.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnDelete.addEventListener('click', () => { try { window.deleteSelectedOcclusion && window.deleteSelectedOcclusion(); } catch (e){} });
+  btnDelete.addEventListener('click', () => { afcSendOverlayCommand({ cmd: 'deleteSelected' }).catch(()=>{}); });
 
   const btnClear = document.createElement('button');
   btnClear.id = 'clearBtn';
   btnClear.textContent = 'Xóa tất cả';
   btnClear.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnClear.addEventListener('click', () => { try { window.clearAllOcclusions && window.clearAllOcclusions(); } catch (e){} });
+  btnClear.addEventListener('click', () => { afcSendOverlayCommand({ cmd: 'clearAll' }).catch(()=>{}); });
 
-  // Hide selector dropdown
-  const hideSelector = document.createElement('select');
-  hideSelector.id = 'hideSelector';
-  hideSelector.style.cssText = 'padding:6px 8px; margin-right:8px; border:1px solid #ddd; border-radius:4px;';
-  hideSelector.addEventListener('change', (e) => {
-    const mode = e.target.value;
-    try { window.setOcclusionHideMode && window.setOcclusionHideMode(mode); } catch (err){}
-  });
-
-  function updateHideSelectorOptions() {
-    // Get current number of occlusions from window (injected script updates this)
-    const numOcclusions = window.overlayOcclusions ? window.overlayOcclusions.length : 0;
-    
-    // Clear and rebuild options
-    hideSelector.innerHTML = '<option value="none">Không ẩn</option>';
-    hideSelector.appendChild(Object.assign(document.createElement('option'), { value: 'all', textContent: 'Ẩn tất cả' }));
-    
-    for (let i = 1; i <= numOcclusions; i++) {
-      hideSelector.appendChild(Object.assign(document.createElement('option'), { value: String(i), textContent: `Ẩn #${i}` }));
-    }
-  }
-
-  // Call initially and setup update on canvas redraws
-  updateHideSelectorOptions();
-  // Store the update function globally so injected script can call it
-  window._updateHideSelectorOptions = updateHideSelectorOptions;
+  // Hide mode selector (fixed: only Hide 1 => mỗi block = 1 thẻ)
+  const hideModeSelect = document.createElement('select');
+  hideModeSelect.id = 'hideModeSelect';
+  hideModeSelect.title = 'Hide 1 (mỗi block = 1 thẻ)';
+  hideModeSelect.style.cssText = 'padding:6px 8px; margin-right:8px; border:1px solid #ddd; border-radius:4px;';
+  hideModeSelect.innerHTML = '<option value="hide-one-reveal-one">Hide 1</option>';
+  hideModeSelect.disabled = true;
 
   const exportBtn = document.createElement('button');
   exportBtn.id = 'exportBtn';
@@ -669,22 +691,8 @@ async function showOverlayEditorInPage(imageData) {
       // Wait longer for export function to be available (poll up to 8s)
       const start = Date.now();
       let ready = false;
-      while (Date.now() - start < 8000) {
-        if (typeof window.exportOverlayAnki === 'function') {
-          ready = true;
-          break;
-        }
-        await new Promise(r => setTimeout(r, 300));
-      }
-
-      if (!ready) {
-        throw new Error('Hàm xuất không được khởi tạo. Vui lòng thử lại.');
-      }
-
-      // Call the export function
-      await window.exportOverlayAnki();
-      
-    } catch (e) {
+      await afcSendOverlayCommand({ cmd: 'exportApkg' }, 30000);
+} catch (e) {
       console.error('Export error:', e);
       alert('Lỗi xuất file: ' + (e && e.message ? e.message : String(e)));
     } finally {
@@ -705,7 +713,7 @@ async function showOverlayEditorInPage(imageData) {
   toolbar.appendChild(btnEllipse);
   toolbar.appendChild(btnDelete);
   toolbar.appendChild(btnClear);
-  toolbar.appendChild(hideSelector);
+  toolbar.appendChild(hideModeSelect);
   toolbar.appendChild(exportBtn);
   toolbar.appendChild(closeBtn);
 
