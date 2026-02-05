@@ -3,7 +3,7 @@
   'use strict';
 
   let settings = {
-    enableHoverIcon: true,
+    enableHoverIcon: false,
     enableAltClick: true
   };
 
@@ -13,89 +13,29 @@
   // Load settings
   async function loadSettings() {
     try {
-      const result = await chrome.storage.local.get(['afc_image_hover_icon', 'afc_image_alt_click']);
-      settings.enableHoverIcon = result.afc_image_hover_icon !== false; // default true
+      const result = await chrome.storage.local.get(['afc_image_alt_click']);
+      settings.enableHoverIcon = false; // hover icon feature removed
       settings.enableAltClick = result.afc_image_alt_click !== false; // default true
+      console.log('Image Hover Handler loaded settings:', result, settings);
     } catch (e) {
       console.error('Error loading image hover settings:', e);
     }
   }
 
-  // Create hover icon element
+  // Create hover icon element (removed) - kept as noop for compatibility
   function createHoverIcon() {
-    if (hoverIcon) return hoverIcon;
-
-    hoverIcon = document.createElement('div');
-    hoverIcon.id = 'afc-image-hover-icon';
-    hoverIcon.innerHTML = `
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="3" width="18" height="18" rx="2" stroke="white" stroke-width="2" fill="rgba(0,0,0,0.7)"/>
-        <path d="M8 8h8M8 12h8M8 16h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="16" cy="16" r="2" fill="#5dade2"/>
-      </svg>
-    `;
-    
-    hoverIcon.style.cssText = `
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      background: rgba(93, 173, 226, 0.95);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 2147483646;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      transition: transform 0.2s, opacity 0.2s;
-      opacity: 0;
-      pointer-events: none;
-      backdrop-filter: blur(4px);
-    `;
-
-    hoverIcon.addEventListener('mouseenter', () => {
-      hoverIcon.style.transform = 'scale(1.1)';
-    });
-
-    hoverIcon.addEventListener('mouseleave', () => {
-      hoverIcon.style.transform = 'scale(1)';
-    });
-
-    hoverIcon.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (currentHoveredImage) {
-        handleImageCapture(currentHoveredImage);
-      }
-    });
-
-    document.body.appendChild(hoverIcon);
-    return hoverIcon;
+    return null;
   }
 
-  // Show hover icon at image position
+  // Show hover icon at image position (disabled)
   function showHoverIcon(img) {
-    if (!settings.enableHoverIcon) return;
-    if (!hoverIcon) createHoverIcon();
-
-    const rect = img.getBoundingClientRect();
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-    // Position at top-right corner of image
-    hoverIcon.style.left = (rect.right + scrollX - 45) + 'px';
-    hoverIcon.style.top = (rect.top + scrollY + 5) + 'px';
-    hoverIcon.style.opacity = '1';
-    hoverIcon.style.pointerEvents = 'auto';
-
-    currentHoveredImage = img;
+    return;
   }
 
   // Hide hover icon
   function hideHoverIcon() {
     if (hoverIcon) {
-      hoverIcon.style.opacity = '0';
-      hoverIcon.style.pointerEvents = 'none';
+      // noop
     }
     currentHoveredImage = null;
   }
@@ -170,12 +110,31 @@
         imageDataUrl = imageUrl;
       }
 
-      // Send to Image Occlusion overlay editor
-      chrome.runtime.sendMessage({
-        action: 'createImageOcclusion',
-        imageData: imageDataUrl,
-        source: 'hover-icon'
-      });
+      // Send to Image Occlusion overlay editor — robustly handle failures
+      try {
+        chrome.runtime.sendMessage({
+          action: 'createImageOcclusion',
+          imageData: imageDataUrl,
+          source: 'hover-icon'
+        }, (response) => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            console.warn('Image Hover Handler: sendMessage failed:', chrome.runtime.lastError);
+            // Fallback: ask background to open editor tab with the image
+            try {
+              chrome.runtime.sendMessage({
+                action: 'openImageOcclusionEditor',
+                imageData: imageDataUrl,
+                pageTitle: document.title
+              });
+            } catch (e) {
+              console.error('Image Hover Handler fallback failed:', e);
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Image Hover Handler: error sending runtime message:', e);
+        // Last resort: no extension messaging available
+      }
 
     } catch (error) {
       console.error('Error capturing image:', error);
@@ -186,11 +145,21 @@
   let lastHoveredElement = null;
   let hoverTimeout = null;
 
+  // Try to find an image element starting from target and climbing up the tree
+  function findImageFromTarget(target) {
+    let el = target;
+    while (el && el !== document.documentElement) {
+      if (isValidImage(el)) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
   function handleMouseMove(e) {
     if (!settings.enableHoverIcon) return;
 
-    const element = e.target;
-    
+    const element = findImageFromTarget(e.target);
+
     // Clear timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -198,20 +167,29 @@
     }
 
     // Check if hovering over valid image
-    if (isValidImage(element)) {
+    if (element) {
+      console.log('Image Hover Handler hover candidate', element);
       if (element !== lastHoveredElement) {
         lastHoveredElement = element;
         
         // Add slight delay to avoid flickering
+        console.log('Image Hover Handler: scheduling hover show in 150ms for', element);
         hoverTimeout = setTimeout(() => {
-          if (isValidImage(element) && element === lastHoveredElement) {
-            showHoverIcon(element);
+          console.log('Image Hover Handler: hover timeout fired for', element, 'lastHoveredElement=', lastHoveredElement);
+          try {
+            if (isValidImage(element) && element === lastHoveredElement) {
+              showHoverIcon(element);
+            } else {
+              console.log('Image Hover Handler: conditions failed, not showing icon', isValidImage(element), element === lastHoveredElement);
+            }
+          } catch (e) {
+            console.error('Image Hover Handler: error in hover timeout', e);
           }
         }, 150);
       }
     } else {
       // Check if mouse is over the hover icon itself
-      if (hoverIcon && e.target === hoverIcon) {
+      if (hoverIcon && (e.target === hoverIcon || hoverIcon.contains(e.target))) {
         // Keep showing
         return;
       }
@@ -237,20 +215,23 @@
   // Listen for settings changes
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'updateImageHoverSettings') {
-      settings.enableHoverIcon = message.settings.enableHoverIcon !== false;
+        console.log('Image Hover Handler received settings update:', message.settings);
       settings.enableAltClick = message.settings.enableAltClick !== false;
-      
-      // Hide icon if disabled
-      if (!settings.enableHoverIcon) {
-        hideHoverIcon();
-      }
     }
   });
 
   // Initialize
   async function init() {
     await loadSettings();
-    
+    // Ensure hover icon element exists so it's easier to debug in-page
+    try {
+      createHoverIcon();
+      hideHoverIcon();
+      console.log('Image Hover Handler: ensured hoverIcon exists');
+    } catch (e) {
+      console.warn('Image Hover Handler: failed to create hoverIcon during init', e);
+    }
+
     // Add event listeners
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('click', handleClick, true);
@@ -262,7 +243,7 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init();
+    init().catch(e => console.error('Failed to initialize image hover handler:', e));
   }
 
 })();

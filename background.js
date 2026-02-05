@@ -368,6 +368,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
 
+    case 'showIoInActiveTab':
+      (async () => {
+        try {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tabs && tabs[0] && typeof tabs[0].id !== 'undefined') {
+            const tabId = tabs[0].id;
+
+            // Try sending message first to avoid re-injecting content.js and causing duplicate declarations
+            try {
+              await chrome.tabs.sendMessage(tabId, {
+                action: 'showIoIframeEditor',
+                imageData: message.imageData,
+                pageTitle: message.pageTitle || 'Image Occlusion',
+                area: message.area || null,
+                source: message.source || 'sidebar'
+              });
+            } catch (sendErr) {
+              // No receiver — inject content script then resend
+              try {
+                await chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['content.js'] });
+                await chrome.tabs.sendMessage(tabId, {
+                  action: 'showIoIframeEditor',
+                  imageData: message.imageData,
+                  pageTitle: message.pageTitle || 'Image Occlusion',
+                  area: message.area || null,
+                  source: message.source || 'sidebar'
+                });
+              } catch (injectErr) {
+                console.error('AddFlashcard: Failed to inject content script or send message:', injectErr);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('AddFlashcard: Error forwarding image to active tab:', err);
+        }
+        sendResponse({ success: true });
+      })();
+      return true;
+
     default:
       sendResponse({ success: false, error: 'Unknown action' });
   }

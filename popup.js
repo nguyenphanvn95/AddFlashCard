@@ -241,14 +241,13 @@ function openSettingsModal() {
         <div style="font-size: 12px; color: #95a5a6;">Enable hover icon and Alt+Click on images</div>
       </label>
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="enableHoverIcon" checked style="cursor: pointer; width: 18px; height: 18px;">
-          <span style="font-size: 14px;">Show icon when hovering over images</span>
-        </label>
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="enableAltClick" checked style="cursor: pointer; width: 18px; height: 18px;">
-          <span style="font-size: 14px;">Alt+Click on image to create occlusion</span>
-        </label>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 14px;">Alt+Click on image to create occlusion</div>
+          <div style="display: grid; grid-auto-flow: column; grid-auto-columns: min-content; gap: 8px;">
+            <button class="altclick-btn" data-value="on" style="padding: 8px 10px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer;">On</button>
+            <button class="altclick-btn" data-value="off" style="padding: 8px 10px; border: 1px solid #4a5f7f; border-radius: 6px; background: #34495e; color: #ecf0f1; cursor: pointer;">Off</button>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -299,16 +298,19 @@ function openSettingsModal() {
   document.body.appendChild(overlay);
   
   // Load saved settings
-  chrome.storage.local.get(['afc_overlay_opacity', 'afc_dock_side', 'afc_theme', 'afc_image_hover_icon', 'afc_image_alt_click'], (result) => {
+  chrome.storage.local.get(['afc_overlay_opacity', 'afc_dock_side', 'afc_theme', 'afc_image_alt_click'], (result) => {
     const opacity = result.afc_overlay_opacity || 0.38;
     const dockSide = result.afc_dock_side || 'right';
     const theme = result.afc_theme || 'light';
-    const enableHoverIcon = result.afc_image_hover_icon !== false;
     const enableAltClick = result.afc_image_alt_click !== false;
-    
-    // Set image hover settings
-    document.getElementById('enableHoverIcon').checked = enableHoverIcon;
-    document.getElementById('enableAltClick').checked = enableAltClick;
+
+    // Set image hover settings (Alt+Click toggle)
+    document.querySelectorAll('.altclick-btn').forEach(btn => {
+      if ((enableAltClick && btn.getAttribute('data-value') === 'on') || (!enableAltClick && btn.getAttribute('data-value') === 'off')) {
+        btn.style.background = '#5dade2';
+        btn.style.borderColor = '#5dade2';
+      }
+    });
     
     // Set opacity
     const opacitySlider = document.getElementById('popupOverlayOpacity');
@@ -362,21 +364,31 @@ function openSettingsModal() {
       e.target.style.borderColor = '#5dade2';
     });
   });
+
+  // Alt+Click toggle buttons
+  document.querySelectorAll('.altclick-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.altclick-btn').forEach(b => {
+        b.style.background = '#34495e';
+        b.style.borderColor = '#4a5f7f';
+      });
+      e.target.style.background = '#5dade2';
+      e.target.style.borderColor = '#5dade2';
+    });
+  });
   
   // Save settings
   document.querySelector('.save-settings-btn').addEventListener('click', () => {
     const opacity = parseFloat(document.getElementById('popupOverlayOpacity').value) / 100;
     const dockSide = document.querySelector('.dock-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-side') || 'right';
     const theme = document.querySelector('.theme-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-theme') || 'light';
-    const enableHoverIcon = document.getElementById('enableHoverIcon').checked;
-    const enableAltClick = document.getElementById('enableAltClick').checked;
+    const enableAltClick = document.querySelector('.altclick-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-value') === 'on';
     
     // Save to storage
     chrome.storage.local.set({
       afc_overlay_opacity: opacity,
       afc_dock_side: dockSide,
       afc_theme: theme,
-      afc_image_hover_icon: enableHoverIcon,
       afc_image_alt_click: enableAltClick
     });
     
@@ -394,7 +406,7 @@ function openSettingsModal() {
           
           chrome.tabs.sendMessage(tab.id, {
             action: 'updateImageHoverSettings',
-            settings: { enableHoverIcon, enableAltClick }
+            settings: { enableAltClick }
           }).catch(() => {});
         });
       });

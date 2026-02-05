@@ -153,7 +153,7 @@ async function createOccludedImageFromOverlay(overlayCanvas, overlayImg, overlay
 /**
  * Tạo file .apkg với nhiều thẻ (editor.html mode)
  */
-async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
+async async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
   if (typeof JSZip === 'undefined') {
     alert('Vui lòng thêm thư viện JSZip vào extension!\nXem hướng dẫn trong file README.md');
     return;
@@ -187,14 +187,14 @@ async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
 
   // Answer image (index 0)
   mediaFiles[String(mediaIndex)] = answerImageName;
-  zip.file(answerImageName, answerImage);
+  zip.file(String(mediaIndex), answerImage);
   mediaIndex++;
 
   // Question images (index 1, 2, 3, ...)
   for (let i = 0; i < questionImages.length; i++) {
     const qName = questionImageNames[i];
     mediaFiles[String(mediaIndex)] = qName;
-    zip.file(qName, questionImages[i]);
+    zip.file(String(mediaIndex), questionImages[i]);
     mediaIndex++;
   }
 
@@ -237,13 +237,16 @@ async function createApkgSingleCard(cardTitle, answerImage, questionImage) {
   zip.file('collection.anki2', collectionData);
 
   // Thêm media files
+    // Thêm media files (Anki yêu cầu file trong zip đặt tên theo chỉ số: "0","1"...)
   const mediaFiles = {
-    '0': answerImageName,
-    '1': questionImageName
+    "0": answerImageName,
+    "1": questionImageName
   };
 
-  zip.file(answerImageName, answerImage);
-  zip.file(questionImageName, questionImage);
+  // Lưu blob theo index, KHÔNG lưu theo tên thật
+  zip.file("0", answerImage);
+  zip.file("1", questionImage);
+
   zip.file('media', JSON.stringify(mediaFiles));
 
   const content = await zip.generateAsync({
@@ -314,8 +317,8 @@ async function createAnkiCollectionMultiCard(opts) {
 
     // Tạo 6 fields (FIX LỖI 7 FIELDS!)
     // Fields: Question, Answer, Header, Footer, Remarks, Extra
-    const fQ = `<img src="${questionMediaIndex}">`;
-    const fA = `<img src="${answerMediaIndex}">`;
+    const fQ = `<img src="${questionImageNames[i]}">`;
+    const fA = `<img src="${opts.answerImageName}">`;
     
     // 6 fields được ngăn cách bởi 5 dấu \x1f
     const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
@@ -391,8 +394,8 @@ async function createAnkiCollectionSingleCard(opts) {
   const questionMediaIndex = 1;
 
   // Tạo 6 fields
-  const fQ = `<img src="${questionMediaIndex}">`;
-  const fA = `<img src="${answerMediaIndex}">`;
+  const fQ = `<img src="${questionImageNames[i]}">`;
+    const fA = `<img src="${opts.answerImageName}">`;
   const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
 
   db.run(
@@ -750,6 +753,3 @@ if (typeof window !== 'undefined') {
   window.createOccludedImageFromOverlay = createOccludedImageFromOverlay;
   window.canvasToBlob = canvasToBlob;
 }
-
-// Mark unified export library ready for content scripts
-try { document.documentElement.setAttribute('data-afc-anki-export-ready','1'); } catch(e) {}

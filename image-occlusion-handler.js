@@ -23,15 +23,28 @@
   function observeImageInEditor() {
     // Tìm Front và Back area
     const checkAreas = setInterval(() => {
-      const frontArea = document.querySelector('#front-content, [contenteditable="true"]');
-      const backArea = document.querySelector('#back-content, [contenteditable="true"]');
-      
+      // Prefer explicit IDs used in sidebar.html
+      let frontArea = document.getElementById('frontEditor');
+      let backArea = document.getElementById('backEditor');
+
+      // Fallback to generic contenteditable areas if IDs not present
+      if (!frontArea) frontArea = document.querySelector('[contenteditable="true"]');
+      if (!backArea) {
+        const all = document.querySelectorAll('[contenteditable="true"]');
+        if (all && all.length > 1) backArea = all[1];
+        else backArea = all[0] || null;
+      }
+
       if (frontArea && backArea) {
         clearInterval(checkAreas);
-        
+
         // Setup observer cho cả 2 areas
-        setupImageClickHandler(frontArea, 'Front');
-        setupImageClickHandler(backArea, 'Back');
+        if (frontArea) setupImageClickHandler(frontArea, 'Front');
+        if (backArea && backArea !== frontArea) setupImageClickHandler(backArea, 'Back');
+        else if (backArea && backArea === frontArea) {
+          // If there's only one editable area, still attach a second handler referencing 'Back'
+          setupImageClickHandler(backArea, 'Back');
+        }
       }
     }, 500);
     
@@ -76,7 +89,7 @@
     // Xóa menu cũ nếu có
     const oldMenu = document.getElementById('io-image-menu');
     if (oldMenu) oldMenu.remove();
-    
+
     // Tạo menu mới
     const menu = document.createElement('div');
     menu.id = 'io-image-menu';
@@ -91,12 +104,7 @@
       color: white;
       min-width: 250px;
     `;
-    
-    // Tính toán vị trí
-    const rect = imgElement.getBoundingClientRect();
-    menu.style.left = `${rect.right + 10}px`;
-    menu.style.top = `${rect.top}px`;
-    
+
     menu.innerHTML = `
       <div style="font-weight: bold; margin-bottom: 12px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
         <span>🖼️</span>
@@ -117,9 +125,38 @@
         Đóng
       </button>
     `;
-    
+
+    // Mark image with a stable id so we can find it later even if DOM was reflowed/replaced
+    let ioId = imgElement.getAttribute('data-io-img-id');
+    if (!ioId) {
+      ioId = 'io-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+      try { imgElement.setAttribute('data-io-img-id', ioId); } catch (e) {}
+    }
+
+    // Tính toán vị trí: chèn tạm để đo kích thước, đặt bên trái ảnh, clamped to viewport
+    const rect = imgElement.getBoundingClientRect();
+    menu.style.visibility = 'hidden';
+    menu.style.left = '0px';
+    menu.style.top = '0px';
     document.body.appendChild(menu);
+    const mrect = menu.getBoundingClientRect();
     
+    // Always place to the left of the image minus gap
+    let leftPos = rect.left - mrect.width - 10;
+    // Clamp to viewport (8px margin from left edge)
+    if (leftPos < 8) leftPos = 8;
+    
+    // Clamp top position so menu is fully visible
+    let topPos = rect.top;
+    if (topPos + mrect.height > window.innerHeight - 8) {
+      topPos = Math.max(8, window.innerHeight - mrect.height - 8);
+    }
+    if (topPos < 8) topPos = 8;
+    
+    menu.style.left = `${leftPos}px`;
+    menu.style.top = `${topPos}px`;
+    menu.style.visibility = 'visible';
+
     // Xử lý hover effect
     menu.querySelectorAll('.io-menu-btn').forEach(btn => {
       btn.addEventListener('mouseenter', (e) => {
@@ -131,29 +168,50 @@
         e.target.style.transform = 'translateX(0)';
       });
     });
-    
+
     // Xử lý click actions
     menu.querySelector('[data-action="create-occlusion"]').addEventListener('click', () => {
       menu.remove();
       createImageOcclusion(imgElement, areaName);
     });
-    
+
     menu.querySelector('[data-action="view-image"]').addEventListener('click', () => {
       menu.remove();
       viewFullImage(imgElement);
     });
-    
+
     menu.querySelector('[data-action="remove"]').addEventListener('click', () => {
       menu.remove();
-      if (confirm('Bạn có chắc muốn xóa ảnh này?')) {
-        imgElement.remove();
+      if (!confirm('Bạn có chắc muốn xóa ảnh này?')) return;
+
+      // Try to find the current image element by stable id
+      let targetImg = null;
+      try {
+        targetImg = document.querySelector('img[data-io-img-id="' + ioId + '"]');
+      } catch (e) { targetImg = null; }
+
+      // Fallback: match by src
+      if (!targetImg) {
+        try {
+          const imgs = Array.from(document.querySelectorAll('img'));
+          targetImg = imgs.find(i => i.src === imgElement.src);
+        } catch (e) { targetImg = null; }
+      }
+
+      // Final fallback: use original element if still connected
+      if (!targetImg && imgElement && imgElement.isConnected) targetImg = imgElement;
+
+      if (targetImg) {
+        targetImg.remove();
+      } else {
+        console.warn('Image Occlusion: could not find image to remove for id', ioId);
       }
     });
-    
+
     menu.querySelector('.io-close-menu').addEventListener('click', () => {
       menu.remove();
     });
-    
+
     // Đóng menu khi click bên ngoài
     setTimeout(() => {
       document.addEventListener('click', function closeMenu(e) {
@@ -163,6 +221,8 @@
         }
       });
     }, 100);
+    
+    // (handlers already attached above)
   }
 
   // Hiển thị tooltip cho ảnh mới
@@ -220,21 +280,23 @@
     // Hiển thị loading
     const loading = showLoadingOverlay('Đang chuẩn bị Image Occlusion...');
     
-    // Gửi message để mở overlay editor
-    chrome.runtime.sendMessage({
-      action: 'showOverlayWithImage',
-      imageData: imageSrc,
-      sourceArea: areaName
-    }, (response) => {
-      loading.remove();
-      imageOcclusionData.isProcessing = false;
-      
-      if (response && response.success) {
-        console.log('Image Occlusion overlay opened successfully');
-      } else {
-        alert('Không thể mở Image Occlusion editor');
-      }
-    });
+      // Gửi message đến background để chuyển tới tab hiện hành và mở iframe editor
+      chrome.runtime.sendMessage({
+        action: 'showIoInActiveTab',
+        imageData: imageSrc,
+        pageTitle: document.title,
+        area: null,
+        source: areaName
+      }, (response) => {
+        loading.remove();
+        imageOcclusionData.isProcessing = false;
+
+        if (response && response.success) {
+          console.log('Requested iframe editor in active tab');
+        } else {
+          alert('Không thể mở Image Occlusion editor');
+        }
+      });
   }
 
   // Xem ảnh full size
