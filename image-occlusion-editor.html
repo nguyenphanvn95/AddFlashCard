@@ -11,7 +11,12 @@
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h2>Anki Image Occlusion Editor</h2>
+        <svg class="toolbar-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <h2>Anki IOE</h2>
       </div>
       <div class="toolbar-center">
         <button id="drawRectBtn" class="tool-btn active" title="Vẽ hình chữ nhật">
@@ -41,7 +46,7 @@
       </div>
       <div class="toolbar-right">
         <input type="text" id="cardTitle" placeholder="Tiêu đề thẻ Anki..." />
-        <select id="hideModeSelect" title="Chọn kiểu tạo thẻ" style="margin-right:10px;"><option value="hide-one-reveal-one">Hide 1</option><option value="hide-all-reveal-one">Hide all</option></select>
+        <select id="hideModeSelect" title="Chọn kiểu tạo thẻ"><option value="hide-one-reveal-one">Hide 1</option><option value="hide-all-reveal-one">Hide all</option></select>
         <button id="exportBtn" class="export-btn">
           <svg width="20" height="20" viewBox="0 0 24 24">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>

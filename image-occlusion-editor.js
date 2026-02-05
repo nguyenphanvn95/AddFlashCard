@@ -16,6 +16,38 @@ document.addEventListener('DOMContentLoaded', () => {
   ctx = canvas.getContext('2d');
   
   setupEventListeners();
+
+  // Support embedding in an in-page iframe overlay:
+  // parent (content script) will postMessage the captured image into this editor.
+  window.addEventListener('message', (ev) => {
+    const data = ev && ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'AFC_LOAD_IMAGE' && data.imageData) {
+      try {
+        // Optional: lock hide mode to Hide 1 when used as an overlay
+        const sel = document.getElementById('hideModeSelect');
+        if (sel && data.hideMode) {
+          sel.value = data.hideMode;
+          if (data.lockHideMode) {
+            // Keep only the selected option
+            Array.from(sel.options).forEach(opt => {
+              if (opt.value !== data.hideMode) opt.remove();
+            });
+            sel.disabled = true;
+          }
+        }
+
+        loadImage(data.imageData, data.pageTitle || 'Anki Card');
+        // Acknowledge readiness (optional)
+        try { window.parent && window.parent.postMessage({ type: 'AFC_EDITOR_READY' }, '*'); } catch (e) {}
+      } catch (e) {
+        console.error('AFC iframe load error:', e);
+      }
+    }
+    if (data.type === 'AFC_CLOSE_OVERLAY') {
+      try { window.parent && window.parent.postMessage({ type: 'AFC_CLOSE_OVERLAY' }, '*'); } catch (e) {}
+    }
+  });
   
   // Nhận dữ liệu ảnh từ background
   chrome.runtime.onMessage.addListener((request) => {
@@ -225,14 +257,35 @@ function drawOcclusion(occ, isSelected) {
   // Draw index label
   if (occ._num) {
     const label = String(occ._num);
-    const px = occ.x + 6;
-    const py = occ.y + 16;
-    ctx.font = 'bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    const tw = ctx.measureText(label).width;
-    ctx.fillRect(px - 4, py - 14, tw + 8, 18);
+    
+    // Calculate center of the occlusion
+    const centerX = occ.x + occ.width / 2;
+    const centerY = occ.y + occ.height / 2;
+    
+    // Font settings
+    ctx.font = 'bold 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    const metrics = ctx.measureText(label);
+    const textWidth = metrics.width;
+    const textHeight = 20;
+    
+    // Draw background box
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(
+      centerX - textWidth / 2 - 6,
+      centerY - textHeight / 2 - 2,
+      textWidth + 12,
+      textHeight + 4
+    );
+    
+    // Draw text centered
     ctx.fillStyle = '#fff';
-    ctx.fillText(label, px, py);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, centerX, centerY);
+    
+    // Restore text alignment
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
   
   ctx.restore();

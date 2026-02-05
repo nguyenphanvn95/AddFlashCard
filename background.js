@@ -218,11 +218,15 @@ async function handleOpenPDFViewer(info, tab) {
 // Handle Image Occlusion - Capture Area
 async function handleCaptureArea(tab) {
   try {
-    // Inject overlay editor if needed
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['overlay-editor-updated.js']
-    });
+    // Ensure content script is present (selection UI lives in content.js)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    } catch (e) {
+      // ignore
+    }
     
     // Start area selection
     await chrome.tabs.sendMessage(tab.id, {
@@ -236,11 +240,15 @@ async function handleCaptureArea(tab) {
 // Handle Image Occlusion - Capture Full Page
 async function handleCaptureFullPage(tab) {
   try {
-    // Inject overlay editor if needed
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['overlay-editor-updated.js']
-    });
+    // Ensure content script is present
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    } catch (e) {
+      // ignore
+    }
     
     // Capture visible tab
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, async (dataUrl) => {
@@ -248,8 +256,19 @@ async function handleCaptureFullPage(tab) {
         console.error(chrome.runtime.lastError);
         return;
       }
-      // Open the editor in a new tab (more reliable)
-      handleOpenImageOcclusionEditor(dataUrl, tab.title);
+      // Open the in-page overlay UI (same as capture area)
+      try {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'showIoIframeEditor',
+          imageData: dataUrl,
+          pageTitle: tab.title,
+          area: null,
+          source: 'fullpage'
+        });
+      } catch (e) {
+        // Fallback: open editor tab if overlay is unavailable
+        handleOpenImageOcclusionEditor(dataUrl, tab.title);
+      }
     });
   } catch (error) {
     console.error('AddFlashcard: Error capturing full page:', error);
@@ -262,16 +281,19 @@ async function handleCreateImageOcclusion(message, sender) {
     const tabId = sender.tab?.id;
     if (!tabId) return;
 
-    // Inject overlay editor if needed
-    await chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      files: ['overlay-editor-updated.js']
-    });
+    // Ensure content script is present
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['content.js']
+      });
+    } catch (e) {}
     
     // Send image data to overlay editor
     await chrome.tabs.sendMessage(tabId, {
-      action: 'showOverlayEditor',
+      action: 'showIoIframeEditor',
       imageData: message.imageData,
+      pageTitle: message.pageTitle || 'Image Occlusion',
       area: null,
       source: message.source
     });
@@ -345,7 +367,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleOpenImageOcclusionEditor(message.imageData, message.pageTitle, message.occlusions, message.autoExport);
       sendResponse({ success: true });
       break;
-      
+
     default:
       sendResponse({ success: false, error: 'Unknown action' });
   }
@@ -498,16 +520,18 @@ async function handleCaptureForOverlay(area, tab) {
     // Crop image if area is specified
     const croppedImage = area ? await cropImage(dataUrl, area) : dataUrl;
 
-    // Send to page overlay editor (in-page)
+    // Send to the in-page iframe editor overlay (preferred)
     try {
       await chrome.tabs.sendMessage(tab.id, {
-        action: 'showOverlayEditor',
+        action: 'showIoIframeEditor',
         imageData: croppedImage,
-        area: area
+        pageTitle: tab.title,
+        area: area,
+        source: 'area'
       });
     } catch (err) {
       // Fallback: open editor tab if sending message fails
-      console.warn('AddFlashcard: sending showOverlayEditor failed, opening editor tab instead', err);
+      console.warn('AddFlashcard: sending showIoIframeEditor failed, opening editor tab instead', err);
       handleOpenImageOcclusionEditor(croppedImage, tab.title);
     }
   });

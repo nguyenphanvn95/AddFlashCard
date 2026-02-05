@@ -511,251 +511,130 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Handle showOverlayEditor: display in-page editor and initialize canvas
+// Preferred Image-Occlusion UX: show the official editor UI (image-occlusion-editor.html)
+// inside an in-page iframe overlay. This avoids duplicating drawing/export logic.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message && message.action === 'showOverlayEditor') {
-    const imageData = message.imageData;
-    showOverlayEditorInPage(imageData);
+  if (!message) return;
+
+  if (message.action === 'showIoIframeEditor') {
+    showImageOcclusionIframeOverlay(message.imageData, message.pageTitle || document.title);
     sendResponse({ shown: true });
+    return;
+  }
+
+  // Backward compatibility: older background versions may still send showOverlayEditor
+  if (message.action === 'showOverlayEditor') {
+    showImageOcclusionIframeOverlay(message.imageData, message.pageTitle || document.title);
+    sendResponse({ shown: true });
+    return;
   }
 });
 
-async function ensureOverlayScriptInjected() {
-  if (window.initializeCanvas && window.exportAnkiSingleCard && window.createApkgSingleCard) {
-    return Promise.resolve();
-  }
-
-  // Inject required scripts into the page in order: JSZip, sql-wasm, anki-export, overlay editor
-  const scripts = [
-    'vendor/jszip.min.js',
-    'vendor/sql-wasm.js',
-    'anki-export-unified.js',
-    'overlay-editor-updated.js'
-  ];
-
-  return new Promise((resolve) => {
-    (function injectNext(i) {
-      if (i >= scripts.length) {
-        // Wait for all exports to be available (up to 10s for SQL.js to initialize)
-        const start = Date.now();
-        (function waitForGlobals() {
-          const hasInit = typeof window.initializeCanvas === 'function';
-          const hasExportSingle = typeof window.exportAnkiSingleCard === 'function';
-          const hasCreateSingle = typeof window.createApkgSingleCard === 'function';
-          const hasExportMulti = typeof window.exportAnkiMultiCard === 'function';
-          const hasHelpers = typeof window.createOriginalImageFromOverlay === 'function' && 
-                             typeof window.createOccludedImageFromOverlay === 'function';
-          
-          if (hasInit && (hasExportSingle || hasCreateSingle) && hasHelpers) {
-            return resolve();
-          }
-          
-          if (Date.now() - start > 10000) {
-            console.warn('Script injection timeout: some functions may not be ready', {
-              hasInit, hasExportSingle, hasCreateSingle, hasExportMulti, hasHelpers
-            });
-            return resolve(); // Continue anyway
-          }
-          
-          setTimeout(waitForGlobals, 100);
-        })();
-        return;
-      }
-
-      const path = scripts[i];
-      // Avoid injecting same script twice
-      const already = Array.from(document.scripts).some(s => s.src && s.src.endsWith(path));
-      if (already) return injectNext(i + 1);
-
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL(path);
-      script.onload = () => injectNext(i + 1);
-      script.onerror = () => {
-        console.error('Failed to load script:', path);
-        injectNext(i + 1);
-      };
-      document.documentElement.appendChild(script);
-    })(0);
-  });
-}
-
-async function showOverlayEditorInPage(imageData) {
-  // Avoid duplicate editor
-  if (document.getElementById('afc-occlusion-overlay')) return;
+// New: show image-occlusion-editor.html inside an iframe overlay.
+// This reuses the existing editor UI & export code (no duplicated overlay logic).
+function showImageOcclusionIframeOverlay(imageData, pageTitle) {
+  // Avoid duplicates
+  const existing = document.getElementById('afc-io-iframe-overlay');
+  if (existing) existing.remove();
 
   const overlay = document.createElement('div');
-  overlay.id = 'afc-occlusion-overlay';
+  overlay.id = 'afc-io-iframe-overlay';
   Object.assign(overlay.style, {
-    position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.6)', zIndex: 2147483647,
+    position: 'fixed', inset: '0', zIndex: 2147483647,
+    background: 'rgba(0,0,0,0.65)',
     display: 'flex', alignItems: 'center', justifyContent: 'center'
   });
 
+  // Panel wrapper so the editor looks like its own window
   const panel = document.createElement('div');
-  panel.style.cssText = 'width:80vw; height:80vh; background:#fff; border-radius:8px; overflow:hidden; display:flex; flex-direction:column;';
-
-  // Toolbar
-  const toolbar = document.createElement('div');
-  toolbar.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px; background:#f4f4f4;';
-
-  const titleInput = document.createElement('input');
-  titleInput.id = 'anki-card-title';
-  titleInput.placeholder = 'Tiêu đề thẻ Anki...';
-  titleInput.style.cssText = 'flex:1; padding:6px 8px;';
-  // Tool buttons (Rect, Ellipse, Delete, Clear)
-  const btnRect = document.createElement('button');
-  btnRect.id = 'drawRectBtn';
-  btnRect.textContent = 'Hình chữ nhật';
-  btnRect.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnRect.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('rect', btnRect); } catch (e){} });
-
-  const btnEllipse = document.createElement('button');
-  btnEllipse.id = 'drawEllipseBtn';
-  btnEllipse.textContent = 'Ellipse';
-  btnEllipse.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnEllipse.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('ellipse', btnEllipse); } catch (e){} });
-
-  const btnDelete = document.createElement('button');
-  btnDelete.id = 'deleteBtn';
-  btnDelete.textContent = 'Xóa';
-  btnDelete.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnDelete.addEventListener('click', () => { try { window.deleteSelectedOcclusion && window.deleteSelectedOcclusion(); } catch (e){} });
-
-  const btnClear = document.createElement('button');
-  btnClear.id = 'clearBtn';
-  btnClear.textContent = 'Xóa tất cả';
-  btnClear.style.cssText = 'padding:6px 10px; margin-right:6px;';
-  btnClear.addEventListener('click', () => { try { window.clearAllOcclusions && window.clearAllOcclusions(); } catch (e){} });
-
-  // Hide selector dropdown
-  const hideSelector = document.createElement('select');
-  hideSelector.id = 'hideSelector';
-  hideSelector.style.cssText = 'padding:6px 8px; margin-right:8px; border:1px solid #ddd; border-radius:4px;';
-  hideSelector.addEventListener('change', (e) => {
-    const mode = e.target.value;
-    try { window.setOcclusionHideMode && window.setOcclusionHideMode(mode); } catch (err){}
+  panel.id = 'afc-io-iframe-panel';
+  Object.assign(panel.style, {
+    width: '92vw', height: '92vh',
+    background: '#fff',
+    borderRadius: '10px',
+    overflow: 'hidden',
+    boxShadow: '0 18px 50px rgba(0,0,0,0.45)',
+    position: 'relative'
   });
 
-  function updateHideSelectorOptions() {
-    // Get current number of occlusions from window (injected script updates this)
-    const numOcclusions = window.overlayOcclusions ? window.overlayOcclusions.length : 0;
-    
-    // Clear and rebuild options
-    hideSelector.innerHTML = '<option value="none">Không ẩn</option>';
-    hideSelector.appendChild(Object.assign(document.createElement('option'), { value: 'all', textContent: 'Ẩn tất cả' }));
-    
-    for (let i = 1; i <= numOcclusions; i++) {
-      hideSelector.appendChild(Object.assign(document.createElement('option'), { value: String(i), textContent: `Ẩn #${i}` }));
+  // Close button (always available even if iframe fails)
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Close');
+  Object.assign(closeBtn.style, {
+    position: 'absolute', top: '10px', right: '12px',
+    zIndex: 2,
+    width: '40px', height: '40px',
+    borderRadius: '999px',
+    border: '1px solid rgba(0,0,0,0.15)',
+    background: 'rgba(255,255,255,0.95)',
+    cursor: 'pointer',
+    fontSize: '28px', lineHeight: '36px'
+  });
+  closeBtn.addEventListener('click', () => overlay.remove());
+
+  // The editor iframe (extension page)
+  const iframe = document.createElement('iframe');
+  iframe.id = 'afc-io-editor-iframe';
+  iframe.src = chrome.runtime.getURL('image-occlusion-editor.html');
+  Object.assign(iframe.style, {
+    width: '100%', height: '100%',
+    border: '0', display: 'block'
+  });
+
+  // Allow Esc to close
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      overlay.remove();
     }
   }
+  window.addEventListener('keydown', onKeyDown);
+  overlay.addEventListener('remove', () => {
+    window.removeEventListener('keydown', onKeyDown);
+  });
 
-  // Call initially and setup update on canvas redraws
-  updateHideSelectorOptions();
-  // Store the update function globally so injected script can call it
-  window._updateHideSelectorOptions = updateHideSelectorOptions;
-
-  const exportBtn = document.createElement('button');
-  exportBtn.id = 'exportBtn';
-  exportBtn.textContent = 'Xuất .apkg';
-  exportBtn.style.cssText = 'padding:6px 10px; margin-left:8px;';
-  exportBtn.addEventListener('click', async () => {
-    const origText = exportBtn.textContent;
-    exportBtn.disabled = true;
-    exportBtn.textContent = 'Chuẩn bị...';
-    
-    try {
-      // Ensure all scripts are injected and ready
-      await ensureOverlayScriptInjected();
-
-      // Wait longer for export function to be available (poll up to 8s)
-      const start = Date.now();
-      let ready = false;
-      while (Date.now() - start < 8000) {
-        if (typeof window.exportOverlayAnki === 'function') {
-          ready = true;
-          break;
-        }
-        await new Promise(r => setTimeout(r, 300));
-      }
-
-      if (!ready) {
-        throw new Error('Hàm xuất không được khởi tạo. Vui lòng thử lại.');
-      }
-
-      // Call the export function
-      await window.exportOverlayAnki();
-      
-    } catch (e) {
-      console.error('Export error:', e);
-      alert('Lỗi xuất file: ' + (e && e.message ? e.message : String(e)));
-    } finally {
-      exportBtn.disabled = false;
-      exportBtn.textContent = origText;
+  // Listen for close request from iframe
+  function onMsg(ev) {
+    const data = ev && ev.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'AFC_CLOSE_OVERLAY') {
+      overlay.remove();
     }
+  }
+  window.addEventListener('message', onMsg);
+  overlay.addEventListener('remove', () => {
+    window.removeEventListener('message', onMsg);
   });
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Đóng';
-  closeBtn.style.cssText = 'padding:6px 10px; margin-left:8px;';
-  closeBtn.addEventListener('click', () => {
-    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-  });
-
-  toolbar.appendChild(titleInput);
-  toolbar.appendChild(btnRect);
-  toolbar.appendChild(btnEllipse);
-  toolbar.appendChild(btnDelete);
-  toolbar.appendChild(btnClear);
-  toolbar.appendChild(hideSelector);
-  toolbar.appendChild(exportBtn);
-  toolbar.appendChild(closeBtn);
-
-  // Canvas container
-  const canvasWrap = document.createElement('div');
-  canvasWrap.style.cssText = 'flex:1; display:flex; align-items:center; justify-content:center; background:#f4f4f4; padding:12px;';
-
-  const canvas = document.createElement('canvas');
-  canvas.id = 'anki-overlay-canvas';
-  canvas.style.cssText = 'max-width:100%; max-height:100%; background:#fff; box-shadow: 0 6px 18px rgba(0,0,0,0.25);';
-  canvasWrap.appendChild(canvas);
-
-  panel.appendChild(toolbar);
-  panel.appendChild(canvasWrap);
+  // Mount
+  panel.appendChild(iframe);
+  panel.appendChild(closeBtn);
   overlay.appendChild(panel);
   (document.documentElement || document.body).appendChild(overlay);
 
-  // Immediately draw the captured image into the canvas so the user sees it fast
-  (function drawImmediatePreview() {
-    overlay._afc_imageData = imageData;
-    const imgEl = new Image();
-    imgEl.onload = () => {
-      // set canvas pixel size to image actual size for crispness
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = imgEl.naturalWidth;
-      canvas.height = imgEl.naturalHeight;
-      // scale CSS to fit container
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
-    };
-    imgEl.src = imageData;
-  })();
+  // When iframe is ready, send the image payload via postMessage.
+  const payload = {
+    type: 'AFC_LOAD_IMAGE',
+    imageData: imageData,
+    pageTitle: pageTitle || document.title,
+    // User preference: default to Hide 1 (multi-card). The editor already supports it.
+    hideMode: 'hide-one-reveal-one',
+    lockHideMode: false
+  };
 
-  // Inject heavier editor scripts in background; when ready, initialize full editor
-  ensureOverlayScriptInjected().then(() => {
+  const send = () => {
     try {
-      if (typeof window.initializeCanvas === 'function') {
-        window.initializeCanvas(imageData);
-      }
-    } catch (err) {
-      console.error('AddFlashcard: Error initializing full overlay editor after injection', err);
-      // fallback: open dedicated editor tab
-      try { chrome.runtime.sendMessage({ action: 'openImageOcclusionEditor', imageData: imageData, pageTitle: document.title }); } catch (e) {}
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      iframe.contentWindow.postMessage(payload, '*');
+    } catch (e) {
+      // Ignore
     }
-  }).catch(err => {
-    console.warn('AddFlashcard: overlay script injection failed', err);
+  };
+
+  iframe.addEventListener('load', () => {
+    // Send twice in case the editor registers listeners a bit late
+    send();
+    setTimeout(send, 150);
   });
 }
 
@@ -773,10 +652,35 @@ function startAreaSelection() {
   const box = document.createElement('div');
   box.id = 'afc-selection-box';
   Object.assign(box.style, {
-    position: 'absolute', border: '2px dashed #4A90E2', background: 'rgba(74,144,226,0.12)'
+    position: 'absolute', 
+    background: 'rgba(74,144,226,0.12)',
+    outline: '1px solid rgba(74,144,226,0.5)',
+    outlineOffset: '-1px'
+  });
+
+  // Guide line horizontal - nằm ngoài, full width
+  const guideH = document.createElement('div');
+  Object.assign(guideH.style, {
+    position: 'fixed', width: '100%', height: '1px',
+    left: '0', top: '0',
+    background: 'rgba(74,144,226,0.5)',
+    pointerEvents: 'none',
+    display: 'none'
+  });
+
+  // Guide line vertical - nằm ngoài, full height
+  const guideV = document.createElement('div');
+  Object.assign(guideV.style, {
+    position: 'fixed', width: '1px', height: '100%',
+    top: '0', left: '0',
+    background: 'rgba(74,144,226,0.5)',
+    pointerEvents: 'none',
+    display: 'none'
   });
 
   overlay.appendChild(box);
+  overlay.appendChild(guideH);
+  overlay.appendChild(guideV);
   (document.documentElement || document.body).appendChild(overlay);
 
   let startX = 0, startY = 0, dragging = false;
@@ -788,13 +692,20 @@ function startAreaSelection() {
     startX = e.clientX;
     startY = e.clientY;
     updateBox(startX, startY, 0, 0);
+    guideH.style.display = 'block';
+    guideV.style.display = 'block';
     e.preventDefault();
   }
 
   function onPointerMove(e) {
-    if (!dragging) return;
     const x = e.clientX;
     const y = e.clientY;
+
+    // Update guide lines position
+    guideH.style.top = y + 'px';
+    guideV.style.left = x + 'px';
+
+    if (!dragging) return;
     const left = Math.min(startX, x);
     const top = Math.min(startY, y);
     const width = Math.abs(x - startX);
@@ -806,6 +717,9 @@ function startAreaSelection() {
   function onPointerUp(e) {
     if (!dragging) return;
     dragging = false;
+    guideH.style.display = 'none';
+    guideV.style.display = 'none';
+    
     const rect = box.getBoundingClientRect();
     // If region too small, cancel
     if (rect.width < 6 || rect.height < 6) {
