@@ -660,30 +660,33 @@ async function showOverlayEditorInPage(imageData) {
   exportBtn.addEventListener('click', async () => {
     const origText = exportBtn.textContent;
     exportBtn.disabled = true;
-    exportBtn.textContent = 'Chuẩn bị xuất...';
+    exportBtn.textContent = 'Chuẩn bị...';
+    
     try {
-      // Ensure export scripts are injected and ready
+      // Ensure all scripts are injected and ready
       await ensureOverlayScriptInjected();
 
-      // Wait for the overlay's export helper to become available (poll up to 5s)
+      // Wait longer for export function to be available (poll up to 8s)
       const start = Date.now();
-      let exported = false;
-      while (Date.now() - start < 5000) {
+      let ready = false;
+      while (Date.now() - start < 8000) {
         if (typeof window.exportOverlayAnki === 'function') {
-          await window.exportOverlayAnki();
-          exported = true;
+          ready = true;
           break;
         }
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      if (exported) return;
+      if (!ready) {
+        throw new Error('Hàm xuất không được khởi tạo. Vui lòng thử lại.');
+      }
 
-      throw new Error('Hàm xuất chưa sẵn sàng');
+      // Call the export function
+      await window.exportOverlayAnki();
+      
     } catch (e) {
-      console.error('Export failed in-page:', e);
-      alert('Lỗi khi xuất file: ' + (e && e.message ? e.message : e));
-      // Keep overlay open so user doesn't lose their drawn occlusions
+      console.error('Export error:', e);
+      alert('Lỗi xuất file: ' + (e && e.message ? e.message : String(e)));
     } finally {
       exportBtn.disabled = false;
       exportBtn.textContent = origText;
