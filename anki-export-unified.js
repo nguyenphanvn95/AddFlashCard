@@ -153,7 +153,7 @@ async function createOccludedImageFromOverlay(overlayCanvas, overlayImg, overlay
 /**
  * Tạo file .apkg với nhiều thẻ (editor.html mode)
  */
-async async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
+async function createApkgMultiCard(cardTitle, answerImage, questionImages) {
   if (typeof JSZip === 'undefined') {
     alert('Vui lòng thêm thư viện JSZip vào extension!\nXem hướng dẫn trong file README.md');
     return;
@@ -166,9 +166,9 @@ async async function createApkgMultiCard(cardTitle, answerImage, questionImages)
   const zip = new JSZip();
   const ts = Date.now();
 
-  // Tên file media
-  const answerImageName = `anki_img_${ts}_answer.png`;
-  const questionImageNames = questionImages.map((_, idx) => `anki_img_${ts}_q_${idx + 1}.png`);
+  // Tên file media (dùng trong HTML và manifest)
+  const answerImageName = `image_${ts}_answer.png`;
+  const questionImageNames = questionImages.map((_, idx) => `image_${ts}_q${idx + 1}.png`);
 
   // Tạo collection database
   const collectionData = await createAnkiCollectionMultiCard({
@@ -182,23 +182,25 @@ async async function createApkgMultiCard(cardTitle, answerImage, questionImages)
   zip.file('collection.anki2', collectionData);
 
   // Thêm media files
-  const mediaFiles = {};
+  // QUAN TRỌNG: File trong ZIP lưu với index số (không có extension)
+  // Manifest ánh xạ index -> filename có extension
+  const mediaManifest = {};
   let mediaIndex = 0;
 
   // Answer image (index 0)
-  mediaFiles[String(mediaIndex)] = answerImageName;
-  zip.file(String(mediaIndex), answerImage);
+  mediaManifest[String(mediaIndex)] = answerImageName;
+  zip.file(String(mediaIndex), answerImage);  // File "0" trong ZIP
   mediaIndex++;
 
   // Question images (index 1, 2, 3, ...)
   for (let i = 0; i < questionImages.length; i++) {
     const qName = questionImageNames[i];
-    mediaFiles[String(mediaIndex)] = qName;
-    zip.file(String(mediaIndex), questionImages[i]);
+    mediaManifest[String(mediaIndex)] = qName;
+    zip.file(String(mediaIndex), questionImages[i]);  // File "1", "2", "3" trong ZIP
     mediaIndex++;
   }
 
-  zip.file('media', JSON.stringify(mediaFiles));
+  zip.file('media', JSON.stringify(mediaManifest));
 
   const content = await zip.generateAsync({
     type: 'blob',
@@ -221,9 +223,9 @@ async function createApkgSingleCard(cardTitle, answerImage, questionImage) {
   const zip = new JSZip();
   const ts = Date.now();
 
-  // Tên file media
-  const answerImageName = `anki_img_${ts}_answer.png`;
-  const questionImageName = `anki_img_${ts}_question.png`;
+  // Tên file media (dùng trong HTML và manifest)
+  const answerImageName = `image_${ts}_answer.png`;
+  const questionImageName = `image_${ts}_question.png`;
 
   // Tạo collection database
   const collectionData = await createAnkiCollectionSingleCard({
@@ -237,17 +239,16 @@ async function createApkgSingleCard(cardTitle, answerImage, questionImage) {
   zip.file('collection.anki2', collectionData);
 
   // Thêm media files
-    // Thêm media files (Anki yêu cầu file trong zip đặt tên theo chỉ số: "0","1"...)
-  const mediaFiles = {
-    "0": answerImageName,
-    "1": questionImageName
+  // QUAN TRỌNG: File trong ZIP lưu với index số (không có extension)
+  // Manifest ánh xạ index -> filename có extension
+  const mediaManifest = {
+    '0': answerImageName,   // Index 0 -> "image_123_answer.png"
+    '1': questionImageName  // Index 1 -> "image_123_question.png"
   };
 
-  // Lưu blob theo index, KHÔNG lưu theo tên thật
-  zip.file("0", answerImage);
-  zip.file("1", questionImage);
-
-  zip.file('media', JSON.stringify(mediaFiles));
+  zip.file('0', answerImage);      // File "0" trong ZIP
+  zip.file('1', questionImage);    // File "1" trong ZIP
+  zip.file('media', JSON.stringify(mediaManifest));
 
   const content = await zip.generateAsync({
     type: 'blob',
@@ -311,21 +312,24 @@ async function createAnkiCollectionMultiCard(opts) {
   for (let i = 0; i < questionImageNames.length; i++) {
     const noteId = nextNoteId;
 
-    // Media indices: 0 = answer, 1,2,3... = questions
-    const answerMediaIndex = 0;
-    const questionMediaIndex = i + 1;
+    // Tham chiếu media bằng TÊN FILE (không phải index số!)
+    const questionImageName = questionImageNames[i];
+    const answerImageName = opts.answerImageName;
 
     // Tạo 6 fields (FIX LỖI 7 FIELDS!)
     // Fields: Question, Answer, Header, Footer, Remarks, Extra
-    const fQ = `<img src="${questionImageNames[i]}">`;
-    const fA = `<img src="${opts.answerImageName}">`;
+    const fQ = `<img src="${questionImageName}">`;
+    const fA = `<img src="${answerImageName}">`;
     
     // 6 fields được ngăn cách bởi 5 dấu \x1f
     const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
+    
+    // sfld (sort field) là text thuần túy của field đầu tiên (không có HTML)
+    const sortField = `${opts.cardTitle || ''} - Card ${i + 1}`;
 
     db.run(
       `INSERT INTO notes VALUES (?, ?, ?, ?, -1, '', ?, ?, 0, 0, '')`,
-      [noteId, generateGuid(), modelId, timestamp, fields, opts.cardTitle]
+      [noteId, generateGuid(), modelId, timestamp, fields, sortField]
     );
 
     const cardId = nextCardId;
@@ -389,18 +393,21 @@ async function createAnkiCollectionSingleCard(opts) {
   const noteId = timestampMs + 10;
   const cardId = noteId + 1;
 
-  // Media indices: 0 = answer, 1 = question
-  const answerMediaIndex = 0;
-  const questionMediaIndex = 1;
+  // Tham chiếu media bằng TÊN FILE (không phải index số!)
+  const questionImageName = opts.questionImageName;
+  const answerImageName = opts.answerImageName;
 
   // Tạo 6 fields
-  const fQ = `<img src="${questionImageNames[i]}">`;
-    const fA = `<img src="${opts.answerImageName}">`;
+  const fQ = `<img src="${questionImageName}">`;
+  const fA = `<img src="${answerImageName}">`;
   const fields = `${fQ}\x1f${fA}\x1f\x1f\x1f\x1f`;
+  
+  // sfld (sort field) là text thuần túy của field đầu tiên
+  const sortField = opts.cardTitle || 'Image Occlusion';
 
   db.run(
     `INSERT INTO notes VALUES (?, ?, ?, ?, -1, '', ?, ?, 0, 0, '')`,
-    [noteId, generateGuid(), modelId, timestamp, fields, opts.cardTitle]
+    [noteId, generateGuid(), modelId, timestamp, fields, sortField]
   );
 
   db.run(
@@ -753,3 +760,6 @@ if (typeof window !== 'undefined') {
   window.createOccludedImageFromOverlay = createOccludedImageFromOverlay;
   window.canvasToBlob = canvasToBlob;
 }
+
+// Mark unified export library ready for content scripts
+try { document.documentElement.setAttribute('data-afc-anki-export-ready','1'); } catch(e) {}
