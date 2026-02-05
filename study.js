@@ -1,4 +1,4 @@
-// Spaced Repetition Study Mode with SM-2 Algorithm
+﻿// Spaced Repetition Study Mode with SM-2 Algorithm
 // Based on SuperMemo SM-2 algorithm
 
 // ==================== SM-2 ALGORITHM ====================
@@ -366,6 +366,8 @@ const cardStatusBadge = document.getElementById('cardStatusBadge');
 const currentCardNumber = document.getElementById('currentCardNumber');
 const totalCards = document.getElementById('totalCards');
 const progressBar = document.getElementById('progressBar');
+const cardProgressFill = document.getElementById('cardProgressFill');
+const cardProgressPercent = document.getElementById('cardProgressPercent');
 
 // Header elements
 const studyDeckName = document.getElementById('studyDeckName');
@@ -525,7 +527,7 @@ function displayStudyInfo(card) {
   }
   
   cardStudyInfo.innerHTML = info.length > 0 
-    ? `<div class="study-info-text">${info.join(' • ')}</div>`
+    ? `<div class="study-info-text">${info.join(' â€¢ ')}</div>`
     : '';
 }
 
@@ -562,7 +564,13 @@ function updateProgress() {
   
   if (initialTotal > 0) {
     const progressPercent = (studied / initialTotal) * 100;
+    const rounded = Math.round(progressPercent);
     progressBar.style.width = progressPercent + '%';
+    if (cardProgressFill) cardProgressFill.style.width = progressPercent + '%';
+    if (cardProgressPercent) cardProgressPercent.textContent = `${rounded}%`;
+  } else {
+    if (cardProgressFill) cardProgressFill.style.width = '0%';
+    if (cardProgressPercent) cardProgressPercent.textContent = '0%';
   }
 }
 

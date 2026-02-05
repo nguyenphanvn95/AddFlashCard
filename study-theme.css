@@ -1,4 +1,4 @@
-/* ==================== THEME VARIABLES ==================== */
+﻿/* ==================== THEME VARIABLES ==================== */
 :root {
   /* Light Theme */
   --light-bg: #f7fafc;
@@ -49,15 +49,28 @@
 }
 
 .theme-light .icon-btn {
-  background: var(--light-bg-card);
-  color: var(--light-text);
-  border: 1px solid var(--light-border);
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .theme-light .icon-btn:hover {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.theme-light .session-stats {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.theme-light .stat-label {
+  color: #64748b;
+}
+
+.theme-light .stat-value {
+  color: #0f172a;
 }
 
 .theme-light .flashcard {
@@ -105,13 +118,38 @@
 }
 
 .theme-light .rating-btn {
-  background: var(--light-bg-card);
-  border: 2px solid var(--light-border);
+  background: #ffffff;
+  border: 1px solid var(--light-border);
+  color: var(--light-text);
 }
 
 .theme-light .rating-btn:hover {
   transform: translateY(-4px);
   box-shadow: var(--light-shadow-hover);
+}
+
+.theme-light .rating-btn.again {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+.theme-light .rating-btn.hard {
+  background: #f59e0b;
+  color: white;
+  border: none;
+}
+
+.theme-light .rating-btn.good {
+  background: #22c55e;
+  color: white;
+  border: none;
+}
+
+.theme-light .rating-btn.easy {
+  background: #3b82f6;
+  color: white;
+  border: none;
 }
 
 .theme-light .rating-hint {
@@ -203,6 +241,32 @@
   color: white;
 }
 
+
+.theme-light .card-progress-track {
+  background: #e5e7eb;
+}
+
+.theme-light .card-progress-fill {
+  background: #d1d5db;
+}
+
+.theme-light .card-percent {
+  color: var(--light-text);
+}
+
+.theme-light .card-position {
+  color: var(--light-text);
+}
+
+.theme-light .card-hint {
+  color: #6b7280;
+}
+
+.theme-light .rating-controls {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
 /* ==================== THEME DARK ==================== */
 .theme-dark body {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -233,6 +297,19 @@
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.theme-dark .session-stats {
+  background: #0f172a;
+  border: 1px solid var(--dark-border);
+}
+
+.theme-dark .stat-label {
+  color: #94a3b8;
+}
+
+.theme-dark .stat-value {
+  color: #e2e8f0;
 }
 
 .theme-dark .flashcard {
@@ -285,8 +362,8 @@
 }
 
 .theme-dark .rating-btn {
-  background: var(--dark-bg-card);
-  border: 2px solid var(--dark-border);
+  background: #0f172a;
+  border: 1px solid var(--dark-border);
   color: var(--dark-text);
 }
 
@@ -294,6 +371,30 @@
   transform: translateY(-4px);
   box-shadow: var(--dark-shadow-hover);
   border-color: var(--primary);
+}
+
+.theme-dark .rating-btn.again {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+.theme-dark .rating-btn.hard {
+  background: #f59e0b;
+  color: white;
+  border: none;
+}
+
+.theme-dark .rating-btn.good {
+  background: #22c55e;
+  color: white;
+  border: none;
+}
+
+.theme-dark .rating-btn.easy {
+  background: #3b82f6;
+  color: white;
+  border: none;
 }
 
 .theme-dark .rating-hint {
@@ -386,6 +487,32 @@
   color: white;
 }
 
+
+.theme-dark .card-progress-track {
+  background: #334155;
+}
+
+.theme-dark .card-progress-fill {
+  background: #64748b;
+}
+
+.theme-dark .card-percent {
+  color: var(--dark-text);
+}
+
+.theme-dark .card-position {
+  color: var(--dark-text);
+}
+
+.theme-dark .card-hint {
+  color: #94a3b8;
+}
+
+.theme-dark .rating-controls {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
 /* ==================== SCROLLBAR & CONTROLS DARK THEME ==================== */
 .theme-dark .card-content::-webkit-scrollbar-thumb {
   background: rgba(59, 130, 246, 0.4);
@@ -404,9 +531,9 @@
 }
 
 .theme-dark .rating-controls {
-  background: linear-gradient(to top, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--dark-border);
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
 
 /* ==================== SCROLLBAR & CONTROLS LIGHT THEME ==================== */
@@ -427,7 +554,10 @@
 }
 
 .theme-light .rating-controls {
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--light-border);
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
+
+
+
