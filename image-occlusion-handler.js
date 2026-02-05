@@ -170,17 +170,20 @@
     });
 
     // Xử lý click actions
-    menu.querySelector('[data-action="create-occlusion"]').addEventListener('click', () => {
+    menu.querySelector('[data-action="create-occlusion"]').addEventListener('click', (e) => {
+      e.stopPropagation();
       menu.remove();
       createImageOcclusion(imgElement, areaName);
     });
 
-    menu.querySelector('[data-action="view-image"]').addEventListener('click', () => {
+    menu.querySelector('[data-action="view-image"]').addEventListener('click', (e) => {
+      e.stopPropagation();
       menu.remove();
       viewFullImage(imgElement);
     });
 
-    menu.querySelector('[data-action="remove"]').addEventListener('click', () => {
+    menu.querySelector('[data-action="remove"]').addEventListener('click', (e) => {
+      e.stopPropagation();
       menu.remove();
       if (!confirm('Bạn có chắc muốn xóa ảnh này?')) return;
 
@@ -208,21 +211,26 @@
       }
     });
 
-    menu.querySelector('.io-close-menu').addEventListener('click', () => {
+    menu.querySelector('.io-close-menu').addEventListener('click', (e) => {
+      e.stopPropagation();
       menu.remove();
     });
 
     // Đóng menu khi click bên ngoài
     setTimeout(() => {
       document.addEventListener('click', function closeMenu(e) {
+        // Make sure menu still exists in DOM before checking
+        if (!menu || !menu.isConnected) {
+          document.removeEventListener('click', closeMenu);
+          return;
+        }
+        
         if (!menu.contains(e.target) && e.target !== imgElement) {
           menu.remove();
           document.removeEventListener('click', closeMenu);
         }
       });
     }, 100);
-    
-    // (handlers already attached above)
   }
 
   // Hiển thị tooltip cho ảnh mới
@@ -328,8 +336,11 @@
     
     overlay.appendChild(img);
     document.body.appendChild(overlay);
-    
-    overlay.addEventListener('click', () => overlay.remove());
+
+    overlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      overlay.remove();
+    });
   }
 
   // Hiển thị loading overlay
