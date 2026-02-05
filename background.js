@@ -4,12 +4,12 @@
 const MENU_ITEMS = {
   SEND_TO_FRONT: {
     id: 'sendToFront',
-    title: 'Send to Front',
+    title: 'Send to Front (Alt + A)',
     contexts: ['selection']
   },
   SEND_TO_BACK: {
     id: 'sendToBack',
-    title: 'Send to Back',
+    title: 'Send to Back (Alt + B)',
     contexts: ['selection']
   },
   OPEN_PDF_VIEWER: {
@@ -342,7 +342,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
       
     case 'openImageOcclusionEditor':
-      handleOpenImageOcclusionEditor(message.imageData, message.pageTitle);
+      handleOpenImageOcclusionEditor(message.imageData, message.pageTitle, message.occlusions, message.autoExport);
       sendResponse({ success: true });
       break;
       
@@ -514,7 +514,7 @@ async function handleCaptureForOverlay(area, tab) {
 }
 
 // Image Occlusion helper: Open editor in new tab
-function handleOpenImageOcclusionEditor(imageData, pageTitle) {
+function handleOpenImageOcclusionEditor(imageData, pageTitle, occlusions, autoExport) {
   chrome.tabs.create({
     url: chrome.runtime.getURL('image-occlusion-editor.html')
   }, (tab) => {
@@ -525,7 +525,9 @@ function handleOpenImageOcclusionEditor(imageData, pageTitle) {
         chrome.tabs.sendMessage(tab.id, {
           action: 'loadImage',
           imageData: imageData,
-          pageTitle: pageTitle || 'Image Occlusion'
+          pageTitle: pageTitle || 'Image Occlusion',
+          occlusions: occlusions || null,
+          autoExport: !!autoExport
         });
       }
     });

@@ -607,24 +607,67 @@ async function showOverlayEditorInPage(imageData) {
   btnClear.style.cssText = 'padding:6px 10px; margin-right:6px;';
   btnClear.addEventListener('click', () => { try { window.clearAllOcclusions && window.clearAllOcclusions(); } catch (e){} });
 
+  // Hide selector dropdown
+  const hideSelector = document.createElement('select');
+  hideSelector.id = 'hideSelector';
+  hideSelector.style.cssText = 'padding:6px 8px; margin-right:8px; border:1px solid #ddd; border-radius:4px;';
+  hideSelector.addEventListener('change', (e) => {
+    const mode = e.target.value;
+    try { window.setOcclusionHideMode && window.setOcclusionHideMode(mode); } catch (err){}
+  });
+
+  function updateHideSelectorOptions() {
+    // Get current number of occlusions from window (injected script updates this)
+    const numOcclusions = window.overlayOcclusions ? window.overlayOcclusions.length : 0;
+    
+    // Clear and rebuild options
+    hideSelector.innerHTML = '<option value="none">Không ẩn</option>';
+    hideSelector.appendChild(Object.assign(document.createElement('option'), { value: 'all', textContent: 'Ẩn tất cả' }));
+    
+    for (let i = 1; i <= numOcclusions; i++) {
+      hideSelector.appendChild(Object.assign(document.createElement('option'), { value: String(i), textContent: `Ẩn #${i}` }));
+    }
+  }
+
+  // Call initially and setup update on canvas redraws
+  updateHideSelectorOptions();
+  // Store the update function globally so injected script can call it
+  window._updateHideSelectorOptions = updateHideSelectorOptions;
+
   const exportBtn = document.createElement('button');
   exportBtn.id = 'exportBtn';
   exportBtn.textContent = 'Xuất .apkg';
   exportBtn.style.cssText = 'padding:6px 10px; margin-left:8px;';
-  exportBtn.addEventListener('click', () => {
+  exportBtn.addEventListener('click', async () => {
+    const origText = exportBtn.textContent;
+    exportBtn.disabled = true;
+    exportBtn.textContent = 'Chuẩn bị xuất...';
     try {
-      if (window.exportOverlayAnki && typeof window.exportOverlayAnki === 'function') {
-        window.exportOverlayAnki();
-        return;
+      // Ensure export scripts are injected and ready
+      await ensureOverlayScriptInjected();
+
+      // Wait for the overlay's export helper to become available (poll up to 5s)
+      const start = Date.now();
+      let exported = false;
+      while (Date.now() - start < 5000) {
+        if (typeof window.exportOverlayAnki === 'function') {
+          await window.exportOverlayAnki();
+          exported = true;
+          break;
+        }
+        await new Promise(r => setTimeout(r, 200));
       }
-      // If not available, throw to go to fallback
-      throw new Error('exportOverlayAnki not available');
+
+      if (exported) return;
+
+      throw new Error('Hàm xuất chưa sẵn sàng');
     } catch (e) {
-      console.error('Export failed in-page, falling back to editor tab:', e);
-      // Fallback: open full editor tab with the original image so user can export there
-      const img = overlay._afc_imageData || imageData;
-      try { chrome.runtime.sendMessage({ action: 'openImageOcclusionEditor', imageData: img, pageTitle: document.title }); } catch (err) {}
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      console.error('Export failed in-page:', e);
+      alert('Lỗi khi xuất file: ' + (e && e.message ? e.message : e));
+      // Keep overlay open so user doesn't lose their drawn occlusions
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.textContent = origText;
     }
   });
 
@@ -640,6 +683,7 @@ async function showOverlayEditorInPage(imageData) {
   toolbar.appendChild(btnEllipse);
   toolbar.appendChild(btnDelete);
   toolbar.appendChild(btnClear);
+  toolbar.appendChild(hideSelector);
   toolbar.appendChild(exportBtn);
   toolbar.appendChild(closeBtn);
 

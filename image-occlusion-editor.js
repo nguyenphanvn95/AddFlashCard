@@ -21,8 +21,85 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.runtime.onMessage.addListener((request) => {
     if (request.action === 'loadImage') {
       loadImage(request.imageData, request.pageTitle);
+      // If occlusions were passed from overlay, apply them
+      if (request.occlusions && Array.isArray(request.occlusions) && request.occlusions.length > 0) {
+        occlusions = request.occlusions.slice();
+        redraw();
+        updateStatus('Occlusions đã được nạp từ overlay.');
+      }
+
+      // If caller requested immediate export, attempt it (editor has the unified export lib)
+      if (request.autoExport) {
+        // Wait a bit for image to render
+        setTimeout(() => {
+          autoExportSingleCard().catch(err => {
+            console.error('Auto export failed:', err);
+            updateStatus('Tự động xuất thất bại: ' + (err && err.message ? err.message : err));
+          });
+        }, 300);
+      }
     }
   });
+
+// Auto-export helper for single-card case (overlay -> editor fallback)
+async function autoExportSingleCard() {
+  if (!occlusions || occlusions.length === 0) {
+    throw new Error('Không có occlusion để xuất.');
+  }
+
+  const cardTitle = document.getElementById('cardTitle').value || pageTitle || 'Anki Card';
+
+  // Create original and occluded blobs from current canvas/image
+  const originalBlob = await (async () => {
+    const t = document.createElement('canvas');
+    t.width = canvas.width;
+    t.height = canvas.height;
+    const tctx = t.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    return await canvasToBlob(t);
+  })();
+
+  const occludedBlob = await (async () => {
+    const t = document.createElement('canvas');
+    t.width = canvas.width;
+    t.height = canvas.height;
+    const tctx = t.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.fillStyle = 'rgba(0,0,0,0.85)';
+    occlusions.forEach(occ => {
+      if (occ.type === 'rect') {
+        tctx.fillRect(occ.x, occ.y, occ.width, occ.height);
+      } else if (occ.type === 'ellipse') {
+        tctx.beginPath();
+        tctx.ellipse(
+          occ.x + occ.width / 2,
+          occ.y + occ.height / 2,
+          Math.abs(occ.width / 2),
+          Math.abs(occ.height / 2),
+          0, 0, 2 * Math.PI
+        );
+        tctx.fill();
+      }
+    });
+    return await canvasToBlob(t);
+  })();
+
+  updateStatus('Đang xuất .apkg ...');
+
+  // Wait for createApkgSingleCard from the unified library
+  const start = Date.now();
+  while (Date.now() - start < 5000) {
+    if (typeof createApkgSingleCard === 'function') break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (typeof createApkgSingleCard !== 'function') {
+    throw new Error('Hàm tạo .apkg chưa sẵn sàng trong trình chỉnh sửa.');
+  }
+
+  await createApkgSingleCard(cardTitle, originalBlob, occludedBlob);
+  updateStatus('Đã xuất .apkg thành công.');
+}
 });
 
 // Setup event listeners

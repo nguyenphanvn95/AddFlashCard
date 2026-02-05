@@ -735,3 +735,18 @@ function generateGuid() {
     return v.toString(16);
   });
 }
+
+// Export functions to global scope so they can be used by overlay and other scripts
+if (typeof window !== 'undefined') {
+  window.exportAnkiMultiCard = exportAnkiMultiCard;
+  window.exportAnkiSingleCard = exportAnkiSingleCard;
+  window.createApkgMultiCard = createApkgMultiCard;
+  window.createApkgSingleCard = createApkgSingleCard;
+  window.createAnkiCollectionMultiCard = createAnkiCollectionMultiCard;
+  window.createAnkiCollectionSingleCard = createAnkiCollectionSingleCard;
+  window.initializeSqlJs = initializeSqlJs;
+  window.createOccludedImageForIndex = createOccludedImageForIndex;
+  window.createOriginalImageFromOverlay = createOriginalImageFromOverlay;
+  window.createOccludedImageFromOverlay = createOccludedImageFromOverlay;
+  window.canvasToBlob = canvasToBlob;
+}

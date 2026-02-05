@@ -11,6 +11,7 @@ if (!window.__afc_overlay_loaded) {
   let currentOverlayTool = 'rect';
   let isOverlayDrawing = false;
   let overlayStartX, overlayStartY;
+  let occlusionHideMode = 'none'; // 'none', 'all', or '1', '2', '3'... for specific occlusion index
 
 // Khởi tạo canvas trong overlay
 function initializeCanvas(imageData) {
@@ -51,10 +52,18 @@ function redrawOverlay() {
   overlayCtx.drawImage(overlayImg, 0, 0);
   
   overlayOcclusions.forEach((occ, index) => {
+    occ._num = index + 1;
     drawOverlayOcclusion(occ, index === selectedOverlayOcclusion);
   });
   
   updateOverlayOcclusionCount();
+  
+  // Notify content script to update hide selector options
+  try {
+    if (typeof window._updateHideSelectorOptions === 'function') {
+      window._updateHideSelectorOptions();
+    }
+  } catch (e) {}
 }
 
 // Vẽ một khối che
@@ -98,6 +107,19 @@ function drawOverlayOcclusion(occ, isSelected) {
       0, 0, 2 * Math.PI
     );
     overlayCtx.stroke();
+  }
+  
+  // Draw index label
+  if (occ._num) {
+    const label = String(occ._num);
+    const px = occ.x + 6;
+    const py = occ.y + 16;
+    overlayCtx.font = 'bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
+    const tw = overlayCtx.measureText(label).width;
+    overlayCtx.fillRect(px - 4, py - 14, tw + 8, 18);
+    overlayCtx.fillStyle = '#fff';
+    overlayCtx.fillText(label, px, py);
   }
   
   overlayCtx.restore();
@@ -245,8 +267,34 @@ function clearAllOcclusions() {
 function updateOverlayOcclusionCount() {
   const countEl = document.getElementById('anki-occlusion-count');
   if (countEl) {
-    countEl.textContent = `Khối: ${overlayOcclusions.length}`;
+    let text = `Khối: ${overlayOcclusions.length}`;
+    if (occlusionHideMode !== 'none') {
+      text += ` (Ẩn: ${occlusionHideMode === 'all' ? 'Tất cả' : 'Khối ' + occlusionHideMode})`;
+    }
+    countEl.textContent = text;
   }
+}
+
+// Get occlusions to draw during export (apply hide mode)
+function getVisibleOcclusions() {
+  if (occlusionHideMode === 'none') {
+    return overlayOcclusions;
+  }
+  if (occlusionHideMode === 'all') {
+    return [];
+  }
+  // Hide specific occlusion: return all except the one to hide
+  const hideIndex = parseInt(occlusionHideMode) - 1;
+  if (hideIndex >= 0 && hideIndex < overlayOcclusions.length) {
+    return overlayOcclusions.filter((_, idx) => idx !== hideIndex);
+  }
+  return overlayOcclusions;
+}
+
+// Set hide mode
+function setOcclusionHideMode(mode) {
+  occlusionHideMode = mode;
+  updateOverlayOcclusionCount();
 }
 
 // ============================================================================
@@ -262,21 +310,79 @@ async function exportOverlayAnki() {
   const titleInput = document.getElementById('anki-card-title');
   const cardTitle = titleInput ? titleInput.value || 'Anki Card' : 'Anki Card';
   
+  // Get occlusions to export (apply hide mode)
+  const visibleOcclusions = getVisibleOcclusions();
+  
+  // Check if nothing to export
+  if (visibleOcclusions.length === 0 && occlusionHideMode !== 'all') {
+    alert('Không có khối che nào được hiển thị để xuất!');
+    return;
+  }
+  
   try {
-    // Sử dụng hàm từ anki-export-unified.js
-    await exportAnkiSingleCard(overlayCanvas, overlayImg, overlayOcclusions, cardTitle);
+    // Ensure export function is available; if not, wait briefly for injected scripts to finish
+    const tryExport = async () => {
+      if (typeof exportAnkiSingleCard === 'function') {
+        return await exportAnkiSingleCard(overlayCanvas, overlayImg, visibleOcclusions, cardTitle);
+      }
+      if (typeof createApkgSingleCard === 'function') {
+        // Fallback: use helper directly
+        const occludedBlob = await createOccludedImageFromOverlay(overlayCanvas, overlayImg, visibleOcclusions);
+        const originalBlob = await createOriginalImageFromOverlay(overlayCanvas, overlayImg);
+        return await createApkgSingleCard(cardTitle, originalBlob, occludedBlob);
+      }
+      throw new Error('export function not available');
+    };
+
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+      const origText = exportBtn.textContent;
+      exportBtn.disabled = true;
+      exportBtn.textContent = 'Đang xuất...';
+
+      // Poll for up to 8s for export functions
+      const start = Date.now();
+      let success = false;
+      let lastError = null;
+      while (Date.now() - start < 8000) {
+        try {
+          await tryExport();
+          success = true;
+          break;
+        } catch (err) {
+          lastError = err;
+          // Wait before retry
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+
+      exportBtn.disabled = false;
+      exportBtn.textContent = origText;
+
+      if (!success) {
+        console.error('Export failed: export API not ready', lastError);
+        alert('Lỗi khi xuất file: Hàm xuất không sẵn sàng. Vui lòng thử lại hoặc kiểm tra console.');
+        return;
+      }
+    } else {
+      // No exportBtn; try once directly
+      await tryExport();
+    }
     
     // Hiển thị thông báo thành công
     showSuccessNotification();
     
-    // Đóng overlay sau 1.5s
+    // Đóng overlay sau 2s
     setTimeout(() => {
-      closeOverlay();
-    }, 1500);
+      const overlay = document.getElementById('afc-occlusion-overlay');
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    }, 2000);
     
   } catch (error) {
     console.error('Error exporting:', error);
-    alert('Lỗi khi xuất file: ' + error.message);
+    alert('Lỗi khi xuất file: ' + (error && error.message ? error.message : String(error)));
   }
 }
 
@@ -335,4 +441,11 @@ function showSuccessNotification() {
   window.deleteSelectedOcclusion = deleteSelectedOcclusion;
   window.clearAllOcclusions = clearAllOcclusions;
   window.exportOverlayAnki = exportOverlayAnki;
+  window.setOcclusionHideMode = setOcclusionHideMode;
+  window.getVisibleOcclusions = getVisibleOcclusions;
+  
+  // Export data for content script to read
+  Object.defineProperty(window, 'overlayOcclusions', {
+    get() { return overlayOcclusions; }
+  });
 }
