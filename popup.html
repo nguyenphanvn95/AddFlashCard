@@ -46,6 +46,11 @@
         <span>PDF Viewer</span>
       </button>
 
+      <button class="action-btn occlusion-btn" id="image-occlusion-btn">
+        <span class="icon">🖼️</span>
+        <span>Image Occlusion</span>
+      </button>
+
       <button class="action-btn" id="export-btn">
         <span class="icon">💾</span>
         <span>Export APKG</span>
@@ -97,6 +102,39 @@
     }
 
     .action-btn.pdf-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Image Occlusion Button Style */
+    .action-btn.occlusion-btn {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.occlusion-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.occlusion-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.occlusion-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+    }
+
+    .action-btn.occlusion-btn .icon {
       font-size: 20px;
     }
   </style>

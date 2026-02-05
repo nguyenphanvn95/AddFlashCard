@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anki Image Occlusion Editor</title>
+  <link rel="stylesheet" href="image-occlusion-editor.css">
+</head>
+<body>
+  <div class="editor-container">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <h2>Anki Image Occlusion Editor</h2>
+      </div>
+      <div class="toolbar-center">
+        <button id="drawRectBtn" class="tool-btn active" title="Vẽ hình chữ nhật">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Hình chữ nhật
+        </button>
+        <button id="drawEllipseBtn" class="tool-btn" title="Vẽ hình ellipse">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          Ellipse
+        </button>
+        <button id="deleteBtn" class="tool-btn" title="Xóa khối đã chọn">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+          </svg>
+          Xóa
+        </button>
+        <button id="clearBtn" class="tool-btn" title="Xóa tất cả">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+          </svg>
+          Xóa tất cả
+        </button>
+      </div>
+      <div class="toolbar-right">
+        <input type="text" id="cardTitle" placeholder="Tiêu đề thẻ Anki..." />
+        <select id="hideModeSelect" title="Chọn kiểu tạo thẻ" style="margin-right:10px;"><option value="hide-one-reveal-one">Hide 1</option><option value="hide-all-reveal-one">Hide all</option></select>
+        <button id="exportBtn" class="export-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+          </svg>
+          Xuất file .apkg
+        </button>
+      </div>
+    </div>
+
+    <!-- Canvas area -->
+    <div class="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <span id="statusText">Sẵn sàng. Click chuột để vẽ khối che mờ.</span>
+      <span id="occlusionCount">Số khối: 0</span>
+    </div>
+  </div>
+
+  <!-- Thư viện JSZip - tải từ local -->
+  <script src="vendor/jszip.min.js"></script>
+  
+  <!-- SQL.js library - Tạo SQLite database -->
+  <script src="vendor/sql-wasm.js"></script>
+  
+  <!-- Anki export unified library (v2.1 - Fixed) -->
+  <script src="anki-export-unified.js"></script>
+  
+  <!-- Main editor script (Updated) -->
+  <script src="image-occlusion-editor.js"></script>
+</body>
+</html>

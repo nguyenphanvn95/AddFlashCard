@@ -17,6 +17,24 @@ const MENU_ITEMS = {
     title: 'Open in AddFlashcard PDF Viewer',
     contexts: ['page', 'link'],
     documentUrlPatterns: ['*://*/*.pdf', 'file:///*.pdf']
+  },
+  // Image Occlusion menus
+  IMAGE_OCCLUSION_PARENT: {
+    id: 'imageOcclusionParent',
+    title: 'AddFlashcard - Image Occlusion',
+    contexts: ['page']
+  },
+  CAPTURE_AREA: {
+    id: 'captureArea',
+    title: 'Chụp một vùng',
+    contexts: ['page'],
+    parentId: 'imageOcclusionParent'
+  },
+  CAPTURE_FULLPAGE: {
+    id: 'captureFullPage',
+    title: 'Chụp toàn bộ trang',
+    contexts: ['page'],
+    parentId: 'imageOcclusionParent'
   }
 };
 
@@ -46,6 +64,13 @@ function createContextMenus() {
     
     // Create PDF menu
     chrome.contextMenus.create(MENU_ITEMS.OPEN_PDF_VIEWER);
+    
+    // Create Image Occlusion parent menu
+    chrome.contextMenus.create(MENU_ITEMS.IMAGE_OCCLUSION_PARENT);
+    
+    // Create Image Occlusion submenus
+    chrome.contextMenus.create(MENU_ITEMS.CAPTURE_AREA);
+    chrome.contextMenus.create(MENU_ITEMS.CAPTURE_FULLPAGE);
     
     console.log('AddFlashcard: Context menus created');
   });
@@ -91,6 +116,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       
     case 'openPDFViewer':
       await handleOpenPDFViewer(info, tab);
+      break;
+      
+    case 'captureArea':
+      await handleCaptureArea(tab);
+      break;
+      
+    case 'captureFullPage':
+      await handleCaptureFullPage(tab);
       break;
   }
 });
@@ -182,6 +215,76 @@ async function handleOpenPDFViewer(info, tab) {
   await chrome.tabs.create({ url: viewerUrl });
 }
 
+// Handle Image Occlusion - Capture Area
+async function handleCaptureArea(tab) {
+  try {
+    // Inject overlay editor if needed
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['overlay-editor-updated.js']
+    });
+    
+    // Start area selection
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'startSelection'
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error starting area capture:', error);
+  }
+}
+
+// Handle Image Occlusion - Capture Full Page
+async function handleCaptureFullPage(tab) {
+  try {
+    // Inject overlay editor if needed
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['overlay-editor-updated.js']
+    });
+    
+    // Capture visible tab
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, async (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        return;
+      }
+      
+      // Send to overlay editor
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showOverlayEditor',
+        imageData: dataUrl,
+        area: null
+      });
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error capturing full page:', error);
+  }
+}
+
+// Handle Image Occlusion from hover icon or alt-click
+async function handleCreateImageOcclusion(message, sender) {
+  try {
+    const tabId = sender.tab?.id;
+    if (!tabId) return;
+
+    // Inject overlay editor if needed
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['overlay-editor-updated.js']
+    });
+    
+    // Send image data to overlay editor
+    await chrome.tabs.sendMessage(tabId, {
+      action: 'showOverlayEditor',
+      imageData: message.imageData,
+      area: null,
+      source: message.source
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error creating image occlusion:', error);
+  }
+}
+
 // Handle messages from content scripts and popups
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('AddFlashcard: Message received', message.action);
@@ -214,6 +317,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
       
+    case 'createImageOcclusion':
+      handleCreateImageOcclusion(message, sender);
+      sendResponse({ success: true });
+      break;
+      
     case 'openManagePage':
       chrome.tabs.create({ 
         url: chrome.runtime.getURL('manage.html'),
@@ -229,6 +337,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
         }, 500);
       }
+      sendResponse({ success: true });
+      break;
+      
+    // Image Occlusion handlers
+    case 'captureForOverlay':
+      handleCaptureForOverlay(message.area, sender.tab);
+      sendResponse({ success: true });
+      break;
+      
+    case 'openImageOcclusionEditor':
+      handleOpenImageOcclusionEditor(message.imageData, message.pageTitle);
       sendResponse({ success: true });
       break;
       
@@ -372,5 +491,83 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
   }
 });
+
+// Image Occlusion helper: Capture area for overlay
+async function handleCaptureForOverlay(area, tab) {
+  chrome.tabs.captureVisibleTab(null, { format: 'png' }, async (dataUrl) => {
+    if (chrome.runtime.lastError) {
+      console.error(chrome.runtime.lastError);
+      return;
+    }
+    
+    // Crop image if area is specified
+    const croppedImage = area ? await cropImage(dataUrl, area) : dataUrl;
+    
+    // Send to overlay editor
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'showOverlayEditor',
+      imageData: croppedImage,
+      area: area
+    });
+  });
+}
+
+// Image Occlusion helper: Open editor in new tab
+function handleOpenImageOcclusionEditor(imageData, pageTitle) {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('image-occlusion-editor.html')
+  }, (tab) => {
+    // Wait for tab to load then send data
+    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+      if (tabId === tab.id && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'loadImage',
+          imageData: imageData,
+          pageTitle: pageTitle || 'Image Occlusion'
+        });
+      }
+    });
+  });
+}
+
+// Crop image helper
+async function cropImage(dataUrl, area) {
+  return new Promise((resolve) => {
+    fetch(dataUrl)
+      .then(res => res.blob())
+      .then(blob => createImageBitmap(blob))
+      .then(bitmap => {
+        const canvas = new OffscreenCanvas(
+          area.width * area.devicePixelRatio,
+          area.height * area.devicePixelRatio
+        );
+        const ctx = canvas.getContext('2d');
+        
+        ctx.drawImage(
+          bitmap,
+          area.left * area.devicePixelRatio,
+          area.top * area.devicePixelRatio,
+          area.width * area.devicePixelRatio,
+          area.height * area.devicePixelRatio,
+          0,
+          0,
+          area.width * area.devicePixelRatio,
+          area.height * area.devicePixelRatio
+        );
+        
+        return canvas.convertToBlob({ type: 'image/png' });
+      })
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        console.error('Crop image error:', err);
+        resolve(dataUrl);
+      });
+  });
+}
 
 console.log('AddFlashcard: Background service worker loaded');

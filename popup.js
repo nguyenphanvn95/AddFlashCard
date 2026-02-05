@@ -58,6 +58,37 @@ function setupEventListeners() {
     window.close();
   });
   
+  // Image Occlusion button
+  document.getElementById('image-occlusion-btn').addEventListener('click', async () => {
+    // Show submenu with options
+    const action = await showImageOcclusionMenu();
+    if (action === 'capture-area') {
+      // Capture area on current tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, { action: 'startSelection' });
+      }
+      window.close();
+    } else if (action === 'capture-page') {
+      // Capture full page on current tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab) {
+        chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'showOverlayEditor',
+            imageData: dataUrl,
+            area: null
+          });
+        });
+      }
+      window.close();
+    } else if (action === 'open-editor') {
+      // Open editor in new tab
+      chrome.tabs.create({ url: chrome.runtime.getURL('image-occlusion-editor.html') });
+      window.close();
+    }
+  });
+  
   // Export button
   document.getElementById('export-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('manage.html#export') });
@@ -206,6 +237,24 @@ function openSettingsModal() {
       <button class="close-modal-btn" style="background: none; border: none; color: #ecf0f1; font-size: 24px; cursor: pointer; padding: 0;">&times;</button>
     </div>
     
+    <!-- Image Hover Settings -->
+    <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #3d5266;">
+      <label style="display: block; margin-bottom: 10px;">
+        <div style="font-weight: 600; margin-bottom: 4px;">🖼️ Image Occlusion Quick Access</div>
+        <div style="font-size: 12px; color: #95a5a6;">Enable hover icon and Alt+Click on images</div>
+      </label>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="enableHoverIcon" checked style="cursor: pointer; width: 18px; height: 18px;">
+          <span style="font-size: 14px;">Show icon when hovering over images</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="enableAltClick" checked style="cursor: pointer; width: 18px; height: 18px;">
+          <span style="font-size: 14px;">Alt+Click on image to create occlusion</span>
+        </label>
+      </div>
+    </div>
+    
     <!-- Overlay Opacity -->
     <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #3d5266;">
       <label style="display: block; margin-bottom: 10px;">
@@ -253,10 +302,16 @@ function openSettingsModal() {
   document.body.appendChild(overlay);
   
   // Load saved settings
-  chrome.storage.local.get(['afc_overlay_opacity', 'afc_dock_side', 'afc_theme'], (result) => {
+  chrome.storage.local.get(['afc_overlay_opacity', 'afc_dock_side', 'afc_theme', 'afc_image_hover_icon', 'afc_image_alt_click'], (result) => {
     const opacity = result.afc_overlay_opacity || 0.38;
     const dockSide = result.afc_dock_side || 'right';
     const theme = result.afc_theme || 'light';
+    const enableHoverIcon = result.afc_image_hover_icon !== false;
+    const enableAltClick = result.afc_image_alt_click !== false;
+    
+    // Set image hover settings
+    document.getElementById('enableHoverIcon').checked = enableHoverIcon;
+    document.getElementById('enableAltClick').checked = enableAltClick;
     
     // Set opacity
     const opacitySlider = document.getElementById('popupOverlayOpacity');
@@ -316,12 +371,16 @@ function openSettingsModal() {
     const opacity = parseFloat(document.getElementById('popupOverlayOpacity').value) / 100;
     const dockSide = document.querySelector('.dock-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-side') || 'right';
     const theme = document.querySelector('.theme-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-theme') || 'light';
+    const enableHoverIcon = document.getElementById('enableHoverIcon').checked;
+    const enableAltClick = document.getElementById('enableAltClick').checked;
     
     // Save to storage
     chrome.storage.local.set({
       afc_overlay_opacity: opacity,
       afc_dock_side: dockSide,
-      afc_theme: theme
+      afc_theme: theme,
+      afc_image_hover_icon: enableHoverIcon,
+      afc_image_alt_click: enableAltClick
     });
     
     // Notify sidebar to update (if it's open)
@@ -335,6 +394,11 @@ function openSettingsModal() {
           }).catch(() => {
             // Tab might not have content script
           });
+          
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'updateImageHoverSettings',
+            settings: { enableHoverIcon, enableAltClick }
+          }).catch(() => {});
         });
       });
     } catch (e) {}
@@ -420,5 +484,88 @@ function openAboutModal() {
   
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.remove();
+  });
+}
+
+// Show Image Occlusion Menu
+function showImageOcclusionMenu() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    `;
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: 1px solid #ff7eb3;
+      border-radius: 12px;
+      padding: 30px;
+      width: 90%;
+      max-width: 350px;
+      color: white;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    `;
+    
+    modal.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">🖼️</div>
+      <h2 style="font-size: 20px; margin: 0 0 20px 0; text-align: center;">Image Occlusion</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="io-option" data-action="capture-area" style="padding: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+          📐 Chụp một vùng
+        </button>
+        <button class="io-option" data-action="capture-page" style="padding: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+          📱 Chụp toàn bộ trang
+        </button>
+        <button class="io-option" data-action="open-editor" style="padding: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;">
+          ✏️ Mở Editor
+        </button>
+        <button class="io-cancel" style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; cursor: pointer; font-size: 14px; font-weight: 500; margin-top: 10px;">
+          Hủy
+        </button>
+      </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Handle option clicks
+    modal.querySelectorAll('.io-option').forEach(btn => {
+      btn.addEventListener('mouseenter', (e) => {
+        e.target.style.background = 'rgba(255,255,255,0.3)';
+        e.target.style.transform = 'translateY(-2px)';
+      });
+      btn.addEventListener('mouseleave', (e) => {
+        e.target.style.background = 'rgba(255,255,255,0.2)';
+        e.target.style.transform = 'translateY(0)';
+      });
+      btn.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        overlay.remove();
+        resolve(action);
+      });
+    });
+    
+    // Handle cancel
+    modal.querySelector('.io-cancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(null);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        resolve(null);
+      }
+    });
   });
 }
