@@ -101,7 +101,7 @@
     const menu = document.createElement('div');
     menu.id = 'io-image-menu';
     menu.style.cssText = `
-      position: fixed;
+      position: absolute;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border: 2px solid #5a67d8;
       border-radius: 12px;
@@ -142,30 +142,40 @@
 
     // Tính toán vị trí: ưu tiên đặt bên trái ảnh; nếu không đủ chỗ thì đặt bên phải; vertical align ở giữa ảnh
     const rect = imgElement.getBoundingClientRect();
+
+    // Append menu into the sidebar container so positioning matches the editor (works with iframe/scroll/transform)
+    const container = document.querySelector('.sidebar-container') || document.body;
+    // Ensure container is a positioning context
+    try {
+      const cs = window.getComputedStyle(container);
+      if (cs.position === 'static') container.style.position = 'relative';
+    } catch(e) {}
+
     menu.style.visibility = 'hidden';
     menu.style.left = '0px';
     menu.style.top = '0px';
-    document.body.appendChild(menu);
-    const mrect = menu.getBoundingClientRect();
+    container.appendChild(menu);
 
-    const gap = 10;
+    const mrect = menu.getBoundingClientRect();
+    const cRect = container.getBoundingClientRect();
+const gap = 10;
     // Try left first
-    let leftPos = rect.left - mrect.width - gap;
+    let leftPos = (rect.left - cRect.left) - mrect.width - gap;
     if (leftPos < 8) {
       // Not enough room on the left — try placing to the right of the image
-      const rightPos = rect.right + gap;
-      if (rightPos + mrect.width <= window.innerWidth - 8) {
+      const rightPos = (rect.right - cRect.left) + gap;
+      if (rightPos + mrect.width <= cRect.width - 8) {
         leftPos = rightPos;
       } else {
         // No room both sides — clamp within viewport but center vertically to avoid overlapping important parts
-        leftPos = Math.max(8, Math.min(window.innerWidth - mrect.width - 8, rect.left - mrect.width - gap));
+        leftPos = Math.max(8, Math.min(cRect.width - mrect.width - 8, (rect.left - cRect.left) - mrect.width - gap));
       }
     }
 
     // Vertical: align menu center to image center when possible
-    let topPos = rect.top + (rect.height - mrect.height) / 2;
-    if (topPos + mrect.height > window.innerHeight - 8) {
-      topPos = Math.max(8, window.innerHeight - mrect.height - 8);
+    let topPos = (rect.top - cRect.top) + (rect.height - mrect.height) / 2;
+    if (topPos + mrect.height > cRect.height - 8) {
+      topPos = Math.max(8, cRect.height - mrect.height - 8);
     }
     if (topPos < 8) topPos = 8;
 
@@ -273,7 +283,7 @@
   function showImageTooltip(imgElement, areaName) {
     const tooltip = document.createElement('div');
     tooltip.style.cssText = `
-      position: fixed;
+      position: absolute;
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       border: 2px solid #ff7eb3;
       border-radius: 8px;
@@ -347,7 +357,7 @@
   function viewFullImage(imgElement) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
@@ -383,7 +393,7 @@
   function showLoadingOverlay(message) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
@@ -441,7 +451,7 @@
   function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.style.cssText = `
-      position: fixed;
+      position: absolute;
       top: 20px;
       right: 20px;
       background: ${type === 'success' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'};
