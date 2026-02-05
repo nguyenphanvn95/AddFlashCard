@@ -21,7 +21,10 @@ async function exportAnkiMultiCard() {
 
   try {
     // Ảnh gốc (Image field)
-    const originalImageBlob = await canvasToBlob(canvas);
+    // IMPORTANT: canvas trong editor thường đã bị vẽ các block occlusion/overlay lên.
+    // Field Image của note Image Occlusion phải là ảnh gốc (chưa có block).
+    // Vì vậy ta render lại từ ảnh nguồn (biến global `img` của editor) nếu có.
+    const originalImageBlob = await createOriginalImageFromEditor(canvas);
 
     // Tạo data cho từng thẻ
     const cardsData = [];
@@ -51,6 +54,33 @@ async function exportAnkiMultiCard() {
     alert('Lỗi khi xuất file: ' + (error && error.message ? error.message : error));
     updateStatus('Lỗi khi xuất file.');
   }
+}
+
+/**
+ * Tạo ảnh gốc cho editor.html (KHÔNG có khối che)
+ *
+ * - Ưu tiên render lại từ ảnh nguồn `img` (global trong image-occlusion-editor.js)
+ * - Fallback: nếu không truy cập được `img`, dùng chính canvas hiện tại
+ */
+async function createOriginalImageFromEditor(editorCanvas) {
+  try {
+    // `img` được khai báo global trong image-occlusion-editor.js
+    if (typeof img !== 'undefined' && img && img.naturalWidth && img.naturalHeight) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = editorCanvas.width;
+      tempCanvas.height = editorCanvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // Vẽ ảnh gốc theo đúng kích thước canvas editor
+      tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+      return await canvasToBlob(tempCanvas);
+    }
+  } catch (e) {
+    console.warn('createOriginalImageFromEditor fallback to editor canvas:', e);
+  }
+
+  // Fallback (có thể chứa occlusion nếu editorCanvas đã bị vẽ overlay)
+  return await canvasToBlob(editorCanvas);
 }
 
 /**
