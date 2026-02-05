@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Sử Dụng - FlashCard App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 150px;
+        }
+
+        .nav-tab:hover {
+            background: #e9ecef;
+            color: #667eea;
+        }
+
+        .nav-tab.active {
+            color: #667eea;
+            background: white;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .feature-section {
+            margin-bottom: 50px;
+        }
+
+        .feature-section h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .feature-card h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card .icon {
+            font-size: 1.8em;
+        }
+
+        .feature-card p {
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .feature-card ul li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #555;
+        }
+
+        .feature-card ul li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .image-placeholder {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .image-placeholder:hover {
+            background: linear-gradient(135deg, #d4dbff 0%, #ead9ff 100%);
+            border-color: #764ba2;
+        }
+
+        .image-placeholder img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .image-placeholder p {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-top: 15px;
+        }
+
+        .image-placeholder .hint {
+            color: #888;
+            font-size: 0.9em;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .step-by-step {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            margin: 30px 0;
+            padding: 25px;
+            background: white;
+            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+            padding-left: 80px;
+        }
+
+        .step::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .step h4 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .step p {
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .tips-box {
+            background: #fff9e6;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .tips-box h4 {
+            color: #f57c00;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tips-box p {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .warning-box {
+            background: #ffebee;
+            border-left: 5px solid #f44336;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box h4 {
+            color: #c62828;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+        }
+
+        footer p {
+            margin: 5px 0;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                padding-left: 20px;
+                padding-top: 70px;
+            }
+
+            .step::before {
+                left: 50%;
+                transform: translateX(-50%);
+                top: 10px;
+            }
+
+            .nav-tab {
+                font-size: 0.9em;
+                padding: 15px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Hướng Dẫn Sử Dụng FlashCard App</h1>
+            <p>Học tập hiệu quả với phương pháp lặp lại ngắt quãng</p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('create')">
+                🎨 Tạo Thẻ
+            </button>
+            <button class="nav-tab" onclick="showTab('manage')">
+                📋 Quản Lý
+            </button>
+            <button class="nav-tab" onclick="showTab('study')">
+                🎓 Học Thẻ
+            </button>
+            <button class="nav-tab" onclick="showTab('advanced')">
+                ⚙️ Nâng Cao
+            </button>
+        </div>
+
+        <div class="content">
+            <!-- TAB TẠO THẺ -->
+            <div id="create" class="tab-content active">
+                <div class="feature-section">
+                    <h2>🎨 Tạo Thẻ Flashcard</h2>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h3><span class="icon">✏️</span> Tạo Thẻ Cơ Bản</h3>
+                            <p>Tạo thẻ flashcard đơn giản với mặt trước và mặt sau. Phù hợp cho việc học từ vựng, công thức, và kiến thức cơ bản.</p>
+                            <ul>
+                                <li>Nhập nội dung mặt trước (câu hỏi)</li>
+                                <li>Nhập nội dung mặt sau (câu trả lời)</li>
+                                <li>Chọn bộ thẻ để lưu trữ</li>
+                                <li>Thêm thẻ ngay lập tức</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🖼️</span> Thẻ Có Hình Ảnh</h3>
+                            <p>Tăng hiệu quả ghi nhớ bằng cách thêm hình ảnh minh họa vào thẻ flashcard của bạn.</p>
+                            <ul>
+                                <li>Tải lên hình ảnh từ máy tính</li>
+                                <li>Chụp ảnh màn hình từ web</li>
+                                <li>Kéo thả hình ảnh vào thẻ</li>
+                                <li>Điều chỉnh kích thước ảnh</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🎵</span> Thẻ Đa Phương Tiện</h3>
+                            <p>Tạo thẻ với âm thanh và video để học ngôn ngữ hoặc các kỹ năng đặc biệt.</p>
+                            <ul>
+                                <li>Thêm file âm thanh (MP3, WAV)</li>
+                                <li>Nhúng video YouTube</li>
+                                <li>Ghi âm trực tiếp</li>
+                                <li>Hỗ trợ nhiều định dạng file</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="step-by-step">
+                        <h3 style="color: #667eea; margin: 30px 0 20px 0; font-size: 1.8em;">📝 Các Bước Tạo Thẻ</h3>
+                        
+                        <div class="step">
+                            <h4>Mở Giao Diện Tạo Thẻ</h4>
+                            <p>Click vào nút <span class="highlight">"+ Thêm Thẻ"</span> hoặc sử dụng phím tắt <span class="highlight">Ctrl + N</span> để mở cửa sổ tạo thẻ mới. Giao diện sẽ hiển thị form nhập liệu với các trường cần thiết.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Giao diện tạo thẻ</p>
+                                <span class="hint">Thêm ảnh chụp màn hình giao diện tạo thẻ tại đây</span>
+                                <!-- <img src="URL_ANH_GIAO_DIEN_TAO_THE" alt="Giao diện tạo thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Nhập Nội Dung Mặt Trước</h4>
+                            <p>Nhập câu hỏi, từ vựng hoặc khái niệm cần học vào ô <span class="highlight">"Mặt Trước"</span>. Bạn có thể sử dụng định dạng văn bản như in đậm, in nghiêng, màu sắc để làm nổi bật nội dung quan trọng.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Nhập nội dung mặt trước</p>
+                                <span class="hint">Thêm ảnh minh họa cách nhập mặt trước</span>
+                                <!-- <img src="URL_ANH_MAT_TRUOC" alt="Nhập mặt trước"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Nhập Nội Dung Mặt Sau</h4>
+                            <p>Nhập câu trả lời, định nghĩa hoặc giải thích vào ô <span class="highlight">"Mặt Sau"</span>. Mặt sau có thể chứa nhiều thông tin chi tiết, ví dụ, hoặc ghi chú bổ sung.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Nhập nội dung mặt sau</p>
+                                <span class="hint">Thêm ảnh minh họa cách nhập mặt sau</span>
+                                <!-- <img src="URL_ANH_MAT_SAU" alt="Nhập mặt sau"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Thêm Hình Ảnh (Tùy Chọn)</h4>
+                            <p>Click vào biểu tượng <span class="highlight">🖼️ "Thêm Ảnh"</span> để upload hình ảnh từ máy tính hoặc chụp ảnh màn hình. Hình ảnh giúp tăng khả năng ghi nhớ lên đến 80%.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Thêm hình ảnh vào thẻ</p>
+                                <span class="hint">Thêm ảnh minh họa cách thêm hình ảnh</span>
+                                <!-- <img src="URL_ANH_THEM_HINH" alt="Thêm hình ảnh"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Chọn Bộ Thẻ</h4>
+                            <p>Từ menu dropdown, chọn bộ thẻ phù hợp để phân loại thẻ của bạn. Bạn cũng có thể tạo bộ thẻ mới bằng cách click <span class="highlight">"+ Tạo Bộ Mới"</span>.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Chọn bộ thẻ</p>
+                                <span class="hint">Thêm ảnh minh họa cách chọn bộ thẻ</span>
+                                <!-- <img src="URL_ANH_CHON_BO" alt="Chọn bộ thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Thêm Tags (Tùy Chọn)</h4>
+                            <p>Gắn các tags (nhãn) để dễ dàng tìm kiếm và lọc thẻ sau này. Ví dụ: <span class="highlight">#từvựng</span>, <span class="highlight">#ngữpháp</span>, <span class="highlight">#quan-trọng</span></p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Thêm tags</p>
+                                <span class="hint">Thêm ảnh minh họa cách thêm tags</span>
+                                <!-- <img src="URL_ANH_TAGS" alt="Thêm tags"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Lưu Thẻ</h4>
+                            <p>Click nút <span class="highlight">"Lưu Thẻ"</span> hoặc nhấn <span class="highlight">Ctrl + Enter</span> để hoàn tất. Thẻ sẽ được tự động thêm vào bộ thẻ đã chọn và sẵn sàng để học.</p>
+                        </div>
+                    </div>
+
+                    <div class="tips-box">
+                        <h4>💡 Mẹo Tạo Thẻ Hiệu Quả</h4>
+                        <p><strong>✓ Ngắn gọn:</strong> Mỗi thẻ chỉ nên chứa một khái niệm duy nhất.<br>
+                        <strong>✓ Rõ ràng:</strong> Sử dụng ngôn ngữ đơn giản, dễ hiểu.<br>
+                        <strong>✓ Hình ảnh:</strong> Thêm ảnh minh họa để tăng hiệu quả ghi nhớ.<br>
+                        <strong>✓ Ví dụ:</strong> Bổ sung ví dụ cụ thể để dễ nhớ hơn.<br>
+                        <strong>✓ Phân loại:</strong> Sắp xếp thẻ vào các bộ thẻ logic.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB QUẢN LÝ -->
+            <div id="manage" class="tab-content">
+                <div class="feature-section">
+                    <h2>📋 Quản Lý Thẻ Flashcard</h2>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h3><span class="icon">📁</span> Quản Lý Bộ Thẻ</h3>
+                            <p>Tổ chức thẻ học của bạn một cách khoa học và có hệ thống.</p>
+                            <ul>
+                                <li>Tạo bộ thẻ mới theo chủ đề</li>
+                                <li>Đổi tên, xóa bộ thẻ</li>
+                                <li>Xem thống kê từng bộ thẻ</li>
+                                <li>Sắp xếp thẻ trong bộ</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🔍</span> Tìm Kiếm & Lọc</h3>
+                            <p>Tìm kiếm và lọc thẻ nhanh chóng theo nhiều tiêu chí khác nhau.</p>
+                            <ul>
+                                <li>Tìm kiếm theo từ khóa</li>
+                                <li>Lọc theo bộ thẻ</li>
+                                <li>Lọc theo tags</li>
+                                <li>Lọc theo trạng thái học</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">✏️</span> Chỉnh Sửa Thẻ</h3>
+                            <p>Cập nhật và cải thiện nội dung thẻ học của bạn.</p>
+                            <ul>
+                                <li>Sửa nội dung thẻ</li>
+                                <li>Thêm/xóa hình ảnh</li>
+                                <li>Cập nhật tags</li>
+                                <li>Di chuyển sang bộ khác</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">📊</span> Thống Kê</h3>
+                            <p>Theo dõi tiến độ học tập với biểu đồ và số liệu chi tiết.</p>
+                            <ul>
+                                <li>Số thẻ đã học/chưa học</li>
+                                <li>Tỷ lệ nhớ/quên</li>
+                                <li>Thời gian học mỗi ngày</li>
+                                <li>Biểu đồ tiến độ</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">📤</span> Import/Export</h3>
+                            <p>Sao lưu và chia sẻ bộ thẻ của bạn.</p>
+                            <ul>
+                                <li>Export sang file CSV</li>
+                                <li>Export sang Anki</li>
+                                <li>Import từ file</li>
+                                <li>Đồng bộ với Notion</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🗑️</span> Xóa & Khôi Phục</h3>
+                            <p>Quản lý thẻ đã xóa và khôi phục khi cần.</p>
+                            <ul>
+                                <li>Xóa thẻ tạm thời</li>
+                                <li>Thùng rác thẻ đã xóa</li>
+                                <li>Khôi phục thẻ</li>
+                                <li>Xóa vĩnh viễn</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="step-by-step">
+                        <h3 style="color: #667eea; margin: 30px 0 20px 0; font-size: 1.8em;">🔧 Hướng Dẫn Quản Lý</h3>
+                        
+                        <div class="step">
+                            <h4>Xem Danh Sách Thẻ</h4>
+                            <p>Truy cập tab <span class="highlight">"Quản Lý"</span> để xem toàn bộ thẻ flashcard của bạn. Giao diện hiển thị dạng bảng với các cột: Mặt trước, Mặt sau, Bộ thẻ, Tags, Ngày tạo, và Hành động.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Giao diện quản lý thẻ</p>
+                                <span class="hint">Thêm ảnh chụp màn hình trang quản lý</span>
+                                <!-- <img src="URL_ANH_QUAN_LY" alt="Giao diện quản lý"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Tìm Kiếm Thẻ</h4>
+                            <p>Sử dụng thanh tìm kiếm ở trên cùng để nhập từ khóa. Hệ thống sẽ tìm kiếm trong cả mặt trước, mặt sau và tags của thẻ. Kết quả hiển thị ngay lập tức khi bạn gõ.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Tìm kiếm thẻ</p>
+                                <span class="hint">Thêm ảnh minh họa chức năng tìm kiếm</span>
+                                <!-- <img src="URL_ANH_TIM_KIEM" alt="Tìm kiếm thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Lọc Theo Bộ Thẻ</h4>
+                            <p>Click vào dropdown <span class="highlight">"Bộ Thẻ"</span> và chọn bộ thẻ cụ thể để chỉ hiển thị các thẻ thuộc bộ đó. Tính năng này giúp bạn tập trung vào một chủ đề cụ thể.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Lọc theo bộ thẻ</p>
+                                <span class="hint">Thêm ảnh minh họa bộ lọc</span>
+                                <!-- <img src="URL_ANH_LOC" alt="Lọc bộ thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Chỉnh Sửa Thẻ</h4>
+                            <p>Click vào icon <span class="highlight">✏️ "Sửa"</span> bên cạnh thẻ cần chỉnh sửa. Cửa sổ chỉnh sửa sẽ hiển thị với nội dung hiện tại. Thay đổi thông tin và click <span class="highlight">"Lưu"</span> để cập nhật.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Chỉnh sửa thẻ</p>
+                                <span class="hint">Thêm ảnh giao diện chỉnh sửa</span>
+                                <!-- <img src="URL_ANH_CHINH_SUA" alt="Chỉnh sửa thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Xóa Thẻ</h4>
+                            <p>Click vào icon <span class="highlight">🗑️ "Xóa"</span> để chuyển thẻ vào thùng rác. Thẻ vẫn có thể khôi phục trong vòng 30 ngày. Để xóa vĩnh viễn, vào <span class="highlight">"Thùng Rác"</span> và chọn xóa hoàn toàn.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Xóa và khôi phục thẻ</p>
+                                <span class="hint">Thêm ảnh minh họa thùng rác</span>
+                                <!-- <img src="URL_ANH_XOA" alt="Xóa thẻ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Xem Thống Kê</h4>
+                            <p>Click vào tab <span class="highlight">"Thống Kê"</span> để xem biểu đồ và số liệu về tiến độ học tập. Bạn sẽ thấy số thẻ đã học, tỷ lệ nhớ, thời gian học, và xu hướng cải thiện theo thời gian.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Trang thống kê</p>
+                                <span class="hint">Thêm ảnh biểu đồ thống kê</span>
+                                <!-- <img src="URL_ANH_THONG_KE" alt="Thống kê"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Export Dữ Liệu</h4>
+                            <p>Click vào nút <span class="highlight">"📤 Export"</span> và chọn định dạng (CSV hoặc Anki). Chọn bộ thẻ muốn export hoặc export toàn bộ. File sẽ được tải xuống tự động.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Export dữ liệu</p>
+                                <span class="hint">Thêm ảnh giao diện export</span>
+                                <!-- <img src="URL_ANH_EXPORT" alt="Export dữ liệu"> -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tips-box">
+                        <h4>💡 Mẹo Quản Lý Hiệu Quả</h4>
+                        <p><strong>✓ Phân loại:</strong> Tạo nhiều bộ thẻ nhỏ theo chủ đề thay vì một bộ lớn.<br>
+                        <strong>✓ Tags:</strong> Sử dụng tags để đánh dấu mức độ khó, độ ưu tiên.<br>
+                        <strong>✓ Sao lưu:</strong> Export dữ liệu định kỳ để tránh mất mát.<br>
+                        <strong>✓ Dọn dẹp:</strong> Xóa thẻ không còn cần thiết để tập trung vào thẻ quan trọng.<br>
+                        <strong>✓ Review:</strong> Thường xuyên kiểm tra và cập nhật nội dung thẻ.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB HỌC THẺ -->
+            <div id="study" class="tab-content">
+                <div class="feature-section">
+                    <h2>🎓 Học Thẻ Flashcard</h2>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h3><span class="icon">🔄</span> Lặp Lại Ngắt Quãng</h3>
+                            <p>Hệ thống tự động lên lịch ôn tập dựa trên thuật toán spaced repetition khoa học.</p>
+                            <ul>
+                                <li>Thuật toán SM-2 tối ưu</li>
+                                <li>Tự động điều chỉnh độ khó</li>
+                                <li>Lịch ôn tập thông minh</li>
+                                <li>Ưu tiên thẻ dễ quên</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🎯</span> Nhiều Chế Độ Học</h3>
+                            <p>Chọn chế độ học phù hợp với mục tiêu và thời gian của bạn.</p>
+                            <ul>
+                                <li>Học thẻ mới</li>
+                                <li>Ôn tập thẻ cũ</li>
+                                <li>Học tất cả</li>
+                                <li>Thi thử</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">⏱️</span> Thống Kê Học Tập</h3>
+                            <p>Theo dõi tiến độ và thời gian học tập chi tiết.</p>
+                            <ul>
+                                <li>Số thẻ đã học hôm nay</li>
+                                <li>Thời gian học tích lũy</li>
+                                <li>Tỷ lệ trả lời đúng</li>
+                                <li>Streak học liên tục</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">⭐</span> Đánh Giá Độ Khó</h3>
+                            <p>Đánh giá mức độ nhớ thẻ để hệ thống điều chỉnh lịch ôn tập.</p>
+                            <ul>
+                                <li>Quên hoàn toàn</li>
+                                <li>Khó nhớ</li>
+                                <li>Tạm được</li>
+                                <li>Dễ dàng</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🎨</span> Tùy Chỉnh Giao Diện</h3>
+                            <p>Cá nhân hóa trải nghiệm học tập của bạn.</p>
+                            <ul>
+                                <li>Chế độ sáng/tối</li>
+                                <li>Kích thước chữ</li>
+                                <li>Font chữ</li>
+                                <li>Màu sắc giao diện</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🏆</span> Mục Tiêu & Thành Tích</h3>
+                            <p>Đặt mục tiêu và nhận huy hiệu khi hoàn thành.</p>
+                            <ul>
+                                <li>Đặt mục tiêu hàng ngày</li>
+                                <li>Nhận huy hiệu thành tích</li>
+                                <li>Streak học liên tục</li>
+                                <li>Thử thách tuần/tháng</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="step-by-step">
+                        <h3 style="color: #667eea; margin: 30px 0 20px 0; font-size: 1.8em;">📚 Hướng Dẫn Học Thẻ</h3>
+                        
+                        <div class="step">
+                            <h4>Bắt Đầu Phiên Học</h4>
+                            <p>Click vào tab <span class="highlight">"Học Thẻ"</span> và chọn bộ thẻ muốn học. Hệ thống sẽ hiển thị số thẻ cần học hôm nay và số thẻ mới. Click <span class="highlight">"Bắt Đầu Học"</span> để bắt đầu.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Giao diện bắt đầu học</p>
+                                <span class="hint">Thêm ảnh màn hình chọn bộ thẻ</span>
+                                <!-- <img src="URL_ANH_BAT_DAU_HOC" alt="Bắt đầu học"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Xem Mặt Trước Thẻ</h4>
+                            <p>Thẻ sẽ hiển thị mặt trước (câu hỏi). Hãy cố gắng nhớ lại câu trả lời trong đầu trước khi lật thẻ. Đây là bước quan trọng nhất để ghi nhớ hiệu quả.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Mặt trước thẻ</p>
+                                <span class="hint">Thêm ảnh mặt trước thẻ khi học</span>
+                                <!-- <img src="URL_ANH_MAT_TRUOC_HOC" alt="Mặt trước khi học"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Lật Thẻ Xem Đáp Án</h4>
+                            <p>Click vào nút <span class="highlight">"Hiện Đáp Án"</span> hoặc nhấn <span class="highlight">Spacebar</span> để lật thẻ và xem mặt sau. So sánh với câu trả lời bạn đã nghĩ trong đầu.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Mặt sau thẻ</p>
+                                <span class="hint">Thêm ảnh mặt sau thẻ với đáp án</span>
+                                <!-- <img src="URL_ANH_MAT_SAU_HOC" alt="Mặt sau khi học"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Đánh Giá Độ Nhớ</h4>
+                            <p>Chọn mức độ nhớ thẻ của bạn:</p>
+                            <ul style="list-style: none; padding-left: 0; margin-top: 15px;">
+                                <li style="padding: 8px 0;"><span class="highlight" style="background: #ff6b6b;">Quên</span> - Không nhớ gì cả (1 phút)</li>
+                                <li style="padding: 8px 0;"><span class="highlight" style="background: #ffa500;">Khó</span> - Nhớ khó khăn (10 phút)</li>
+                                <li style="padding: 8px 0;"><span class="highlight" style="background: #4ecdc4;">Tốt</span> - Nhớ tương đối tốt (1 ngày)</li>
+                                <li style="padding: 8px 0;"><span class="highlight" style="background: #95e1d3;">Dễ</span> - Nhớ rất rõ (4 ngày)</li>
+                            </ul>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Các nút đánh giá</p>
+                                <span class="hint">Thêm ảnh các nút đánh giá độ nhớ</span>
+                                <!-- <img src="URL_ANH_DANH_GIA" alt="Đánh giá độ nhớ"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Tiếp Tục Học</h4>
+                            <p>Sau khi đánh giá, thẻ tiếp theo sẽ tự động hiển thị. Tiếp tục quá trình cho đến khi hoàn thành tất cả thẻ cần học trong ngày. Thanh tiến độ ở trên cùng sẽ hiển thị số thẻ còn lại.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Thanh tiến độ</p>
+                                <span class="hint">Thêm ảnh thanh tiến độ học tập</span>
+                                <!-- <img src="URL_ANH_TIEN_DO" alt="Tiến độ học"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Hoàn Thành Phiên Học</h4>
+                            <p>Khi hoàn thành, hệ thống sẽ hiển thị tổng kết: số thẻ đã học, thời gian học, tỷ lệ trả lời đúng. Bạn cũng có thể xem thống kê chi tiết và các thẻ cần ôn lại.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Tổng kết phiên học</p>
+                                <span class="hint">Thêm ảnh màn hình tổng kết</span>
+                                <!-- <img src="URL_ANH_TONG_KET" alt="Tổng kết"> -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tips-box">
+                        <h4>💡 Mẹo Học Hiệu Quả</h4>
+                        <p><strong>✓ Học đều:</strong> Học 15-30 phút mỗi ngày tốt hơn học dồn 2-3 giờ cuối tuần.<br>
+                        <strong>✓ Trung thực:</strong> Đánh giá độ nhớ thật lòng để hệ thống điều chỉnh chính xác.<br>
+                        <strong>✓ Ôn tập:</strong> Không bỏ qua thẻ cần ôn, đây là chìa khóa ghi nhớ lâu dài.<br>
+                        <strong>✓ Tập trung:</strong> Tắt thông báo và tìm không gian yên tĩnh khi học.<br>
+                        <strong>✓ Nghỉ ngơi:</strong> Nghỉ 5-10 phút sau mỗi 30 phút học.</p>
+                    </div>
+
+                    <div class="warning-box">
+                        <h4>⚠️ Lưu Ý Quan Trọng</h4>
+                        <p><strong>• Không spam "Dễ":</strong> Chọn "Dễ" chỉ khi thật sự nhớ rõ, nếu không thẻ sẽ bị lên lịch xa quá và bạn sẽ quên.<br>
+                        <strong>• Không bỏ qua thẻ:</strong> Mỗi thẻ đều quan trọng, đừng bỏ qua vì thấy khó.<br>
+                        <strong>• Kiên trì streak:</strong> Học mỗi ngày giúp não bộ tạo thói quen và ghi nhớ tốt hơn.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB NÂNG CAO -->
+            <div id="advanced" class="tab-content">
+                <div class="feature-section">
+                    <h2>⚙️ Tính Năng Nâng Cao</h2>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h3><span class="icon">🔗</span> Đồng Bộ Notion</h3>
+                            <p>Tự động đồng bộ thẻ flashcard với Notion database.</p>
+                            <ul>
+                                <li>Kết nối với Notion</li>
+                                <li>Chọn database đồng bộ</li>
+                                <li>Tự động cập nhật 2 chiều</li>
+                                <li>Mapping trường tùy chỉnh</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">📱</span> Anki Integration</h3>
+                            <p>Export và import thẻ từ Anki, ứng dụng flashcard phổ biến.</p>
+                            <ul>
+                                <li>Export sang .apkg</li>
+                                <li>Import từ Anki</li>
+                                <li>Giữ nguyên lịch sử học</li>
+                                <li>Hỗ trợ media files</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🖼️</span> Image Occlusion</h3>
+                            <p>Tạo thẻ bằng cách che phần hình ảnh, phù hợp học y khoa, địa lý.</p>
+                            <ul>
+                                <li>Upload hình ảnh</li>
+                                <li>Vẽ hình che nội dung</li>
+                                <li>Tạo nhiều thẻ từ 1 ảnh</li>
+                                <li>Chỉnh sửa vùng che</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">📄</span> PDF Support</h3>
+                            <p>Tạo thẻ trực tiếp từ file PDF.</p>
+                            <ul>
+                                <li>Mở file PDF</li>
+                                <li>Highlight text</li>
+                                <li>Tự động tạo thẻ</li>
+                                <li>Bookmark trang</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">⌨️</span> Phím Tắt</h3>
+                            <p>Sử dụng phím tắt để làm việc nhanh hơn.</p>
+                            <ul>
+                                <li><span class="highlight">Ctrl+N</span>: Tạo thẻ mới</li>
+                                <li><span class="highlight">Space</span>: Lật thẻ</li>
+                                <li><span class="highlight">1,2,3,4</span>: Đánh giá</li>
+                                <li><span class="highlight">Ctrl+F</span>: Tìm kiếm</li>
+                            </ul>
+                        </div>
+
+                        <div class="feature-card">
+                            <h3><span class="icon">🎨</span> Themes</h3>
+                            <p>Tùy chỉnh giao diện theo sở thích.</p>
+                            <ul>
+                                <li>Chế độ sáng/tối</li>
+                                <li>Nhiều theme màu sắc</li>
+                                <li>Font chữ custom</li>
+                                <li>Kích thước chữ</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="step-by-step">
+                        <h3 style="color: #667eea; margin: 30px 0 20px 0; font-size: 1.8em;">🚀 Hướng Dẫn Sử Dụng Nâng Cao</h3>
+                        
+                        <div class="step">
+                            <h4>Đồng Bộ Với Notion</h4>
+                            <p>Vào <span class="highlight">Settings → Notion Sync</span>. Click <span class="highlight">"Connect to Notion"</span> và cho phép truy cập. Chọn database muốn đồng bộ và map các trường tương ứng.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Cấu hình Notion sync</p>
+                                <span class="hint">Thêm ảnh giao diện đồng bộ Notion</span>
+                                <!-- <img src="URL_ANH_NOTION" alt="Notion sync"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Sử Dụng Image Occlusion</h4>
+                            <p>Click <span class="highlight">"+ Thêm Thẻ"</span> → <span class="highlight">"Image Occlusion"</span>. Upload hình ảnh và vẽ các hình chữ nhật để che phần muốn kiểm tra. Mỗi vùng che sẽ tạo 1 thẻ riêng.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Image Occlusion editor</p>
+                                <span class="hint">Thêm ảnh công cụ Image Occlusion</span>
+                                <!-- <img src="URL_ANH_IMAGE_OCCLUSION" alt="Image Occlusion"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Import Từ PDF</h4>
+                            <p>Click <span class="highlight">"Import"</span> → <span class="highlight">"From PDF"</span>. Chọn file PDF, highlight text muốn tạo thẻ. Mặt trước sẽ là text được highlight, mặt sau bạn nhập thêm.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: PDF viewer</p>
+                                <span class="hint">Thêm ảnh công cụ đọc PDF</span>
+                                <!-- <img src="URL_ANH_PDF" alt="PDF viewer"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Export Sang Anki</h4>
+                            <p>Vào <span class="highlight">"Quản Lý"</span> → <span class="highlight">"Export"</span> → <span class="highlight">"Anki (.apkg)"</span>. Chọn bộ thẻ và click Export. File .apkg có thể import vào Anki desktop hoặc mobile.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Export Anki</p>
+                                <span class="hint">Thêm ảnh giao diện export Anki</span>
+                                <!-- <img src="URL_ANH_ANKI_EXPORT" alt="Anki export"> -->
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h4>Tùy Chỉnh Theme</h4>
+                            <p>Vào <span class="highlight">Settings → Appearance</span>. Chọn theme màu sắc yêu thích, bật/tắt chế độ tối, điều chỉnh font và kích thước chữ phù hợp với màn hình.</p>
+                            <div class="image-placeholder">
+                                <p>📸 Chèn ảnh: Settings theme</p>
+                                <span class="hint">Thêm ảnh cài đặt giao diện</span>
+                                <!-- <img src="URL_ANH_THEME" alt="Theme settings"> -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tips-box">
+                        <h4>💡 Mẹo Sử Dụng Nâng Cao</h4>
+                        <p><strong>✓ Notion:</strong> Sử dụng Notion làm nguồn chính, app này làm công cụ học.<br>
+                        <strong>✓ Image Occlusion:</strong> Rất hữu ích cho y khoa, địa lý, sơ đồ.<br>
+                        <strong>✓ PDF:</strong> Học từ sách điện tử nhanh hơn bằng cách highlight.<br>
+                        <strong>✓ Backup:</strong> Export định kỳ để tránh mất dữ liệu.<br>
+                        <strong>✓ Phím tắt:</strong> Học thuộc phím tắt để tăng tốc độ làm việc.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>📚 <strong>FlashCard App</strong> - Học tập thông minh với phương pháp khoa học</p>
+            <p>Phát triển bởi Team FlashCard | Version 1.0</p>
+            <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.8;">
+                💡 Mẹo: Học 20 phút mỗi ngày hiệu quả hơn học 3 giờ cuối tuần!
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Ẩn tất cả tab content
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Xóa active từ tất cả nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Hiển thị tab được chọn
+            document.getElementById(tabName).classList.add('active');
+            
+            // Thêm active cho nav tab được chọn
+            event.target.classList.add('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Smooth scroll cho các anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Animation khi scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Áp dụng animation cho các cards và steps
+        document.querySelectorAll('.feature-card, .step').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

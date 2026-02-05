@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AddFlashcard - Extension Tạo Flashcard Thông Minh</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --secondary: #06B6D4;
+            --accent: #F59E0B;
+            --success: #10B981;
+            --bg-light: #F9FAFB;
+            --bg-white: #FFFFFF;
+            --text-dark: #111827;
+            --text-gray: #6B7280;
+            --border: #E5E7EB;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: var(--bg-light);
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.1)" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            background-size: cover;
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            margin-bottom: 30px;
+        }
+
+        .version {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+        }
+
+        .cta-buttons {
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: white;
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: var(--primary);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Section */
+        section {
+            padding: 80px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            color: var(--text-gray);
+            margin-bottom: 60px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: var(--bg-white);
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 40px var(--shadow);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 25px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .feature-title {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .feature-description {
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        /* Screenshot Section */
+        .screenshot-section {
+            background: var(--bg-white);
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .screenshot-card {
+            background: var(--bg-light);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 30px var(--shadow);
+        }
+
+        .screenshot-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3em;
+            position: relative;
+        }
+
+        .screenshot-image::after {
+            content: 'Chèn ảnh tại đây';
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.4em;
+            opacity: 0.7;
+        }
+
+        .screenshot-content {
+            padding: 30px;
+        }
+
+        .screenshot-title {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .screenshot-description {
+            color: var(--text-gray);
+        }
+
+        /* How It Works */
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 60px;
+        }
+
+        .step-card {
+            position: relative;
+            padding: 40px 30px;
+            background: var(--bg-white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+            text-align: center;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+
+        .step-title {
+            font-size: 1.3em;
+            margin: 20px 0 15px;
+            color: var(--text-dark);
+        }
+
+        .step-description {
+            color: var(--text-gray);
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: var(--bg-white);
+            border-radius: 50px;
+            box-shadow: 0 2px 10px var(--shadow);
+            font-weight: 600;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+        }
+
+        .tech-badge:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .tech-icon {
+            font-size: 1.5em;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 60px 20px 30px;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .footer-link:hover {
+            opacity: 1;
+        }
+
+        .copyright {
+            margin-top: 30px;
+            opacity: 0.6;
+            font-size: 0.9em;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 30px;
+            background: var(--bg-white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: var(--text-gray);
+            font-size: 1.1em;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .subtitle {
+                font-size: 1.1em;
+            }
+
+            .section-title {
+                font-size: 2em;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .screenshots-grid,
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin: 60px 0;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .highlight-box h3 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .highlight-box p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="logo">📚</div>
+            <h1 class="fade-in-up">AddFlashcard</h1>
+            <p class="subtitle fade-in-up">Extension Tạo Flashcard Anki Thông Minh với Image Occlusion</p>
+            <div class="version fade-in-up">Version 2.7.0 - Enhanced</div>
+            <div class="cta-buttons fade-in-up">
+                <a href="#features" class="btn">Xem tính năng</a>
+                <a href="manage.html" class="btn btn-secondary">Quản lý Cards</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Section -->
+    <section>
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card fade-in-up">
+                    <div class="stat-number">10+</div>
+                    <div class="stat-label">Tính năng mạnh mẽ</div>
+                </div>
+                <div class="stat-card fade-in-up">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Cách tạo Image Occlusion</div>
+                </div>
+                <div class="stat-card fade-in-up">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Tương thích Anki</div>
+                </div>
+                <div class="stat-card fade-in-up">
+                    <div class="stat-number">Free</div>
+                    <div class="stat-label">Miễn phí & Mã nguồn mở</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title">✨ Tính năng nổi bật</h2>
+            <p class="section-subtitle">Tất cả những gì bạn cần để tạo flashcard Anki một cách nhanh chóng và hiệu quả</p>
+            
+            <div class="features-grid">
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Hover Icon</h3>
+                    <p class="feature-description">Di chuột lên bất kỳ ảnh nào trên web và icon sẽ xuất hiện tự động. Click để tạo Image Occlusion flashcard ngay lập tức!</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">⌨️</div>
+                    <h3 class="feature-title">Alt+Click</h3>
+                    <p class="feature-description">Giữ phím Alt (hoặc Option trên Mac) và click vào ảnh để gửi ngay vào Image Occlusion Editor. Nhanh nhất có thể!</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🖼️</div>
+                    <h3 class="feature-title">Image Occlusion</h3>
+                    <p class="feature-description">Tạo flashcard từ ảnh với các vùng che mờ. Hoàn hảo cho việc học giải phẫu, bản đồ, sơ đồ và biểu đồ.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">📄</div>
+                    <h3 class="feature-title">PDF Support</h3>
+                    <p class="feature-description">Mở PDF trực tiếp trong trình duyệt và tạo flashcard từ văn bản hoặc ảnh trong PDF. Hỗ trợ highlight và annotations.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">📝</div>
+                    <h3 class="feature-title">Notion Sync</h3>
+                    <p class="feature-description">Đồng bộ flashcard từ Notion database. Hỗ trợ text, images, audio và video. Tự động detect và import.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">💾</div>
+                    <h3 class="feature-title">Export APKG</h3>
+                    <p class="feature-description">Xuất flashcard ra file .apkg chuẩn Anki. Hỗ trợ media (ảnh, audio, video) và import trực tiếp vào Anki Desktop.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🔄</div>
+                    <h3 class="feature-title">AnkiConnect</h3>
+                    <p class="feature-description">Gửi flashcard trực tiếp đến Anki Desktop đang chạy qua AnkiConnect add-on. Không cần export/import thủ công.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Quick Capture</h3>
+                    <p class="feature-description">Chọn văn bản trên web và nhấn Alt+A (Front) hoặc Alt+S (Back) để thêm nhanh vào flashcard đang soạn.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🎨</div>
+                    <h3 class="feature-title">Rich Editor</h3>
+                    <p class="feature-description">Editor hỗ trợ HTML formatting, code blocks, tables, và media embeds. Tương thích 100% với Anki.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section style="background: var(--bg-white);">
+        <div class="container">
+            <h2 class="section-title">🚀 Cách sử dụng</h2>
+            <p class="section-subtitle">3 bước đơn giản để tạo Image Occlusion flashcard</p>
+            
+            <div class="steps-container">
+                <div class="step-card fade-in-up">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Tìm ảnh</h3>
+                    <p class="step-description">Mở bất kỳ trang web nào có ảnh bạn muốn học (Wikipedia, blog, sách điện tử, PDF...)</p>
+                </div>
+
+                <div class="step-card fade-in-up">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Chọn ảnh</h3>
+                    <p class="step-description">Di chuột lên ảnh và click icon, hoặc giữ Alt và click vào ảnh để mở Image Occlusion Editor</p>
+                </div>
+
+                <div class="step-card fade-in-up">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Vẽ & Xuất</h3>
+                    <p class="step-description">Vẽ các khung chữ nhật hoặc hình ellipse lên vùng cần che mờ, sau đó export ra APKG hoặc gửi thẳng vào Anki</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section id="screenshots" class="screenshot-section">
+        <div class="container">
+            <h2 class="section-title">📸 Ảnh minh họa</h2>
+            <p class="section-subtitle">Xem extension hoạt động như thế nào trong thực tế</p>
+            
+            <div class="screenshots-grid">
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        🎯
+                        <!-- Chèn ảnh hover icon tại đây: -->
+                        <!-- <img src="images/hover-icon-demo.png" alt="Hover Icon Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Hover Icon trên ảnh</h3>
+                        <p class="screenshot-description">Icon xuất hiện tự động khi di chuột lên ảnh. Click để mở Image Occlusion Editor ngay lập tức.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        ✏️
+                        <!-- Chèn ảnh Image Occlusion Editor tại đây: -->
+                        <!-- <img src="images/editor-demo.png" alt="Editor Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Image Occlusion Editor</h3>
+                        <p class="screenshot-description">Vẽ các vùng che mờ lên ảnh với công cụ vẽ hình chữ nhật và ellipse. Hỗ trợ multi-cards mode.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        📱
+                        <!-- Chèn ảnh sidebar tại đây: -->
+                        <!-- <img src="images/sidebar-demo.png" alt="Sidebar Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Sidebar & Card Manager</h3>
+                        <p class="screenshot-description">Quản lý tất cả flashcard trong một sidebar tiện lợi. Xem trước, chỉnh sửa, và xuất hàng loạt.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        ⚙️
+                        <!-- Chèn ảnh settings tại đây: -->
+                        <!-- <img src="images/settings-demo.png" alt="Settings Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Settings Panel</h3>
+                        <p class="screenshot-description">Tùy chỉnh extension theo ý thích: bật/tắt hover icon, Alt-click, chọn theme, và nhiều hơn nữa.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        📄
+                        <!-- Chèn ảnh PDF viewer tại đây: -->
+                        <!-- <img src="images/pdf-demo.png" alt="PDF Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">PDF Viewer</h3>
+                        <p class="screenshot-description">Đọc PDF và tạo flashcard trực tiếp. Hỗ trợ highlight, search, và zoom.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        📝
+                        <!-- Chèn ảnh Notion sync tại đây: -->
+                        <!-- <img src="images/notion-demo.png" alt="Notion Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Notion Integration</h3>
+                        <p class="screenshot-description">Sync flashcard từ Notion database. Auto-detect fields và media.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section>
+        <div class="container">
+            <h2 class="section-title">🛠️ Công nghệ sử dụng</h2>
+            <p class="section-subtitle">Extension được xây dựng với các công nghệ hiện đại và tối ưu</p>
+            
+            <div class="tech-stack">
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">🌐</span>
+                    <span>Chrome Extension MV3</span>
+                </div>
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">💾</span>
+                    <span>SQLite (sql.js)</span>
+                </div>
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">📦</span>
+                    <span>JSZip</span>
+                </div>
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">🎨</span>
+                    <span>HTML5 Canvas</span>
+                </div>
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">⚡</span>
+                    <span>Vanilla JavaScript</span>
+                </div>
+                <div class="tech-badge fade-in-up">
+                    <span class="tech-icon">📄</span>
+                    <span>PDF.js</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Highlight Box -->
+    <section>
+        <div class="container">
+            <div class="highlight-box fade-in-up">
+                <h3>🎓 Hoàn hảo cho mọi học sinh, sinh viên</h3>
+                <p>Từ học tiếng Anh, y khoa, lịch sử, địa lý đến lập trình - AddFlashcard giúp bạn học hiệu quả hơn với Image Occlusion</p>
+                <a href="#download" class="btn">Bắt đầu ngay - Miễn phí!</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" style="background: var(--bg-white);">
+        <div class="container">
+            <h2 class="section-title">📥 Tải về & Cài đặt</h2>
+            <p class="section-subtitle">Extension hoàn toàn miễn phí và dễ dàng cài đặt</p>
+            
+            <div class="features-grid" style="max-width: 800px; margin: 60px auto 0;">
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">💻</div>
+                    <h3 class="feature-title">Bước 1</h3>
+                    <p class="feature-description">Tải file extension về máy và giải nén</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🔧</div>
+                    <h3 class="feature-title">Bước 2</h3>
+                    <p class="feature-description">Mở Chrome/Edge, vào chrome://extensions và bật Developer Mode</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">✅</div>
+                    <h3 class="feature-title">Bước 3</h3>
+                    <p class="feature-description">Click "Load unpacked" và chọn thư mục extension đã giải nén</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <a href="#" class="btn" style="font-size: 1.2em; padding: 20px 50px;">
+                    ⬇️ Tải AddFlashcard Extension
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="#features" class="footer-link">Tính năng</a>
+                <a href="#screenshots" class="footer-link">Ảnh minh họa</a>
+                <a href="manage.html" class="footer-link">Quản lý Cards</a>
+                <a href="https://github.com" class="footer-link">GitHub</a>
+                <a href="#" class="footer-link">Tài liệu</a>
+                <a href="#" class="footer-link">Báo lỗi</a>
+            </div>
+            
+            <p class="copyright">
+                © 2025 AddFlashcard Extension. Made with ❤️ for Anki users.<br>
+                Licensed under MIT License. Free and Open Source.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in-up elements
+        document.querySelectorAll('.fade-in-up').forEach((el, index) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = `all 0.6s ease-out ${index * 0.1}s`;
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
