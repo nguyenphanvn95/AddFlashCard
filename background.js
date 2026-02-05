@@ -50,7 +50,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   if (details.reason === 'install') {
     // Open welcome page on first install
-    chrome.tabs.create({ url: chrome.runtime.getURL('manage.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('intro.html') });
   }
 });
 

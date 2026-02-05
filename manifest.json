@@ -55,6 +55,7 @@
     {
       "resources": [
         "sidebar.html", 
+        "intro.html", 
         "sidebar.css", 
         "sidebar.js",
         "image-occlusion-handler.js",
