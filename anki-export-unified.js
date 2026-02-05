@@ -649,12 +649,12 @@ async function initializeSqlJs() {
     const SQL = await initSqlJs({
       locateFile: file => {
         if (file.endsWith('.wasm')) {
-          // Cho extension
+          // For extension, return correct vendor path
           if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-            return chrome.runtime.getURL('libs/sql-wasm.wasm');
+            return chrome.runtime.getURL('vendor/sql-wasm.wasm');
           }
-          // Cho standalone
-          return 'libs/sql-wasm.wasm';
+          // Standalone fallback
+          return 'vendor/sql-wasm.wasm';
         }
         return file;
       }

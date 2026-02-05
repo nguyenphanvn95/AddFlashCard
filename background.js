@@ -248,13 +248,8 @@ async function handleCaptureFullPage(tab) {
         console.error(chrome.runtime.lastError);
         return;
       }
-      
-      // Send to overlay editor
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'showOverlayEditor',
-        imageData: dataUrl,
-        area: null
-      });
+      // Open the editor in a new tab (more reliable)
+      handleOpenImageOcclusionEditor(dataUrl, tab.title);
     });
   } catch (error) {
     console.error('AddFlashcard: Error capturing full page:', error);
@@ -499,16 +494,22 @@ async function handleCaptureForOverlay(area, tab) {
       console.error(chrome.runtime.lastError);
       return;
     }
-    
+
     // Crop image if area is specified
     const croppedImage = area ? await cropImage(dataUrl, area) : dataUrl;
-    
-    // Send to overlay editor
-    await chrome.tabs.sendMessage(tab.id, {
-      action: 'showOverlayEditor',
-      imageData: croppedImage,
-      area: area
-    });
+
+    // Send to page overlay editor (in-page)
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showOverlayEditor',
+        imageData: croppedImage,
+        area: area
+      });
+    } catch (err) {
+      // Fallback: open editor tab if sending message fails
+      console.warn('AddFlashcard: sending showOverlayEditor failed, opening editor tab instead', err);
+      handleOpenImageOcclusionEditor(croppedImage, tab.title);
+    }
   });
 }
 

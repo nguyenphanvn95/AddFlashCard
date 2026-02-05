@@ -502,3 +502,293 @@ document.addEventListener('keydown', (e) => {
 });
 
 console.log('AddFlashcard content script loaded');
+
+// --- Area selection (triggered by background/popup) -----------------------
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message && message.action === 'startSelection') {
+    startAreaSelection();
+    sendResponse({ started: true });
+  }
+});
+
+// Handle showOverlayEditor: display in-page editor and initialize canvas
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message && message.action === 'showOverlayEditor') {
+    const imageData = message.imageData;
+    showOverlayEditorInPage(imageData);
+    sendResponse({ shown: true });
+  }
+});
+
+async function ensureOverlayScriptInjected() {
+  if (window.initializeCanvas && window.initSqlJs) return Promise.resolve();
+
+  // Inject required scripts into the page in order: JSZip, sql-wasm, anki-export, overlay editor
+  const scripts = [
+    'vendor/jszip.min.js',
+    'vendor/sql-wasm.js',
+    'anki-export-unified.js',
+    'overlay-editor-updated.js'
+  ];
+
+  return new Promise((resolve) => {
+    (function injectNext(i) {
+      if (i >= scripts.length) {
+        // wait for initializeCanvas and export functions to be available
+        const start = Date.now();
+        (function waitForGlobals() {
+          const hasInit = typeof window.initializeCanvas === 'function';
+          const hasExport = typeof window.exportAnkiSingleCard === 'function' || typeof window.createApkgSingleCard === 'function' || typeof window.createApkgMultiCard === 'function';
+          if (hasInit && hasExport) return resolve();
+          if (Date.now() - start > 5000) return resolve();
+          setTimeout(waitForGlobals, 50);
+        })();
+        return;
+      }
+
+      const path = scripts[i];
+      // Avoid injecting same script twice
+      const already = Array.from(document.scripts).some(s => s.src && s.src.endsWith(path));
+      if (already) return injectNext(i + 1);
+
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL(path);
+      script.onload = () => injectNext(i + 1);
+      script.onerror = () => injectNext(i + 1);
+      document.documentElement.appendChild(script);
+    })(0);
+  });
+}
+
+async function showOverlayEditorInPage(imageData) {
+  // Avoid duplicate editor
+  if (document.getElementById('afc-occlusion-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'afc-occlusion-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.6)', zIndex: 2147483647,
+    display: 'flex', alignItems: 'center', justifyContent: 'center'
+  });
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'width:80vw; height:80vh; background:#fff; border-radius:8px; overflow:hidden; display:flex; flex-direction:column;';
+
+  // Toolbar
+  const toolbar = document.createElement('div');
+  toolbar.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px; background:#f4f4f4;';
+
+  const titleInput = document.createElement('input');
+  titleInput.id = 'anki-card-title';
+  titleInput.placeholder = 'Tiêu đề thẻ Anki...';
+  titleInput.style.cssText = 'flex:1; padding:6px 8px;';
+  // Tool buttons (Rect, Ellipse, Delete, Clear)
+  const btnRect = document.createElement('button');
+  btnRect.id = 'drawRectBtn';
+  btnRect.textContent = 'Hình chữ nhật';
+  btnRect.style.cssText = 'padding:6px 10px; margin-right:6px;';
+  btnRect.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('rect', btnRect); } catch (e){} });
+
+  const btnEllipse = document.createElement('button');
+  btnEllipse.id = 'drawEllipseBtn';
+  btnEllipse.textContent = 'Ellipse';
+  btnEllipse.style.cssText = 'padding:6px 10px; margin-right:6px;';
+  btnEllipse.addEventListener('click', (ev) => { ev.preventDefault(); try { window.selectOverlayTool && window.selectOverlayTool('ellipse', btnEllipse); } catch (e){} });
+
+  const btnDelete = document.createElement('button');
+  btnDelete.id = 'deleteBtn';
+  btnDelete.textContent = 'Xóa';
+  btnDelete.style.cssText = 'padding:6px 10px; margin-right:6px;';
+  btnDelete.addEventListener('click', () => { try { window.deleteSelectedOcclusion && window.deleteSelectedOcclusion(); } catch (e){} });
+
+  const btnClear = document.createElement('button');
+  btnClear.id = 'clearBtn';
+  btnClear.textContent = 'Xóa tất cả';
+  btnClear.style.cssText = 'padding:6px 10px; margin-right:6px;';
+  btnClear.addEventListener('click', () => { try { window.clearAllOcclusions && window.clearAllOcclusions(); } catch (e){} });
+
+  const exportBtn = document.createElement('button');
+  exportBtn.id = 'exportBtn';
+  exportBtn.textContent = 'Xuất .apkg';
+  exportBtn.style.cssText = 'padding:6px 10px; margin-left:8px;';
+  exportBtn.addEventListener('click', () => {
+    try {
+      if (window.exportOverlayAnki && typeof window.exportOverlayAnki === 'function') {
+        window.exportOverlayAnki();
+        return;
+      }
+      // If not available, throw to go to fallback
+      throw new Error('exportOverlayAnki not available');
+    } catch (e) {
+      console.error('Export failed in-page, falling back to editor tab:', e);
+      // Fallback: open full editor tab with the original image so user can export there
+      const img = overlay._afc_imageData || imageData;
+      try { chrome.runtime.sendMessage({ action: 'openImageOcclusionEditor', imageData: img, pageTitle: document.title }); } catch (err) {}
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Đóng';
+  closeBtn.style.cssText = 'padding:6px 10px; margin-left:8px;';
+  closeBtn.addEventListener('click', () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  });
+
+  toolbar.appendChild(titleInput);
+  toolbar.appendChild(btnRect);
+  toolbar.appendChild(btnEllipse);
+  toolbar.appendChild(btnDelete);
+  toolbar.appendChild(btnClear);
+  toolbar.appendChild(exportBtn);
+  toolbar.appendChild(closeBtn);
+
+  // Canvas container
+  const canvasWrap = document.createElement('div');
+  canvasWrap.style.cssText = 'flex:1; display:flex; align-items:center; justify-content:center; background:#f4f4f4; padding:12px;';
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'anki-overlay-canvas';
+  canvas.style.cssText = 'max-width:100%; max-height:100%; background:#fff; box-shadow: 0 6px 18px rgba(0,0,0,0.25);';
+  canvasWrap.appendChild(canvas);
+
+  panel.appendChild(toolbar);
+  panel.appendChild(canvasWrap);
+  overlay.appendChild(panel);
+  (document.documentElement || document.body).appendChild(overlay);
+
+  // Immediately draw the captured image into the canvas so the user sees it fast
+  (function drawImmediatePreview() {
+    overlay._afc_imageData = imageData;
+    const imgEl = new Image();
+    imgEl.onload = () => {
+      // set canvas pixel size to image actual size for crispness
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = imgEl.naturalWidth;
+      canvas.height = imgEl.naturalHeight;
+      // scale CSS to fit container
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+    };
+    imgEl.src = imageData;
+  })();
+
+  // Inject heavier editor scripts in background; when ready, initialize full editor
+  ensureOverlayScriptInjected().then(() => {
+    try {
+      if (typeof window.initializeCanvas === 'function') {
+        window.initializeCanvas(imageData);
+      }
+    } catch (err) {
+      console.error('AddFlashcard: Error initializing full overlay editor after injection', err);
+      // fallback: open dedicated editor tab
+      try { chrome.runtime.sendMessage({ action: 'openImageOcclusionEditor', imageData: imageData, pageTitle: document.title }); } catch (e) {}
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+  }).catch(err => {
+    console.warn('AddFlashcard: overlay script injection failed', err);
+  });
+}
+
+function startAreaSelection() {
+  // Avoid multiple overlays
+  if (document.getElementById('afc-selection-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'afc-selection-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0', zIndex: 2147483647, cursor: 'crosshair',
+    background: 'rgba(0,0,0,0.02)'
+  });
+
+  const box = document.createElement('div');
+  box.id = 'afc-selection-box';
+  Object.assign(box.style, {
+    position: 'absolute', border: '2px dashed #4A90E2', background: 'rgba(74,144,226,0.12)'
+  });
+
+  overlay.appendChild(box);
+  (document.documentElement || document.body).appendChild(overlay);
+
+  let startX = 0, startY = 0, dragging = false;
+
+  function onPointerDown(e) {
+    // Only start on left button
+    if (e.button !== 0) return;
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    updateBox(startX, startY, 0, 0);
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const x = e.clientX;
+    const y = e.clientY;
+    const left = Math.min(startX, x);
+    const top = Math.min(startY, y);
+    const width = Math.abs(x - startX);
+    const height = Math.abs(y - startY);
+    updateBox(left, top, width, height);
+    e.preventDefault();
+  }
+
+  function onPointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    const rect = box.getBoundingClientRect();
+    // If region too small, cancel
+    if (rect.width < 6 || rect.height < 6) {
+      cleanup();
+      return;
+    }
+
+    const area = {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      devicePixelRatio: window.devicePixelRatio || 1
+    };
+
+    // Send area to background to capture & crop
+    try {
+      chrome.runtime.sendMessage({ action: 'captureForOverlay', area: area }, () => {});
+    } catch (err) {
+      console.error('AddFlashcard: Failed to send captureForOverlay', err);
+    }
+
+    cleanup();
+    e.preventDefault();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') cleanup();
+  }
+
+  function updateBox(left, top, width, height) {
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+    box.style.width = width + 'px';
+    box.style.height = height + 'px';
+  }
+
+  function cleanup() {
+    overlay.removeEventListener('pointerdown', onPointerDown);
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('keydown', onKeyDown);
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  overlay.addEventListener('pointerdown', onPointerDown, { passive: false });
+  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointerup', onPointerUp, { passive: false });
+  window.addEventListener('keydown', onKeyDown);
+}
+
+// -------------------------------------------------------------------------

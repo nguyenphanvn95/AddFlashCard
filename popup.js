@@ -74,11 +74,8 @@ function setupEventListeners() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab) {
         chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-          chrome.tabs.sendMessage(tab.id, {
-            action: 'showOverlayEditor',
-            imageData: dataUrl,
-            area: null
-          });
+          // Send captured image to the page overlay editor
+          chrome.tabs.sendMessage(tab.id, { action: 'showOverlayEditor', imageData: dataUrl, area: null });
         });
       }
       window.close();
