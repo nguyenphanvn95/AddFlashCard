@@ -218,16 +218,10 @@ async function handleOpenPDFViewer(info, tab) {
 // Handle Image Occlusion - Capture Area
 async function handleCaptureArea(tab) {
   try {
-    // Inject overlay deps in MAIN world (more reliable for wasm / globals)
+    // Inject overlay editor if needed
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      world: 'MAIN',
-      files: [
-        'vendor/jszip.min.js',
-        'vendor/sql-wasm.js',
-        'anki-export-unified.js',
-        'overlay-editor-updated.js'
-      ]
+      files: ['overlay-editor-updated.js']
     });
     
     // Start area selection
@@ -242,16 +236,10 @@ async function handleCaptureArea(tab) {
 // Handle Image Occlusion - Capture Full Page
 async function handleCaptureFullPage(tab) {
   try {
-    // Inject overlay deps in MAIN world
+    // Inject overlay editor if needed
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      world: 'MAIN',
-      files: [
-        'vendor/jszip.min.js',
-        'vendor/sql-wasm.js',
-        'anki-export-unified.js',
-        'overlay-editor-updated.js'
-      ]
+      files: ['overlay-editor-updated.js']
     });
     
     // Capture visible tab
@@ -260,18 +248,8 @@ async function handleCaptureFullPage(tab) {
         console.error(chrome.runtime.lastError);
         return;
       }
-      // Open the in-page overlay UI (same as capture area)
-      try {
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'showOverlayEditor',
-          imageData: dataUrl,
-          area: null,
-          source: 'fullpage'
-        });
-      } catch (e) {
-        // Fallback: open editor tab if overlay is unavailable
-        handleOpenImageOcclusionEditor(dataUrl, tab.title);
-      }
+      // Open the editor in a new tab (more reliable)
+      handleOpenImageOcclusionEditor(dataUrl, tab.title);
     });
   } catch (error) {
     console.error('AddFlashcard: Error capturing full page:', error);
@@ -284,16 +262,10 @@ async function handleCreateImageOcclusion(message, sender) {
     const tabId = sender.tab?.id;
     if (!tabId) return;
 
-    // Inject overlay deps in MAIN world
+    // Inject overlay editor if needed
     await chrome.scripting.executeScript({
       target: { tabId: tabId },
-      world: 'MAIN',
-      files: [
-        'vendor/jszip.min.js',
-        'vendor/sql-wasm.js',
-        'anki-export-unified.js',
-        'overlay-editor-updated.js'
-      ]
+      files: ['overlay-editor-updated.js']
     });
     
     // Send image data to overlay editor
@@ -373,30 +345,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleOpenImageOcclusionEditor(message.imageData, message.pageTitle, message.occlusions, message.autoExport);
       sendResponse({ success: true });
       break;
-
-    // Ensure overlay dependencies are injected (requested by content script)
-    case 'injectOverlayDeps':
-      (async () => {
-        try {
-          const tabId = sender.tab?.id;
-          if (!tabId) return sendResponse({ success: false, error: 'No tab' });
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            world: 'MAIN',
-            files: [
-              'vendor/jszip.min.js',
-              'vendor/sql-wasm.js',
-              'anki-export-unified.js',
-              'overlay-editor-updated.js'
-            ]
-          });
-          sendResponse({ success: true });
-        } catch (err) {
-          console.error('AddFlashcard: injectOverlayDeps failed', err);
-          sendResponse({ success: false, error: err && err.message ? err.message : String(err) });
-        }
-      })();
-      return true;
       
     default:
       sendResponse({ success: false, error: 'Unknown action' });

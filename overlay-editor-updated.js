@@ -112,27 +112,14 @@ function drawOverlayOcclusion(occ, isSelected) {
   // Draw index label
   if (occ._num) {
     const label = String(occ._num);
-    // Center the number inside the occlusion block (even when width/height are negative)
-    const cx = occ.x + occ.width / 2;
-    const cy = occ.y + occ.height / 2;
-
+    const px = occ.x + 6;
+    const py = occ.y + 16;
     overlayCtx.font = 'bold 14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-    overlayCtx.textAlign = 'center';
-    overlayCtx.textBaseline = 'middle';
-
-    const metrics = overlayCtx.measureText(label);
-    const tw = metrics.width;
-    const th = 14; // approx font px
-    const padX = 8;
-    const padY = 6;
-
-    // Backdrop
     overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
-    overlayCtx.fillRect(cx - (tw / 2) - padX, cy - (th / 2) - padY, tw + padX * 2, th + padY * 2);
-
-    // Text
+    const tw = overlayCtx.measureText(label).width;
+    overlayCtx.fillRect(px - 4, py - 14, tw + 8, 18);
     overlayCtx.fillStyle = '#fff';
-    overlayCtx.fillText(label, cx, cy);
+    overlayCtx.fillText(label, px, py);
   }
   
   overlayCtx.restore();
@@ -290,75 +277,116 @@ function updateOverlayOcclusionCount() {
 
 // Get occlusions to draw during export (apply hide mode)
 function getVisibleOcclusions() {
-    return overlayOcclusions.slice();
+  if (occlusionHideMode === 'none') {
+    return overlayOcclusions;
   }
-
+  if (occlusionHideMode === 'all') {
+    return [];
+  }
+  // Hide specific occlusion: return all except the one to hide
+  const hideIndex = parseInt(occlusionHideMode) - 1;
+  if (hideIndex >= 0 && hideIndex < overlayOcclusions.length) {
+    return overlayOcclusions.filter((_, idx) => idx !== hideIndex);
+  }
+  return overlayOcclusions;
+}
 
 // Set hide mode
-function setOcclusionHideMode() { /* deprecated */ }
+function setOcclusionHideMode(mode) {
+  occlusionHideMode = mode;
+  updateOverlayOcclusionCount();
+}
 
 // ============================================================================
 // XUẤT ANKI OVERLAY - SỬ DỤNG THƯ VIỆN THỐNG NHẤT
 // ============================================================================
 
 async function exportOverlayAnki() {
-  if (!overlayOcclusions || overlayOcclusions.length === 0) {
+  if (overlayOcclusions.length === 0) {
     alert('Vui lòng vẽ ít nhất một khối che mờ!');
     return;
   }
-
+  
   const titleInput = document.getElementById('anki-card-title');
-  const cardTitle = titleInput ? (titleInput.value || 'Anki Card') : 'Anki Card';
-
-  const exportBtn = document.getElementById('exportBtn');
-  const origText = exportBtn ? exportBtn.textContent : null;
-  if (exportBtn) {
-    exportBtn.disabled = true;
-    exportBtn.textContent = 'Đang xuất...';
+  const cardTitle = titleInput ? titleInput.value || 'Anki Card' : 'Anki Card';
+  
+  // Get occlusions to export (apply hide mode)
+  const visibleOcclusions = getVisibleOcclusions();
+  
+  // Check if nothing to export
+  if (visibleOcclusions.length === 0 && occlusionHideMode !== 'all') {
+    alert('Không có khối che nào được hiển thị để xuất!');
+    return;
   }
-
+  
   try {
-    // Wait for unified export helpers (up to 10s)
-    const start = Date.now();
-    while (Date.now() - start < 10000) {
-      if (typeof createApkgMultiCard === 'function' && typeof createOccludedImageFromOverlay === 'function' && typeof createOriginalImageFromOverlay === 'function') break;
-      await new Promise(r => setTimeout(r, 250));
-    }
-    if (typeof createApkgMultiCard !== 'function') {
-      throw new Error('Hàm xuất không sẵn sàng (createApkgMultiCard).');
-    }
+    // Ensure export function is available; if not, wait briefly for injected scripts to finish
+    const tryExport = async () => {
+      if (typeof exportAnkiSingleCard === 'function') {
+        return await exportAnkiSingleCard(overlayCanvas, overlayImg, visibleOcclusions, cardTitle);
+      }
+      if (typeof createApkgSingleCard === 'function') {
+        // Fallback: use helper directly
+        const occludedBlob = await createOccludedImageFromOverlay(overlayCanvas, overlayImg, visibleOcclusions);
+        const originalBlob = await createOriginalImageFromOverlay(overlayCanvas, overlayImg);
+        return await createApkgSingleCard(cardTitle, originalBlob, occludedBlob);
+      }
+      throw new Error('export function not available');
+    };
 
-    // Answer image (original)
-    const originalBlob = await createOriginalImageFromOverlay(overlayCanvas, overlayImg);
-
-    // Question images: mỗi block = 1 thẻ (Hide 1)
-    const questionBlobs = [];
-    for (let i = 0; i < overlayOcclusions.length; i++) {
-      const qBlob = await createOccludedImageFromOverlay(overlayCanvas, overlayImg, [overlayOcclusions[i]]);
-      questionBlobs.push(qBlob);
-    }
-
-    await createApkgMultiCard(cardTitle, originalBlob, questionBlobs);
-
-    showSuccessNotification();
-
-    // Auto close
-    setTimeout(() => {
-      const overlay = document.getElementById('ankiOverlayEditor');
-      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    }, 800);
-  } catch (err) {
-    console.error('Export failed:', err);
-    alert('Lỗi khi xuất file: ' + (err && err.message ? err.message : String(err)));
-    throw err;
-  } finally {
+    const exportBtn = document.getElementById('exportBtn');
     if (exportBtn) {
+      const origText = exportBtn.textContent;
+      exportBtn.disabled = true;
+      exportBtn.textContent = 'Đang xuất...';
+
+      // Poll for up to 8s for export functions
+      const start = Date.now();
+      let success = false;
+      let lastError = null;
+      while (Date.now() - start < 8000) {
+        try {
+          await tryExport();
+          success = true;
+          break;
+        } catch (err) {
+          lastError = err;
+          // Wait before retry
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+
       exportBtn.disabled = false;
-      exportBtn.textContent = origText || 'Xuất .apkg';
+      exportBtn.textContent = origText;
+
+      if (!success) {
+        console.error('Export failed: export API not ready', lastError);
+        alert('Lỗi khi xuất file: Hàm xuất không sẵn sàng. Vui lòng thử lại hoặc kiểm tra console.');
+        return;
+      }
+    } else {
+      // No exportBtn; try once directly
+      await tryExport();
     }
+    
+    // Hiển thị thông báo thành công
+    showSuccessNotification();
+    
+    // Đóng overlay sau 2s
+    setTimeout(() => {
+      const overlay = document.getElementById('afc-occlusion-overlay');
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error exporting:', error);
+    alert('Lỗi khi xuất file: ' + (error && error.message ? error.message : String(error)));
   }
 }
 
+// Hiển thị thông báo thành công
 function showSuccessNotification() {
   const notification = document.createElement('div');
   notification.style.cssText = `
@@ -421,41 +449,3 @@ function showSuccessNotification() {
     get() { return overlayOcclusions; }
   });
 }
-
-// ===== AFC bridge for content script (isolated world) =====
-(function(){
-  function _afcDispatchResult(detail) {
-    try { window.dispatchEvent(new CustomEvent('AFC_OVERLAY_RESULT', { detail })); } catch(e) {}
-  }
-
-  window.addEventListener('AFC_OVERLAY_CMD', async (ev) => {
-    const d = (ev && ev.detail) ? ev.detail : {};
-    const reqId = d.reqId || null;
-    try {
-      switch (d.cmd) {
-        case 'selectTool':
-          selectOverlayTool(d.tool || 'rect');
-          _afcDispatchResult({ ok: true, reqId });
-          break;
-        case 'deleteSelected':
-          deleteSelectedOcclusion();
-          _afcDispatchResult({ ok: true, reqId });
-          break;
-        case 'clearAll':
-          clearAllOcclusions();
-          _afcDispatchResult({ ok: true, reqId });
-          break;
-        case 'exportApkg':
-          await exportOverlayAnki();
-          _afcDispatchResult({ ok: true, reqId });
-          break;
-        default:
-          _afcDispatchResult({ ok: false, reqId, message: 'Unknown command' });
-      }
-    } catch (e) {
-      _afcDispatchResult({ ok: false, reqId, message: e && e.message ? e.message : String(e) });
-    }
-  });
-
-  try { document.documentElement.setAttribute('data-afc-overlay-ready', '1'); } catch(e) {}
-})();

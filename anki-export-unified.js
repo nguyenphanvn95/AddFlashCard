@@ -750,6 +750,3 @@ if (typeof window !== 'undefined') {
   window.createOccludedImageFromOverlay = createOccludedImageFromOverlay;
   window.canvasToBlob = canvasToBlob;
 }
-
-// Mark unified export library ready for content scripts
-try { document.documentElement.setAttribute('data-afc-anki-export-ready','1'); } catch(e) {}
