@@ -521,7 +521,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function ensureOverlayScriptInjected() {
-  if (window.initializeCanvas && window.initSqlJs) return Promise.resolve();
+  if (window.initializeCanvas && window.exportAnkiSingleCard && window.createApkgSingleCard) {
+    return Promise.resolve();
+  }
 
   // Inject required scripts into the page in order: JSZip, sql-wasm, anki-export, overlay editor
   const scripts = [
@@ -534,14 +536,28 @@ async function ensureOverlayScriptInjected() {
   return new Promise((resolve) => {
     (function injectNext(i) {
       if (i >= scripts.length) {
-        // wait for initializeCanvas and export functions to be available
+        // Wait for all exports to be available (up to 10s for SQL.js to initialize)
         const start = Date.now();
         (function waitForGlobals() {
           const hasInit = typeof window.initializeCanvas === 'function';
-          const hasExport = typeof window.exportAnkiSingleCard === 'function' || typeof window.createApkgSingleCard === 'function' || typeof window.createApkgMultiCard === 'function';
-          if (hasInit && hasExport) return resolve();
-          if (Date.now() - start > 5000) return resolve();
-          setTimeout(waitForGlobals, 50);
+          const hasExportSingle = typeof window.exportAnkiSingleCard === 'function';
+          const hasCreateSingle = typeof window.createApkgSingleCard === 'function';
+          const hasExportMulti = typeof window.exportAnkiMultiCard === 'function';
+          const hasHelpers = typeof window.createOriginalImageFromOverlay === 'function' && 
+                             typeof window.createOccludedImageFromOverlay === 'function';
+          
+          if (hasInit && (hasExportSingle || hasCreateSingle) && hasHelpers) {
+            return resolve();
+          }
+          
+          if (Date.now() - start > 10000) {
+            console.warn('Script injection timeout: some functions may not be ready', {
+              hasInit, hasExportSingle, hasCreateSingle, hasExportMulti, hasHelpers
+            });
+            return resolve(); // Continue anyway
+          }
+          
+          setTimeout(waitForGlobals, 100);
         })();
         return;
       }
@@ -554,7 +570,10 @@ async function ensureOverlayScriptInjected() {
       const script = document.createElement('script');
       script.src = chrome.runtime.getURL(path);
       script.onload = () => injectNext(i + 1);
-      script.onerror = () => injectNext(i + 1);
+      script.onerror = () => {
+        console.error('Failed to load script:', path);
+        injectNext(i + 1);
+      };
       document.documentElement.appendChild(script);
     })(0);
   });
