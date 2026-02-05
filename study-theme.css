@@ -74,12 +74,17 @@
 }
 
 .theme-light .flashcard {
-  background: var(--light-bg-card);
-  box-shadow: var(--light-shadow);
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .theme-light .flashcard:hover {
   box-shadow: var(--light-shadow-hover);
+}
+
+.theme-light .card-face {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .theme-light .card-meta {
@@ -95,7 +100,7 @@
 }
 
 .theme-light .card-content {
-  color: var(--light-text);
+  color: #0f172a;
 }
 
 .theme-light .card-status-badge {
@@ -313,9 +318,9 @@
 }
 
 .theme-dark .flashcard {
-  background: var(--dark-bg-card);
-  box-shadow: var(--dark-shadow);
-  border: 1px solid var(--dark-border);
+  background: #0f172a;
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.45);
+  border: 1px solid #1f2a44;
 }
 
 .theme-dark .flashcard:hover {
@@ -324,6 +329,11 @@
 
 .theme-dark .card-back {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+.theme-dark .card-face {
+  background: linear-gradient(180deg, #101b2d 0%, #0b1324 100%);
+  border: 1px solid #1e2a40;
 }
 
 .theme-dark .card-meta {
@@ -339,7 +349,7 @@
 }
 
 .theme-dark .card-content {
-  color: var(--dark-text);
+  color: #e2e8f0;
 }
 
 .theme-dark .card-status-badge {

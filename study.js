@@ -526,8 +526,8 @@ function displayStudyInfo(card) {
     info.push(`Ease: ${Math.round(card.easiness * 100)}%`);
   }
   
-  cardStudyInfo.innerHTML = info.length > 0 
-    ? `<div class="study-info-text">${info.join(' â€¢ ')}</div>`
+  cardStudyInfo.innerHTML = info.length > 0
+    ? `<div class="study-info-text">${info.join(' \u2022 ')}</div>`
     : '';
 }
 
