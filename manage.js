@@ -140,7 +140,14 @@ function loadData() {
 
 // Setup event listeners
 function setupEventListeners() {
-  addDeckBtn.addEventListener('click', createDeck);
+  // Use IntegratedManager deck modal if available, otherwise fallback to createDeck
+  addDeckBtn.addEventListener('click', () => {
+    if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+      window.integratedManager.showDeckModal();
+    } else {
+      createDeck();
+    }
+  });
   deleteAllBtn.addEventListener('click', deleteAllCards);
   exportBtn.addEventListener('click', exportData);
   importBtn.addEventListener('click', () => importFileInput.click());
@@ -451,76 +458,124 @@ function stripHtml(html) {
 
 // Create deck
 function createDeck() {
-  const name = prompt('Enter deck name:');
-  if (name && name.trim()) {
-    if (allDecks.includes(name.trim())) {
-      alert('Deck already exists!');
-      return;
+  // Use IntegratedManager deck modal if available
+  if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+    window.integratedManager.showDeckModal();
+  } else {
+    // Fallback to legacy behavior
+    const name = prompt('Enter deck name:');
+    if (name && name.trim()) {
+      if (allDecks.includes(name.trim())) {
+        alert('Deck already exists!');
+        return;
+      }
+      
+      allDecks.push(name.trim());
+      chrome.storage.local.set({ decks: allDecks }, () => {
+        renderDecks();
+      });
     }
-    
-    allDecks.push(name.trim());
-    chrome.storage.local.set({ decks: allDecks }, () => {
-      renderDecks();
-    });
   }
 }
 
 // Rename deck
-function renameDeck(oldName) {
-  const newName = prompt('Enter new deck name:', oldName);
-  if (newName && newName.trim() && newName.trim() !== oldName) {
-    if (allDecks.includes(newName.trim())) {
-      alert('Deck name already exists!');
-      return;
-    }
+function renameDeck(deckName) {
+  // Find the deck ID from storage and use IntegratedManager modal for editing
+  chrome.storage.local.get(['decks'], (result) => {
+    const decks = result.decks || {};
     
-    // Update deck name in decks array
-    const index = allDecks.indexOf(oldName);
-    allDecks[index] = newName.trim();
-    
-    // Update all cards with this deck
-    allCards.forEach(card => {
-      if (card.deck === oldName) {
-        card.deck = newName.trim();
+    // Find deck by name in the new object format
+    let deckId = null;
+    for (const id in decks) {
+      if (decks[id].name === deckName) {
+        deckId = id;
+        break;
       }
-    });
-    
-    // Update current deck if it was selected
-    if (currentDeck === oldName) {
-      currentDeck = newName.trim();
     }
     
-    chrome.storage.local.set({ decks: allDecks, cards: allCards }, () => {
-      renderDecks();
-      renderCards();
-    });
-  }
+    if (deckId && window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+      // Use IntegratedManager modal for editing
+      window.integratedManager.showDeckModal(deckId);
+    } else {
+      // Fallback to legacy behavior
+      const newName = prompt('Enter new deck name:', deckName);
+      if (newName && newName.trim() && newName.trim() !== deckName) {
+        if (allDecks.includes(newName.trim())) {
+          alert('Deck name already exists!');
+          return;
+        }
+        
+        // Update deck name in decks array
+        const index = allDecks.indexOf(deckName);
+        allDecks[index] = newName.trim();
+        
+        // Update all cards with this deck
+        allCards.forEach(card => {
+          if (card.deck === deckName) {
+            card.deck = newName.trim();
+          }
+        });
+        
+        // Update current deck if it was selected
+        if (currentDeck === deckName) {
+          currentDeck = newName.trim();
+        }
+        
+        chrome.storage.local.set({ decks: allDecks, cards: allCards }, () => {
+          renderDecks();
+          renderCards();
+        });
+      }
+    }
+  });
 }
 
 // Delete deck
-function deleteDeck(name) {
-  const cardsInDeck = allCards.filter(c => c.deck === name).length;
-  const message = cardsInDeck > 0 
-    ? `Delete deck "${name}" and all ${cardsInDeck} cards in it?`
-    : `Delete deck "${name}"?`;
-  
-  if (confirm(message)) {
-    // Remove deck
-    allDecks = allDecks.filter(d => d !== name);
+function deleteDeck(deckName) {
+  // Find the deck ID from storage and use IntegratedManager delete method
+  chrome.storage.local.get(['decks'], (result) => {
+    const decks = result.decks || {};
     
-    // Remove cards in this deck
-    allCards = allCards.filter(c => c.deck !== name);
-    
-    // Reset current deck if it was deleted
-    if (currentDeck === name) {
-      currentDeck = null;
+    // Find deck by name in the new object format
+    let deckId = null;
+    for (const id in decks) {
+      if (decks[id].name === deckName) {
+        deckId = id;
+        break;
+      }
     }
     
-    chrome.storage.local.set({ decks: allDecks, cards: allCards }, () => {
-      renderDecks();
-      renderCards();
-    });
-  }
+    if (deckId && window.integratedManager && typeof window.integratedManager.deleteDeck === 'function') {
+      // Use IntegratedManager delete method
+      if (confirm(`Delete deck "${deckName}"? This will not delete the cards.`)) {
+        window.integratedManager.deleteDeck(deckId);
+      }
+    } else {
+      // Fallback to legacy behavior
+      const cardsInDeck = allCards.filter(c => c.deck === deckName).length;
+      const message = cardsInDeck > 0 
+        ? `Delete deck "${deckName}" and all ${cardsInDeck} cards in it?`
+        : `Delete deck "${deckName}"?`;
+      
+      if (confirm(message)) {
+        // Remove deck
+        allDecks = allDecks.filter(d => d !== deckName);
+        
+        // Remove cards in this deck
+        allCards = allCards.filter(c => c.deck !== deckName);
+        
+        // Reset current deck if it was deleted
+        if (currentDeck === deckName) {
+          currentDeck = null;
+        }
+        
+        chrome.storage.local.set({ decks: allDecks, cards: allCards }, () => {
+          renderDecks();
+          renderCards();
+        });
+      }
+    }
+  });
 }
 
 // Preview card
