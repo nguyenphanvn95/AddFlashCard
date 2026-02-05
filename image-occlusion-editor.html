@@ -17,6 +17,15 @@
           <polyline points="21 15 16 10 5 21"></polyline>
         </svg>
         <h2>Anki IOE</h2>
+        <label id="toolbarImageUpload" class="toolbar-upload" style="display: none;" title="Thay thế ảnh">
+          <input id="toolbarImageInput" type="file" accept="image/*" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Upload ảnh
+        </label>
       </div>
       <div class="toolbar-center">
         <button id="drawRectBtn" class="tool-btn active" title="Vẽ hình chữ nhật">
@@ -58,6 +67,27 @@
 
     <!-- Canvas area -->
     <div class="canvas-container">
+      <!-- Empty state (shown when no image is loaded) -->
+      <div id="emptyState" class="empty-state" aria-live="polite">
+        <div class="empty-state-card">
+          <div class="empty-state-title">Chưa có ảnh để tạo thẻ</div>
+          <div class="empty-state-desc">
+            Upload ảnh hoặc dán (Ctrl+V) để bắt đầu tạo Image Occlusion.
+          </div>
+
+          <div class="empty-state-actions">
+            <label class="empty-state-upload">
+              <input id="imageFileInput" type="file" accept="image/*" />
+              Chọn ảnh…
+            </label>
+            <button id="pasteBtn" class="empty-state-btn" type="button">Dán từ clipboard (Ctrl+V)</button>
+          </div>
+
+          <div class="empty-state-hint">
+            Bạn cũng có thể <b>kéo & thả</b> ảnh vào vùng này.
+          </div>
+        </div>
+      </div>
       <canvas id="canvas"></canvas>
     </div>
 

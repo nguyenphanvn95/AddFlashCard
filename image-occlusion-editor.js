@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
   
+  // Show empty state initially
+  showEmptyState();
+  
   setupEventListeners();
 
   // Support embedding in an in-page iframe overlay:
@@ -151,6 +154,107 @@ function setupEventListeners() {
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseup', onCanvasMouseUp);
   
+  // Upload image file input
+  const imageFileInput = document.getElementById('imageFileInput');
+  if (imageFileInput) {
+    imageFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadImage(event.target.result, file.name.replace(/\.[^/.]+$/, ''));
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+  
+  // Toolbar upload image input (replace image)
+  const toolbarImageInput = document.getElementById('toolbarImageInput');
+  if (toolbarImageInput) {
+    toolbarImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadImage(event.target.result, file.name.replace(/\.[^/.]+$/, ''));
+          updateStatus('Ảnh đã được thay thế.');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+  
+  // Paste button
+  const pasteBtn = document.getElementById('pasteBtn');
+  if (pasteBtn) {
+    pasteBtn.addEventListener('click', () => {
+      updateStatus('Vui lòng dán ảnh bằng Ctrl+V...');
+      // Trigger paste event or use clipboard API
+      pasteFromClipboard();
+    });
+  }
+  
+  // Paste from clipboard with Ctrl+V
+  document.addEventListener('paste', (e) => {
+    // Allow paste in cardTitle input
+    if (document.activeElement.id === 'cardTitle') {
+      return;
+    }
+    
+    e.preventDefault();
+    const clipboardData = e.clipboardData;
+    const items = clipboardData.items;
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadImage(event.target.result, 'Pasted Image');
+          updateStatus('Ảnh đã được dán thành công.');
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+    }
+    
+    updateStatus('Clipboard không chứa ảnh. Vui lòng dán ảnh (Ctrl+V).');
+  });
+  
+  // Drag and drop
+  const canvasContainer = document.querySelector('.canvas-container');
+  if (canvasContainer) {
+    canvasContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      canvasContainer.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+    });
+    
+    canvasContainer.addEventListener('dragleave', () => {
+      canvasContainer.style.backgroundColor = '';
+    });
+    
+    canvasContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      canvasContainer.style.backgroundColor = '';
+      
+      const files = e.dataTransfer.files;
+      for (let file of files) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            loadImage(event.target.result, file.name.replace(/\.[^/.]+$/, ''));
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    });
+  }
+  
   // Keyboard events
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -170,11 +274,73 @@ function loadImage(dataUrl, title) {
   img.onload = () => {
     canvas.width = img.width;
     canvas.height = img.height;
+    
+    // Reset occlusions when loading new image
+    occlusions = [];
+    selectedOcclusion = null;
+    
+    // Hide empty state and show canvas
+    hideEmptyState();
+    
     redraw();
     updateStatus('Ảnh đã được tải. Bắt đầu vẽ khối che mờ.');
   };
   
   img.src = dataUrl;
+}
+
+// Hiển thị sau xác suất nhưng canvas
+function showEmptyState() {
+  const emptyState = document.getElementById('emptyState');
+  if (emptyState) {
+    emptyState.style.display = 'flex';
+  }
+  canvas.style.display = 'none';
+  
+  // Hide toolbar upload button
+  const toolbarUpload = document.getElementById('toolbarImageUpload');
+  if (toolbarUpload) {
+    toolbarUpload.style.display = 'none';
+  }
+}
+
+// Ẩn empty state và hiển thị canvas
+function hideEmptyState() {
+  const emptyState = document.getElementById('emptyState');
+  if (emptyState) {
+    emptyState.style.display = 'none';
+  }
+  canvas.style.display = 'block';
+  
+  // Show toolbar upload button
+  const toolbarUpload = document.getElementById('toolbarImageUpload');
+  if (toolbarUpload) {
+    toolbarUpload.style.display = 'flex';
+  }
+}
+
+// Paste from clipboard using Clipboard API (for button click)
+async function pasteFromClipboard() {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      if (item.types.some(type => type.startsWith('image/'))) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        const blob = await item.getType(imageType);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadImage(event.target.result, 'Pasted Image');
+          updateStatus('Ảnh đã được dán thành công.');
+        };
+        reader.readAsDataURL(blob);
+        return;
+      }
+    }
+    updateStatus('Clipboard không chứa ảnh. Hãy dán bằng Ctrl+V hoặc kéo thả ảnh.');
+  } catch (err) {
+    console.error('Clipboard API error:', err);
+    updateStatus('Không thể truy cập clipboard. Vui lòng dán bằng Ctrl+V');
+  }
 }
 
 // Chọn công cụ

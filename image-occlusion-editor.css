@@ -51,6 +51,38 @@ body {
   flex-shrink: 0;
 }
 
+.toolbar-upload {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #555;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolbar-upload:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+#toolbarImageInput {
+  display: none;
+}
+
+.toolbar-upload svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .toolbar-center {
   display: flex;
   gap: 6px;
@@ -182,6 +214,7 @@ body {
   cursor: crosshair;
   max-width: 100%;
   max-height: 100%;
+  display: none;
 }
 
 /* Status bar */
@@ -206,6 +239,118 @@ body {
   outline-offset: -3px;
 }
 
+/* Empty State */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 40px 20px;
+}
+
+.empty-state-card {
+  background: white;
+  border-radius: 12px;
+  padding: 60px 40px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 2px dashed #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.empty-state-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.12);
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.empty-state-desc {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.empty-state-upload,
+.empty-state-btn {
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.empty-state-upload {
+  background: #007bff;
+  color: white;
+}
+
+.empty-state-upload:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.empty-state-upload:active {
+  transform: translateY(0);
+}
+
+#imageFileInput {
+  display: none;
+}
+
+.empty-state-btn {
+  background: #f8f9fa;
+  color: #333;
+  border: 2px solid #ddd;
+}
+
+.empty-state-btn:hover {
+  background: #e9ecef;
+  border-color: #007bff;
+  color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.empty-state-btn:active {
+  transform: translateY(0);
+}
+
+.empty-state-hint {
+  font-size: 13px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.empty-state-hint b {
+  color: #666;
+  font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .toolbar {
@@ -215,6 +360,17 @@ body {
 
   .toolbar-left h2 {
     font-size: 15px;
+  }
+
+  .toolbar-upload {
+    padding: 7px 10px;
+    font-size: 12px;
+    gap: 3px;
+  }
+
+  .toolbar-upload svg {
+    width: 16px;
+    height: 16px;
   }
 
   .tool-btn {
@@ -285,6 +441,17 @@ body {
     height: 14px;
   }
 
+  .toolbar-upload {
+    padding: 6px 8px;
+    font-size: 11px;
+    gap: 2px;
+  }
+
+  .toolbar-upload svg {
+    width: 14px;
+    height: 14px;
+  }
+
   #cardTitle {
     flex: 1;
     min-width: 120px;
@@ -310,6 +477,35 @@ body {
 
   .canvas-container {
     padding: 12px;
+  }
+
+  .empty-state-card {
+    padding: 40px 24px;
+    max-width: 90%;
+  }
+
+  .empty-state-title {
+    font-size: 16px;
+  }
+
+  .empty-state-desc {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .empty-state-actions {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .empty-state-upload,
+  .empty-state-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  .empty-state-hint {
+    font-size: 12px;
   }
 
   .status-bar {
@@ -338,6 +534,17 @@ body {
     height: 13px;
   }
 
+  .toolbar-upload {
+    padding: 5px 6px;
+    font-size: 10px;
+    gap: 2px;
+  }
+
+  .toolbar-upload svg {
+    width: 13px;
+    height: 13px;
+  }
+
   #cardTitle {
     min-width: 100px;
     font-size: 10px;
@@ -356,5 +563,36 @@ body {
   .export-btn svg {
     width: 14px;
     height: 14px;
+  }
+
+  .empty-state-card {
+    padding: 32px 20px;
+    border-radius: 8px;
+  }
+
+  .empty-state-title {
+    font-size: 14px;
+  }
+
+  .empty-state-desc {
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .empty-state-actions {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .empty-state-upload,
+  .empty-state-btn {
+    padding: 10px 16px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .empty-state-hint {
+    font-size: 11px;
   }
 }

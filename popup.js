@@ -470,13 +470,16 @@ function openAboutModal() {
     
     <div style="background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
       <p style="margin: 8px 0; font-size: 13px;">
-        <span style="color: #95a5a6;">Phiên bản:</span> <span style="color: #5dade2; font-weight: 600;">2.6.1</span>
+        <span style="color: #95a5a6;">Phiên bản:</span> <span style="color: #5dade2; font-weight: 600;">2.7.1</span>
       </p>
       <p style="margin: 8px 0; font-size: 13px;">
         <span style="color: #95a5a6;">Tác giả:</span> <span style="color: #ecf0f1;">Nguyễn Văn Phán</span>
       </p>
       <p style="margin: 8px 0; font-size: 13px;">
-        <span style="color: #95a5a6;">Website:</span> <a href="https://github.com" target="_blank" style="color: #5dade2; text-decoration: none;">GitHub</a>
+        <span style="color: #95a5a6;">Website:</span> <a href="https://github.com/nguyenphanvn95/AddFlashCard" target="_blank" style="color: #5dade2; text-decoration: none;">GitHub</a>
+      </p>
+      <p style="margin: 8px 0; font-size: 13px;">
+        <span style="color: #95a5a6;"></span> <a href="huong-dan-su-dung.html" target="_blank" style="color: #5dade2; text-decoration: none;">Hướng dẫn sử dụng</a>
       </p>
     </div>
     
