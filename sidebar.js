@@ -404,7 +404,11 @@ function setupEditors() {
     });
 
     editor.addEventListener('blur', () => {
-      if (editor.textContent.trim() === '') {
+      // Only clear the editor when it truly has no visible content.
+      // Images and other media elements do not contribute to textContent,
+      // so check for their presence before clearing to avoid removing images.
+      const hasMedia = editor.querySelector('img, video, audio, iframe, picture, svg') !== null;
+      if (editor.textContent.trim() === '' && !hasMedia) {
         editor.innerHTML = '';
       }
     });

@@ -16,6 +16,16 @@ async function exportAnkiMultiCard() {
     return;
   }
 
+  // ============================================================
+  // HIDE MODE SWITCH
+  // - Hide 1  : mỗi occlusion = 1 note
+  // - Hide All: gộp tất cả occlusion -> 1 note
+  // UI hiện tại dùng select id="hideModeSelect" (nếu có).
+  // ============================================================
+  const hideModeEl = document.getElementById('hideModeSelect');
+  const hideMode = (hideModeEl && hideModeEl.value) ? String(hideModeEl.value).toLowerCase() : 'hide1';
+  const isHideAll = (hideMode.includes('all') || hideMode === 'hideall' || hideMode === 'hide_all');
+
   const cardTitle = document.getElementById('cardTitle').value || 'Anki Card';
   updateStatus('Đang tạo file Anki...');
 
@@ -25,28 +35,35 @@ async function exportAnkiMultiCard() {
     // Field Image của note Image Occlusion phải là ảnh gốc (chưa có block).
     // Vì vậy ta render lại từ ảnh nguồn (biến global `img` của editor) nếu có.
     const originalImageBlob = await createOriginalImageFromEditor(canvas);
+    // Hide All -> gộp tất cả occlusion thành 1 thẻ
+    if (isHideAll) {
+      // Question Mask: tất cả các blocks
+      const questionMaskBlob = await createOriginalMask();
 
-    // Tạo data cho từng thẻ
-    const cardsData = [];
-    for (let i = 0; i < occlusions.length; i++) {
-      // Question Mask: chỉ có 1 block hiện tại
-      const questionMaskBlob = await createQuestionMask(i);
-      
-      // Answer Mask: các block còn lại (không có block hiện tại)
-      const answerMaskBlob = await createAnswerMask(i);
-      
+      // Answer Mask: rỗng (show answer sẽ hiện tất cả)
+      const answerMaskBlob = await createEmptyMask(canvas);
+
       // Original Mask: tất cả các blocks
       const originalMaskBlob = await createOriginalMask();
 
-      cardsData.push({
-        questionMask: questionMaskBlob,
-        answerMask: answerMaskBlob,
-        originalMask: originalMaskBlob
-      });
-    }
+      await createApkgSingleCard(cardTitle, originalImageBlob, questionMaskBlob, answerMaskBlob, originalMaskBlob);
+    } else {
+      // Hide 1 -> mỗi occlusion = 1 thẻ
+      const cardsData = [];
+      for (let i = 0; i < occlusions.length; i++) {
+        const questionMaskBlob = await createQuestionMask(i);
+        const answerMaskBlob = await createAnswerMask(i);
+        const originalMaskBlob = await createOriginalMask();
 
-    // Tạo file .apkg (nhiều thẻ)
-    await createApkgMultiCard(cardTitle, originalImageBlob, cardsData);
+        cardsData.push({
+          questionMask: questionMaskBlob,
+          answerMask: answerMaskBlob,
+          originalMask: originalMaskBlob
+        });
+      }
+
+      await createApkgMultiCard(cardTitle, originalImageBlob, cardsData);
+    }
 
     updateStatus('Đã xuất file .apkg thành công!');
   } catch (error) {
@@ -97,7 +114,7 @@ async function createQuestionMask(index) {
   tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
   // Vẽ CHỈ 1 khối che tại vị trí này
-  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 1)'; // Màu vàng cam
 
   if (occ.type === 'rect') {
     tempCtx.fillRect(occ.x, occ.y, occ.width, occ.height);
@@ -129,7 +146,7 @@ async function createAnswerMask(currentIndex) {
   tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
   // Vẽ TẤT CẢ các khối TRỪ khối hiện tại
-  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 1)'; // Màu vàng cam
 
   for (let i = 0; i < occlusions.length; i++) {
     if (i === currentIndex) continue; // Bỏ qua block hiện tại
@@ -166,7 +183,7 @@ async function createOriginalMask() {
   tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
   // Vẽ TẤT CẢ các khối
-  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)'; // Màu vàng cam
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 1)'; // Màu vàng cam
 
   occlusions.forEach(occ => {
     if (occ.type === 'rect') {
@@ -248,7 +265,7 @@ async function createAllMasksFromOverlay(overlayCanvas, overlayOcclusions) {
   tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
   // Vẽ tất cả các khối
-  tempCtx.fillStyle = 'rgba(255, 200, 87, 0.85)';
+  tempCtx.fillStyle = 'rgba(255, 200, 87, 1)';
 
   overlayOcclusions.forEach(occ => {
     if (occ.type === 'rect') {

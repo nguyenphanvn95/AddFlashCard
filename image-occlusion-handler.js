@@ -61,9 +61,16 @@
       
       // Kiểm tra nếu click vào ảnh
       if (target.tagName === 'IMG') {
+        // Ignore clicks that happen immediately after the menu was closed
+        if (window.__io_recentMenuClosed && Date.now() - window.__io_recentMenuClosed < 350) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Hiển thị menu cho ảnh
         showImageMenu(target, areaName);
       }
@@ -133,26 +140,35 @@
       try { imgElement.setAttribute('data-io-img-id', ioId); } catch (e) {}
     }
 
-    // Tính toán vị trí: chèn tạm để đo kích thước, đặt bên trái ảnh, clamped to viewport
+    // Tính toán vị trí: ưu tiên đặt bên trái ảnh; nếu không đủ chỗ thì đặt bên phải; vertical align ở giữa ảnh
     const rect = imgElement.getBoundingClientRect();
     menu.style.visibility = 'hidden';
     menu.style.left = '0px';
     menu.style.top = '0px';
     document.body.appendChild(menu);
     const mrect = menu.getBoundingClientRect();
-    
-    // Always place to the left of the image minus gap
-    let leftPos = rect.left - mrect.width - 10;
-    // Clamp to viewport (8px margin from left edge)
-    if (leftPos < 8) leftPos = 8;
-    
-    // Clamp top position so menu is fully visible
-    let topPos = rect.top;
+
+    const gap = 10;
+    // Try left first
+    let leftPos = rect.left - mrect.width - gap;
+    if (leftPos < 8) {
+      // Not enough room on the left — try placing to the right of the image
+      const rightPos = rect.right + gap;
+      if (rightPos + mrect.width <= window.innerWidth - 8) {
+        leftPos = rightPos;
+      } else {
+        // No room both sides — clamp within viewport but center vertically to avoid overlapping important parts
+        leftPos = Math.max(8, Math.min(window.innerWidth - mrect.width - 8, rect.left - mrect.width - gap));
+      }
+    }
+
+    // Vertical: align menu center to image center when possible
+    let topPos = rect.top + (rect.height - mrect.height) / 2;
     if (topPos + mrect.height > window.innerHeight - 8) {
       topPos = Math.max(8, window.innerHeight - mrect.height - 8);
     }
     if (topPos < 8) topPos = 8;
-    
+
     menu.style.left = `${leftPos}px`;
     menu.style.top = `${topPos}px`;
     menu.style.visibility = 'visible';
@@ -184,21 +200,22 @@
 
     menu.querySelector('[data-action="remove"]').addEventListener('click', (e) => {
       e.stopPropagation();
-      menu.remove();
+      e.preventDefault();
+      // Ask for confirmation first, only then remove
       if (!confirm('Bạn có chắc muốn xóa ảnh này?')) return;
 
       // Try to find the current image element by stable id
       let targetImg = null;
       try {
         targetImg = document.querySelector('img[data-io-img-id="' + ioId + '"]');
-      } catch (e) { targetImg = null; }
+      } catch (err) { targetImg = null; }
 
       // Fallback: match by src
       if (!targetImg) {
         try {
           const imgs = Array.from(document.querySelectorAll('img'));
           targetImg = imgs.find(i => i.src === imgElement.src);
-        } catch (e) { targetImg = null; }
+        } catch (err) { targetImg = null; }
       }
 
       // Final fallback: use original element if still connected
@@ -209,11 +226,23 @@
       } else {
         console.warn('Image Occlusion: could not find image to remove for id', ioId);
       }
+
+      // Remove menu and set a short guard so subsequent click does not act on underlying elements
+      window.__io_recentMenuClosed = Date.now();
+      menu.remove();
     });
 
     menu.querySelector('.io-close-menu').addEventListener('click', (e) => {
       e.stopPropagation();
-      menu.remove();
+      e.preventDefault();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+      // Hide first to avoid click-through/mutation side-effects, then remove
+      menu.style.display = 'none';
+      window.__io_recentMenuClosed = Date.now();
+      setTimeout(() => {
+        if (menu && menu.isConnected) menu.remove();
+      }, 200);
     });
 
     // Đóng menu khi click bên ngoài
@@ -224,8 +253,15 @@
           document.removeEventListener('click', closeMenu);
           return;
         }
-        
+
+        // If the menu was just closed, ignore this click to avoid accidental actions
+        if (window.__io_recentMenuClosed && Date.now() - window.__io_recentMenuClosed < 350) {
+          document.removeEventListener('click', closeMenu);
+          return;
+        }
+
         if (!menu.contains(e.target) && e.target !== imgElement) {
+          window.__io_recentMenuClosed = Date.now();
           menu.remove();
           document.removeEventListener('click', closeMenu);
         }
