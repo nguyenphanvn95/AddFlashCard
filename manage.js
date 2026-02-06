@@ -128,6 +128,11 @@ async function initStorageSync() {
 
   try {
     await window.storageManager.initialize();
+    const status = window.storageManager.getStatus();
+    if (!status.directorySelected || !status.folderConfigured) {
+      redirectToForcedSetup();
+      return;
+    }
     updateSyncStatus();
     if (!syncStatusTimer) {
       syncStatusTimer = setInterval(() => {
@@ -137,6 +142,17 @@ async function initStorageSync() {
   } catch (error) {
     console.error('Storage sync init error:', error);
     syncStatusText.textContent = 'Auto-sync: Lỗi khởi tạo';
+  }
+}
+
+function redirectToForcedSetup() {
+  try {
+    const introUrl = `${chrome.runtime.getURL('intro.html')}?forceSetup=1&returnTo=manage`;
+    if (!window.location.href.startsWith(introUrl)) {
+      window.location.href = introUrl;
+    }
+  } catch (error) {
+    console.error('Failed to redirect to forced setup:', error);
   }
 }
 
@@ -154,19 +170,26 @@ function updateSyncStatus() {
 
   const status = window.storageManager.getStatus();
   if (!status.fileSystemAvailable) {
-    syncStatusText.textContent = 'Auto-sync: Trình duyệt không hỗ trợ';
+    syncStatusText.textContent = 'Auto-sync: Trinh duyet khong ho tro';
     return;
   }
 
   if (!status.directorySelected) {
-    syncStatusText.textContent = `Auto-sync: Chưa chọn thư mục. Mặc định mong muốn: ${defaultSyncPath}\\flashcards.json`;
+    if (status.folderConfigured) {
+      const rememberedName = status.storageDirName || 'thu muc da chon';
+      syncStatusText.textContent = `Auto-sync: Da cau hinh thu muc (${rememberedName}) nhung chua co quyen truy cap o phien hien tai. Bam "Chon thu muc sync" de cap quyen lai.`;
+      return;
+    }
+    syncStatusText.textContent = `Auto-sync: Chua chon thu muc. Mac dinh mong muon: ${defaultSyncPath}\\flashcards.json + ${defaultSyncPath}\\domains.json`;
     return;
   }
 
-  const folderName = window.storageManager.storageDir ? window.storageManager.storageDir.name : 'Thư mục đã chọn';
-  const browserTime = formatTimestamp(status.lastBrowserUpdate);
-  const fileTime = formatTimestamp(status.lastFileUpdate);
-  syncStatusText.textContent = `Auto-sync: ${folderName}\\flashcards.json | Browser: ${browserTime} | File: ${fileTime}`;
+  const folderName = status.storageDirName || (window.storageManager.storageDir ? window.storageManager.storageDir.name : 'Thu muc da chon');
+  const cardsBrowserTime = formatTimestamp(status.lastBrowserUpdate);
+  const cardsFileTime = formatTimestamp(status.lastFileUpdate);
+  const domainsBrowserTime = formatTimestamp(status.lastDomainsBrowserUpdate);
+  const domainsFileTime = formatTimestamp(status.lastDomainsFileUpdate);
+  syncStatusText.textContent = `Auto-sync: ${folderName}\\flashcards.json (Browser: ${cardsBrowserTime} | File: ${cardsFileTime}) + ${folderName}\\domains.json (Browser: ${domainsBrowserTime} | File: ${domainsFileTime})`;
 }
 
 // Load all data
@@ -1796,3 +1819,4 @@ window.manageApp = {
     }
   }
 };
+

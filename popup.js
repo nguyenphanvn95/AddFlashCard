@@ -129,7 +129,7 @@ function setupEventListeners() {
       }
       window.close();
     } else if (action === 'manage') {
-      chrome.tabs.create({ url: chrome.runtime.getURL('manage.html?tab=allow-copy') });
+      chrome.tabs.create({ url: chrome.runtime.getURL('allow-copy-popup.html') });
       window.close();
     }
   });

@@ -4,16 +4,27 @@
 class StorageManager {
   constructor() {
     this.storageDir = null;
+    this.storageDirName = null;
     this.isFileSystemAvailable = false;
     this.syncInterval = 5 * 60 * 1000; // Sync every 5 minutes
     this.syncTimer = null;
+    this.folderConfigured = false;
     this.lastBrowserUpdate = 0;
     this.lastFileUpdate = 0;
+    this.lastDomainsBrowserUpdate = 0;
+    this.lastDomainsFileUpdate = 0;
   }
 
   // Initialize storage manager
   async initialize() {
     console.log('StorageManager: Initializing...');
+    try {
+      const saved = await chrome.storage.local.get(['sync_folder_selected', 'sync_folder_name']);
+      this.folderConfigured = !!saved.sync_folder_selected;
+      this.storageDirName = saved.sync_folder_name || null;
+    } catch (error) {
+      console.warn('StorageManager: Could not read sync folder flags from storage', error);
+    }
     
     // Check if File System Access API is available
     if ('showDirectoryPicker' in window) {
@@ -21,13 +32,19 @@ class StorageManager {
       console.log('StorageManager: File System Access API available');
       
       // Try to restore previous directory handle
-      await this.restoreDirectoryHandle();
+      const restored = await this.restoreDirectoryHandle();
+      if (!restored && !this.folderConfigured) {
+        await chrome.storage.local.set({ sync_folder_selected: false });
+      }
     } else {
       console.log('StorageManager: File System Access API not available, using browser storage only');
+      await chrome.storage.local.set({ sync_folder_selected: false });
     }
 
     // Load initial data from browser storage
     await this.loadFromBrowser();
+    await this.loadDomainsFromBrowser();
+    await this.refreshFileMetadata();
 
     // Start auto-sync
     this.startAutoSync();
@@ -46,6 +63,8 @@ class StorageManager {
       mode: 'readwrite',
       startIn: 'documents'
     });
+      this.storageDirName = this.storageDir?.name || null;
+      this.folderConfigured = true;
 
       // Save directory handle for future sessions
       await this.saveDirectoryHandle();
@@ -72,9 +91,13 @@ class StorageManager {
 
     try {
       const db = await this.openIndexedDB();
-      const tx = db.transaction('handles', 'readwrite');
-      const store = tx.objectStore('handles');
-      await store.put(this.storageDir, 'storageDirectory');
+      await this.idbPut(db, 'handles', this.storageDir, 'storageDirectory');
+      await chrome.storage.local.set({
+        sync_folder_selected: true,
+        sync_folder_name: this.storageDir?.name || this.storageDirName || null
+      });
+      this.folderConfigured = true;
+      this.storageDirName = this.storageDir?.name || this.storageDirName || null;
       console.log('StorageManager: Directory handle saved');
     } catch (error) {
       console.error('StorageManager: Error saving directory handle:', error);
@@ -85,23 +108,35 @@ class StorageManager {
   async restoreDirectoryHandle() {
     try {
       const db = await this.openIndexedDB();
-      const tx = db.transaction('handles', 'readonly');
-      const store = tx.objectStore('handles');
-      const handle = await store.get('storageDirectory');
+      const handle = await this.idbGet(db, 'handles', 'storageDirectory');
 
       if (handle) {
+        this.folderConfigured = true;
+        this.storageDirName = handle.name || this.storageDirName || null;
+        await chrome.storage.local.set({
+          sync_folder_selected: true,
+          sync_folder_name: this.storageDirName
+        });
+
         // Verify we still have permission
         const permission = await handle.queryPermission({ mode: 'readwrite' });
         if (permission === 'granted') {
           this.storageDir = handle;
+          this.storageDirName = handle.name || this.storageDirName || null;
           console.log('StorageManager: Directory handle restored');
           return true;
         } else {
-          console.log('StorageManager: Permission not granted, need to request again');
+          console.log('StorageManager: Handle exists but permission not granted for this session');
         }
       }
     } catch (error) {
       console.error('StorageManager: Error restoring directory handle:', error);
+    }
+    if (!this.folderConfigured) {
+      await chrome.storage.local.set({
+        sync_folder_selected: false,
+        sync_folder_name: null
+      });
     }
     return false;
   }
@@ -120,6 +155,30 @@ class StorageManager {
           db.createObjectStore('handles');
         }
       };
+    });
+  }
+
+  idbGet(db, storeName, key) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const request = store.get(key);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+    });
+  }
+
+  idbPut(db, storeName, value, key) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const request = store.put(value, key);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
     });
   }
 
@@ -159,10 +218,10 @@ class StorageManager {
     try {
       const fileHandle = await this.storageDir.getFileHandle('flashcards.json', { create: false });
       const file = await fileHandle.getFile();
+      this.lastFileUpdate = file.lastModified || 0;
       const text = await file.text();
       const data = JSON.parse(text);
-      
-      this.lastFileUpdate = file.lastModified;
+
       console.log('StorageManager: Loaded from file, lastModified:', this.lastFileUpdate);
       
       return data;
@@ -206,6 +265,163 @@ class StorageManager {
     }
   }
 
+  // Load allow-copy domains from browser storage
+  async loadDomainsFromBrowser() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['allowCopyWhitelist', 'allowCopyEnabled', 'domainsLastUpdate'], (result) => {
+        this.lastDomainsBrowserUpdate = result.domainsLastUpdate || 0;
+        resolve({
+          domains: result.allowCopyWhitelist || [],
+          allowCopyEnabled: result.allowCopyEnabled !== false,
+          lastUpdate: this.lastDomainsBrowserUpdate
+        });
+      });
+    });
+  }
+
+  // Save allow-copy domains to browser storage
+  async saveDomainsToBrowser(data) {
+    return new Promise((resolve) => {
+      const saveData = {
+        allowCopyWhitelist: Array.isArray(data.domains) ? data.domains : [],
+        allowCopyEnabled: data.allowCopyEnabled !== false,
+        domainsLastUpdate: Date.now()
+      };
+      chrome.storage.local.set(saveData, () => {
+        this.lastDomainsBrowserUpdate = saveData.domainsLastUpdate;
+        console.log('StorageManager: Saved domains to browser storage');
+        resolve();
+      });
+    });
+  }
+
+  // Load allow-copy domains from file system
+  async loadDomainsFromFile() {
+    if (!this.storageDir) {
+      console.log('StorageManager: No directory handle, skipping domains file load');
+      return null;
+    }
+
+    try {
+      const fileHandle = await this.storageDir.getFileHandle('domains.json', { create: false });
+      const file = await fileHandle.getFile();
+      this.lastDomainsFileUpdate = file.lastModified || 0;
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      console.log('StorageManager: Loaded domains from file, lastModified:', this.lastDomainsFileUpdate);
+
+      return data;
+    } catch (error) {
+      if (error.name === 'NotFoundError') {
+        console.log('StorageManager: domains.json not found, will create on first save');
+      } else {
+        console.error('StorageManager: Error loading domains from file:', error);
+      }
+      return null;
+    }
+  }
+
+  // Read file timestamps directly from selected directory for accurate sync status
+  async refreshFileMetadata() {
+    if (!this.storageDir) return;
+
+    // flashcards.json
+    try {
+      const flashcardsHandle = await this.storageDir.getFileHandle('flashcards.json', { create: false });
+      const flashcardsFile = await flashcardsHandle.getFile();
+      this.lastFileUpdate = flashcardsFile.lastModified || 0;
+    } catch (error) {
+      if (error.name === 'NotFoundError') {
+        this.lastFileUpdate = 0;
+      } else {
+        console.error('StorageManager: Error reading flashcards.json metadata:', error);
+      }
+    }
+
+    // domains.json
+    try {
+      const domainsHandle = await this.storageDir.getFileHandle('domains.json', { create: false });
+      const domainsFile = await domainsHandle.getFile();
+      this.lastDomainsFileUpdate = domainsFile.lastModified || 0;
+    } catch (error) {
+      if (error.name === 'NotFoundError') {
+        this.lastDomainsFileUpdate = 0;
+      } else {
+        console.error('StorageManager: Error reading domains.json metadata:', error);
+      }
+    }
+  }
+
+  // Save allow-copy domains to file system
+  async saveDomainsToFile(data) {
+    if (!this.storageDir) {
+      console.log('StorageManager: No directory handle, skipping domains file save');
+      return false;
+    }
+
+    try {
+      const fileHandle = await this.storageDir.getFileHandle('domains.json', { create: true });
+      const writable = await fileHandle.createWritable();
+
+      const saveData = {
+        domains: Array.isArray(data.domains) ? data.domains : [],
+        allowCopyEnabled: data.allowCopyEnabled !== false,
+        lastUpdate: Date.now(),
+        version: '1.0'
+      };
+
+      await writable.write(JSON.stringify(saveData, null, 2));
+      await writable.close();
+
+      this.lastDomainsFileUpdate = saveData.lastUpdate;
+      console.log('StorageManager: Saved domains to file');
+
+      return true;
+    } catch (error) {
+      console.error('StorageManager: Error saving domains to file:', error);
+      return false;
+    }
+  }
+
+  // Sync allow-copy domains both ways - prioritize newer data
+  async syncDomainsBothWays() {
+    const browserData = await this.loadDomainsFromBrowser();
+    const fileData = await this.loadDomainsFromFile();
+
+    const browserTime = browserData.lastUpdate || 0;
+    const fileTime = fileData ? (fileData.lastUpdate || 0) : 0;
+
+    console.log('StorageManager: Domains browser timestamp:', browserTime, 'File timestamp:', fileTime);
+
+    const browserHasDomains = Array.isArray(browserData.domains);
+    const fileHasDomains = fileData && Array.isArray(fileData.domains);
+
+    if (!fileHasDomains && browserHasDomains) {
+      console.log('StorageManager: No domains file data, saving browser domains to file');
+      await this.saveDomainsToFile(browserData);
+      return;
+    }
+
+    if (!browserHasDomains && fileHasDomains) {
+      console.log('StorageManager: No browser domains data, saving file domains to browser');
+      await this.saveDomainsToBrowser(fileData);
+      return;
+    }
+
+    if (fileHasDomains && browserHasDomains) {
+      if (fileTime > browserTime) {
+        console.log('StorageManager: Domains file is newer, updating browser storage');
+        await this.saveDomainsToBrowser(fileData);
+      } else if (browserTime > fileTime) {
+        console.log('StorageManager: Domains browser is newer, updating file');
+        await this.saveDomainsToFile(browserData);
+      } else {
+        console.log('StorageManager: Domains sources are in sync');
+      }
+    }
+  }
+
   // Sync both ways - prioritize newer data
   async syncBothWays() {
     console.log('StorageManager: Starting two-way sync...');
@@ -240,6 +456,9 @@ class StorageManager {
         console.log('StorageManager: Both sources are in sync');
       }
     }
+
+    // Sync allow-copy domains in the same folder
+    await this.syncDomainsBothWays();
   }
 
   // Save data to both locations
@@ -385,8 +604,12 @@ class StorageManager {
     return {
       fileSystemAvailable: this.isFileSystemAvailable,
       directorySelected: !!this.storageDir,
+      folderConfigured: this.folderConfigured,
+      storageDirName: this.storageDir?.name || this.storageDirName || null,
       lastBrowserUpdate: this.lastBrowserUpdate,
       lastFileUpdate: this.lastFileUpdate,
+      lastDomainsBrowserUpdate: this.lastDomainsBrowserUpdate,
+      lastDomainsFileUpdate: this.lastDomainsFileUpdate,
       autoSyncEnabled: !!this.syncTimer
     };
   }
@@ -407,10 +630,18 @@ if (chrome && chrome.storage && chrome.storage.onChanged) {
 
       const dataChanged = !!changes.cards || !!changes.decks;
       const lastUpdateChanged = !!changes.lastUpdate;
+      const domainsChanged = !!changes.allowCopyWhitelist || !!changes.allowCopyEnabled;
+      const domainsLastUpdateChanged = !!changes.domainsLastUpdate;
 
       if (dataChanged && !lastUpdateChanged) {
         chrome.storage.local.set({ lastUpdate: Date.now() }, () => {
           console.log('[AddFlashcard][storage.onChanged] lastUpdate updated');
+        });
+      }
+
+      if (domainsChanged && !domainsLastUpdateChanged) {
+        chrome.storage.local.set({ domainsLastUpdate: Date.now() }, () => {
+          console.log('[AddFlashcard][storage.onChanged] domainsLastUpdate updated');
         });
       }
     } catch (err) {

@@ -47,12 +47,52 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   // Initialize storage
   await initializeStorage();
-  
+
+  // Ensure onboarding state exists for fresh installs
   if (details.reason === 'install') {
-    // Open welcome page on first install
-    chrome.tabs.create({ url: chrome.runtime.getURL('intro.html') });
+    await chrome.storage.local.set({
+      intro_completed: false,
+      sync_folder_selected: false
+    });
   }
+
+  // Open intro whenever onboarding is incomplete
+  await ensureOnboardingPage();
 });
+
+// Also re-check onboarding state when browser starts
+chrome.runtime.onStartup.addListener(async () => {
+  await ensureOnboardingPage();
+});
+
+async function ensureOnboardingPage() {
+  try {
+    const { intro_completed, sync_folder_selected } = await chrome.storage.local.get([
+      'intro_completed',
+      'sync_folder_selected'
+    ]);
+
+    if (intro_completed && sync_folder_selected) {
+      return;
+    }
+
+    const introUrl = chrome.runtime.getURL('intro.html');
+    const tabs = await chrome.tabs.query({});
+    const introTab = tabs.find((t) => t.url && t.url.startsWith(introUrl));
+
+    if (introTab && introTab.id) {
+      await chrome.tabs.update(introTab.id, { active: true });
+      if (typeof introTab.windowId === 'number') {
+        await chrome.windows.update(introTab.windowId, { focused: true });
+      }
+      return;
+    }
+
+    await chrome.tabs.create({ url: introUrl });
+  } catch (error) {
+    console.error('AddFlashcard: Failed to ensure onboarding page:', error);
+  }
+}
 
 // Create context menus
 function createContextMenus() {
@@ -660,8 +700,6 @@ function handleToggleAllowCopy(enabled) {
     });
   });
 }
-      });
-  });
-}
 
 console.log('AddFlashcard: Background service worker loaded');
+
