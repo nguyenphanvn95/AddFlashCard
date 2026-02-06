@@ -454,7 +454,8 @@ async function createAnkiCollectionMultiCard(opts) {
   createAnkiTables(db);
 
   // Tạo model với đúng fields theo mẫu
-  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName);
+  const templates = await getImageOcclusionTemplates();
+  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName, templates);
 
   // Tạo deck
   const decks = createAnkiDeck(deckId, timestamp, opts.deckName);
@@ -546,7 +547,8 @@ async function createAnkiCollectionSingleCard(opts) {
   createAnkiTables(db);
 
   // Tạo model
-  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName);
+  const templates = await getImageOcclusionTemplates();
+  const models = createImageOcclusionModel(modelId, deckId, timestamp, opts.modelName, templates);
 
   // Tạo deck
   const decks = createAnkiDeck(deckId, timestamp, opts.deckName);
@@ -697,7 +699,50 @@ function createAnkiTables(db) {
 /**
  * Tạo Image Occlusion model với đúng 11 fields và templates
  */
-function createImageOcclusionModel(modelId, deckId, timestamp, modelName) {
+const ANKI_IO_TEMPLATE_STORAGE_KEY = 'ankiIoTemplateOverride';
+const ANKI_IO_TEMPLATE_FILES = {
+  front: 'anki-templates/image-occlusion-front.html',
+  back: 'anki-templates/image-occlusion-back.html',
+  css: 'anki-templates/image-occlusion-style.css'
+};
+
+function chromeStorageLocalGet(keys) {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get(keys, (result) => resolve(result || {}));
+    } catch (_) {
+      resolve({});
+    }
+  });
+}
+
+async function fetchTemplateText(relativePath) {
+  const url = chrome.runtime.getURL(relativePath);
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load ${relativePath}`);
+  }
+  return await response.text();
+}
+
+async function getImageOcclusionTemplates() {
+  const [defaultFront, defaultBack, defaultCss] = await Promise.all([
+    fetchTemplateText(ANKI_IO_TEMPLATE_FILES.front).catch(() => null),
+    fetchTemplateText(ANKI_IO_TEMPLATE_FILES.back).catch(() => null),
+    fetchTemplateText(ANKI_IO_TEMPLATE_FILES.css).catch(() => null)
+  ]);
+
+  const stored = await chromeStorageLocalGet([ANKI_IO_TEMPLATE_STORAGE_KEY]);
+  const override = stored[ANKI_IO_TEMPLATE_STORAGE_KEY];
+
+  return {
+    front: (override && typeof override.front === 'string' && override.front.trim()) ? override.front : defaultFront,
+    back: (override && typeof override.back === 'string' && override.back.trim()) ? override.back : defaultBack,
+    css: (override && typeof override.css === 'string' && override.css.trim()) ? override.css : defaultCss
+  };
+}
+
+function createImageOcclusionModel(modelId, deckId, timestamp, modelName, templates) {
   // Đọc templates từ files đính kèm
   const frontTemplate = `{{#Image}}
 <div id="io-header">{{Header}}</div>
@@ -871,6 +916,10 @@ if (mask === null || mask.complete) {
   font-size: 0.8em;
 }`;
 
+  const finalFrontTemplate = (templates && templates.front) ? templates.front : frontTemplate;
+  const finalBackTemplate = (templates && templates.back) ? templates.back : backTemplate;
+  const finalCssStyle = (templates && templates.css) ? templates.css : cssStyle;
+
   return {
     [modelId]: {
       id: modelId,
@@ -899,13 +948,13 @@ if (mask === null || mask.complete) {
       tmpls: [{
         name: "Card 1",
         ord: 0,
-        qfmt: frontTemplate,
-        afmt: backTemplate,
+        qfmt: finalFrontTemplate,
+        afmt: finalBackTemplate,
         bqfmt: "",
         bafmt: "",
         did: null
       }],
-      css: cssStyle,
+      css: finalCssStyle,
       csum: 0,
       vers: []
     }

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AddFlashcard</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <div class="header-left">
+        <img src="icons/icon48.png" alt="AddFlashcard" class="logo">
+        <h1>AddFlashcard</h1>
+      </div>
+      <div class="header-right">
+        <button class="quick-btn" id="settings-btn" title="Cài đặt">⚙️</button>
+        <button class="quick-btn" id="help-btn" title="Hướng dẫn">❓</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-label">Tổng thẻ</div>
+        <div class="stat-value" id="total-cards">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Hôm nay</div>
+        <div class="stat-value" id="today-cards">0</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn add-card-btn" id="add-card-btn">
+        <span class="icon">✏️</span>
+        <span>Thêm thẻ mới</span>
+      </button>
+
+      <button class="action-btn primary" id="manage-btn">
+        <span class="icon">📚</span>
+        <span>Quản lý thẻ</span>
+      </button>
+
+      <button class="action-btn study-btn" id="study-btn">
+        <span class="icon">📖</span>
+        <span>Học thẻ</span>
+      </button>
+
+      <button class="action-btn pdf-btn" id="pdf-viewer-btn">
+        <span class="icon">📄</span>
+        <span>PDF Viewer</span>
+      </button>
+
+      <button class="action-btn occlusion-btn" id="image-occlusion-btn">
+        <span class="icon">🖼️</span>
+        <span>Image Occlusion</span>
+      </button>
+
+      <button class="action-btn allow-copy-btn" id="allow-copy-btn">
+        <span class="icon">📋</span>
+        <span>Allow Copy</span>
+      </button>
+    </div>
+
+    <div class="footer">
+      <span class="version">v2.8.0</span>
+      <span class="separator">•</span>
+      <a href="https://github.com/nguyenphanvn95/" id="notion-link">Nguyễn Văn Phán</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+
+  <style>
+    /* PDF Button Special Style */
+    .action-btn.pdf-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.pdf-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.pdf-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.pdf-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.pdf-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Image Occlusion Button Style */
+    .action-btn.occlusion-btn {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.occlusion-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.occlusion-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.occlusion-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+    }
+
+    .action-btn.occlusion-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Study Button Style */
+    .action-btn.study-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.study-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.study-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.study-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .action-btn.study-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Add Card Button Style */
+    .action-btn.add-card-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.add-card-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.add-card-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.add-card-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.add-card-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Allow Copy Button Style */
+    .action-btn.allow-copy-btn {
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.allow-copy-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.allow-copy-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.allow-copy-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+    }
+
+    .action-btn.allow-copy-btn .icon {
+      font-size: 20px;
+    }
+  </style>
+</body>
+</html>
