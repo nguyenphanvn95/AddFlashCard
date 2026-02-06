@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.7.1",
+  "version": "2.8.0",
   "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Tích hợp Image Occlusion và Allow Copy. Export APKG và sync với Anki qua AnkiConnect.",
   "permissions": [
     "contextMenus",
