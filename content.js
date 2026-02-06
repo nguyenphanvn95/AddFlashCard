@@ -508,7 +508,7 @@ console.log('AddFlashcard content script loaded');
 // --- Area selection (triggered by background/popup) -----------------------
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.action === 'startSelection') {
-    startAreaSelection();
+    startAreaSelection(message.captureMode || 'overlay');
     sendResponse({ started: true });
   }
 });
@@ -652,7 +652,7 @@ function showImageOcclusionIframeOverlay(imageData, pageTitle) {
   });
 }
 
-function startAreaSelection() {
+function startAreaSelection(captureMode = 'overlay') {
   // Avoid multiple overlays
   if (document.getElementById('afc-selection-overlay')) return;
 
@@ -750,10 +750,11 @@ function startAreaSelection() {
     };
 
     // Send area to background to capture & crop
+    const captureAction = captureMode === 'new-tab' ? 'captureForEditorTab' : 'captureForOverlay';
     try {
-      chrome.runtime.sendMessage({ action: 'captureForOverlay', area: area }, () => {});
+      chrome.runtime.sendMessage({ action: captureAction, area: area }, () => {});
     } catch (err) {
-      console.error('AddFlashcard: Failed to send captureForOverlay', err);
+      console.error('AddFlashcard: Failed to send capture area', err);
     }
 
     cleanup();

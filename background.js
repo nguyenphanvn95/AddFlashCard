@@ -35,9 +35,20 @@ const MENU_ITEMS = {
     title: 'Chụp toàn bộ trang',
     contexts: ['page'],
     parentId: 'imageOcclusionParent'
+  },
+  CAPTURE_AREA_NEW_TAB: {
+    id: 'captureAreaNewTab',
+    title: 'Chụp một vùng (tab mới)',
+    contexts: ['page'],
+    parentId: 'imageOcclusionParent'
+  },
+  CAPTURE_FULLPAGE_NEW_TAB: {
+    id: 'captureFullPageNewTab',
+    title: 'Chụp toàn bộ trang (tab mới)',
+    contexts: ['page'],
+    parentId: 'imageOcclusionParent'
   }
 };
-
 // Initialize extension
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('AddFlashcard: Extension installed/updated', details.reason);
@@ -111,6 +122,8 @@ function createContextMenus() {
     // Create Image Occlusion submenus
     chrome.contextMenus.create(MENU_ITEMS.CAPTURE_AREA);
     chrome.contextMenus.create(MENU_ITEMS.CAPTURE_FULLPAGE);
+    chrome.contextMenus.create(MENU_ITEMS.CAPTURE_AREA_NEW_TAB);
+    chrome.contextMenus.create(MENU_ITEMS.CAPTURE_FULLPAGE_NEW_TAB);
     
     console.log('AddFlashcard: Context menus created');
   });
@@ -164,6 +177,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       
     case 'captureFullPage':
       await handleCaptureFullPage(tab);
+      break;
+
+    case 'captureAreaNewTab':
+      await handleCaptureAreaInNewTab(tab);
+      break;
+
+    case 'captureFullPageNewTab':
+      await handleCaptureFullPageInNewTab(tab);
       break;
   }
 });
@@ -270,10 +291,34 @@ async function handleCaptureArea(tab) {
     
     // Start area selection
     await chrome.tabs.sendMessage(tab.id, {
-      action: 'startSelection'
+      action: 'startSelection',
+      captureMode: 'overlay'
     });
   } catch (error) {
     console.error('AddFlashcard: Error starting area capture:', error);
+  }
+}
+
+// Handle Image Occlusion - Capture Area in new tab
+async function handleCaptureAreaInNewTab(tab) {
+  try {
+    // Ensure content script is present (selection UI lives in content.js)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    // Start area selection in new-tab mode
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'startSelection',
+      captureMode: 'new-tab'
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error starting area capture in new tab:', error);
   }
 }
 
@@ -312,6 +357,21 @@ async function handleCaptureFullPage(tab) {
     });
   } catch (error) {
     console.error('AddFlashcard: Error capturing full page:', error);
+  }
+}
+
+// Handle Image Occlusion - Capture Full Page in new tab
+async function handleCaptureFullPageInNewTab(tab) {
+  try {
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, async (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        return;
+      }
+      handleOpenImageOcclusionEditor(dataUrl, tab.title);
+    });
+  } catch (error) {
+    console.error('AddFlashcard: Error capturing full page in new tab:', error);
   }
 }
 
@@ -400,6 +460,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Image Occlusion handlers
     case 'captureForOverlay':
       handleCaptureForOverlay(message.area, sender.tab);
+      sendResponse({ success: true });
+      break;
+
+    case 'captureForEditorTab':
+      handleCaptureForEditorTab(message.area, sender.tab);
       sendResponse({ success: true });
       break;
       
@@ -619,6 +684,19 @@ async function handleCaptureForOverlay(area, tab) {
       console.warn('AddFlashcard: sending showIoIframeEditor failed, opening editor tab instead', err);
       handleOpenImageOcclusionEditor(croppedImage, tab.title);
     }
+  });
+}
+
+// Image Occlusion helper: Capture area and open editor in new tab
+async function handleCaptureForEditorTab(area, tab) {
+  chrome.tabs.captureVisibleTab(null, { format: 'png' }, async (dataUrl) => {
+    if (chrome.runtime.lastError) {
+      console.error(chrome.runtime.lastError);
+      return;
+    }
+
+    const croppedImage = area ? await cropImage(dataUrl, area) : dataUrl;
+    handleOpenImageOcclusionEditor(croppedImage, tab?.title || 'Image Occlusion');
   });
 }
 
