@@ -5,7 +5,7 @@ class StorageManager {
   constructor() {
     this.storageDir = null;
     this.isFileSystemAvailable = false;
-    this.syncInterval = 5000; // Sync every 5 seconds
+    this.syncInterval = 5 * 60 * 1000; // Sync every 5 minutes
     this.syncTimer = null;
     this.lastBrowserUpdate = 0;
     this.lastFileUpdate = 0;
@@ -42,10 +42,10 @@ class StorageManager {
     }
 
     try {
-      this.storageDir = await window.showDirectoryPicker({
-        mode: 'readwrite',
-        startIn: 'documents'
-      });
+    this.storageDir = await window.showDirectoryPicker({
+      mode: 'readwrite',
+      startIn: 'documents'
+    });
 
       // Save directory handle for future sessions
       await this.saveDirectoryHandle();
@@ -403,6 +403,15 @@ if (chrome && chrome.storage && chrome.storage.onChanged) {
       console.log('[AddFlashcard][storage.onChanged] keys:', Object.keys(changes));
       for (const key in changes) {
         console.log('[AddFlashcard][storage.onChanged] ', key, '=>', changes[key]);
+      }
+
+      const dataChanged = !!changes.cards || !!changes.decks;
+      const lastUpdateChanged = !!changes.lastUpdate;
+
+      if (dataChanged && !lastUpdateChanged) {
+        chrome.storage.local.set({ lastUpdate: Date.now() }, () => {
+          console.log('[AddFlashcard][storage.onChanged] lastUpdate updated');
+        });
       }
     } catch (err) {
       console.log('[AddFlashcard][storage.onChanged] error printing changes', err);

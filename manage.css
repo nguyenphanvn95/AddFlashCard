@@ -59,6 +59,44 @@ body {
   gap: 12px;
 }
 
+.sync-bar {
+  max-width: 1600px;
+  margin: 12px auto 0 auto;
+  padding: 8px 32px 0 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sync-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sync-bar-right {
+  display: flex;
+  align-items: center;
+}
+
+.sync-status {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .sync-bar {
+    padding: 8px 20px 0 20px;
+  }
+}
+
 /* Buttons */
 .btn {
   padding: 10px 20px;
@@ -1478,4 +1516,3 @@ body {
   border-color: #60a5fa;
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
-

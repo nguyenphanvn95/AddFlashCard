@@ -13,6 +13,9 @@ const importFileInput = document.getElementById('importFileInput');
 const emptyState = document.getElementById('emptyState');
 const studyModeBtn = document.getElementById('studyModeBtn');
 const tagFilter = document.getElementById('tagFilter');
+const selectSyncFolderBtn = document.getElementById('selectSyncFolderBtn');
+const syncNowBtn = document.getElementById('syncNowBtn');
+const syncStatusText = document.getElementById('syncStatusText');
 
 // Modal elements
 const editModal = document.getElementById('editModal');
@@ -34,82 +37,137 @@ let currentDeck = null;
 let currentCard = null;
 let allCards = [];
 let allDecks = [];
+let syncStatusTimer = null;
+const defaultSyncPath = 'C:\\Users\\Admin\\Documents\\GitHub\\AddFlashCard\\data-sync';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  setupEventListeners();
-  setupRichTextShortcuts();
+  (async () => {
+    await initStorageSync();
+    await loadData();
+    setupEventListeners();
+    setupRichTextShortcuts();
 
-  // Check if we should open deck creation modal
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('mode') === 'createDeck') {
-    // Switch to home view and open deck modal
-    const homeTab = document.querySelector('[data-tab="home"]');
-    if (homeTab) {
-      homeTab.click(); // Switch to home view
-      
-      // Wait for integratedManager to be ready, then open modal
-      const checkAndOpen = () => {
-        if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
-          console.log('Opening deck creation modal...');
-          window.integratedManager.showDeckModal();
-          // Clean up URL after opening
-          window.history.replaceState({}, document.title, chrome.runtime.getURL('manage.html'));
-        } else {
-          // Retry after a bit
-          setTimeout(checkAndOpen, 100);
-        }
-      };
-      
-      // Start checking with initial delay
-      setTimeout(checkAndOpen, 200);
-    }
-  }
-
-  // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
-  // so the manager reflects changes immediately without manual reload.
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== 'local') return;
-
-    let needsRender = false;
-
-    if (changes.cards) {
-      allCards = changes.cards.newValue || [];
-      needsRender = true;
-    }
-
-    if (changes.decks) {
-      allDecks = changes.decks.newValue || ['Default'];
-      needsRender = true;
-    }
-
-    if (needsRender) {
-      renderDecks();
-      renderCards();
-    }
-  });
-
-  // Handle messages from sidebar to open manager in create deck mode
-  window.addEventListener('message', (event) => {
-    if (event.data.action === 'openManagePage' && event.data.mode === 'createDeck') {
+    // Check if we should open deck creation modal
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'createDeck') {
       // Switch to home view and open deck modal
       const homeTab = document.querySelector('[data-tab="home"]');
-      const cardsTab = document.querySelector('[data-tab="cards"]');
-      
-      if (homeTab && cardsTab) {
+      if (homeTab) {
         homeTab.click(); // Switch to home view
         
-        // Wait a moment for view to switch, then open modal
-        setTimeout(() => {
+        // Wait for integratedManager to be ready, then open modal
+        const checkAndOpen = () => {
           if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+            console.log('Opening deck creation modal...');
             window.integratedManager.showDeckModal();
+            // Clean up URL after opening
+            window.history.replaceState({}, document.title, chrome.runtime.getURL('manage.html'));
+          } else {
+            // Retry after a bit
+            setTimeout(checkAndOpen, 100);
           }
-        }, 100);
+        };
+        
+        // Start checking with initial delay
+        setTimeout(checkAndOpen, 200);
       }
     }
-  });
+
+    // Auto-refresh UI when cards/decks are updated elsewhere (e.g. sidebar edit/save)
+    // so the manager reflects changes immediately without manual reload.
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return;
+
+      let needsRender = false;
+
+      if (changes.cards) {
+        allCards = changes.cards.newValue || [];
+        needsRender = true;
+      }
+
+      if (changes.decks) {
+        allDecks = changes.decks.newValue || ['Default'];
+        needsRender = true;
+      }
+
+      if (needsRender) {
+        renderDecks();
+        renderCards();
+      }
+    });
+
+    // Handle messages from sidebar to open manager in create deck mode
+    window.addEventListener('message', (event) => {
+      if (event.data.action === 'openManagePage' && event.data.mode === 'createDeck') {
+        // Switch to home view and open deck modal
+        const homeTab = document.querySelector('[data-tab="home"]');
+        const cardsTab = document.querySelector('[data-tab="cards"]');
+        
+        if (homeTab && cardsTab) {
+          homeTab.click(); // Switch to home view
+          
+          // Wait a moment for view to switch, then open modal
+          setTimeout(() => {
+            if (window.integratedManager && typeof window.integratedManager.showDeckModal === 'function') {
+              window.integratedManager.showDeckModal();
+            }
+          }, 100);
+        }
+      }
+    });
+  })();
 });
+
+async function initStorageSync() {
+  if (!syncStatusText) return;
+  if (!window.storageManager) {
+    syncStatusText.textContent = 'Auto-sync: Không khả dụng (thiếu storage-manager.js)';
+    return;
+  }
+
+  try {
+    await window.storageManager.initialize();
+    updateSyncStatus();
+    if (!syncStatusTimer) {
+      syncStatusTimer = setInterval(() => {
+        updateSyncStatus();
+      }, 3000);
+    }
+  } catch (error) {
+    console.error('Storage sync init error:', error);
+    syncStatusText.textContent = 'Auto-sync: Lỗi khởi tạo';
+  }
+}
+
+function formatTimestamp(value) {
+  if (!value) return 'chưa có';
+  try {
+    return new Date(value).toLocaleString('vi-VN');
+  } catch {
+    return 'chưa có';
+  }
+}
+
+function updateSyncStatus() {
+  if (!syncStatusText || !window.storageManager) return;
+
+  const status = window.storageManager.getStatus();
+  if (!status.fileSystemAvailable) {
+    syncStatusText.textContent = 'Auto-sync: Trình duyệt không hỗ trợ';
+    return;
+  }
+
+  if (!status.directorySelected) {
+    syncStatusText.textContent = `Auto-sync: Chưa chọn thư mục. Mặc định mong muốn: ${defaultSyncPath}\\flashcards.json`;
+    return;
+  }
+
+  const folderName = window.storageManager.storageDir ? window.storageManager.storageDir.name : 'Thư mục đã chọn';
+  const browserTime = formatTimestamp(status.lastBrowserUpdate);
+  const fileTime = formatTimestamp(status.lastFileUpdate);
+  syncStatusText.textContent = `Auto-sync: ${folderName}\\flashcards.json | Browser: ${browserTime} | File: ${fileTime}`;
+}
 
 // Load all data
 function loadData() {
@@ -154,6 +212,41 @@ function setupEventListeners() {
   importFileInput.addEventListener('change', importData);
   searchInput.addEventListener('input', renderCards);
   sortSelect.addEventListener('change', renderCards);
+
+  if (selectSyncFolderBtn) {
+    selectSyncFolderBtn.addEventListener('click', async () => {
+      if (!window.storageManager) {
+        alert('Storage manager chưa sẵn sàng.');
+        return;
+      }
+      try {
+        const ok = await window.storageManager.requestDirectoryAccess();
+        if (ok) {
+          await window.storageManager.syncBothWays();
+        }
+        updateSyncStatus();
+      } catch (error) {
+        console.error('Select sync folder error:', error);
+        alert('Không thể chọn thư mục sync. Vui lòng thử lại.');
+      }
+    });
+  }
+
+  if (syncNowBtn) {
+    syncNowBtn.addEventListener('click', async () => {
+      if (!window.storageManager) {
+        alert('Storage manager chưa sẵn sàng.');
+        return;
+      }
+      try {
+        await window.storageManager.syncBothWays();
+        updateSyncStatus();
+      } catch (error) {
+        console.error('Sync now error:', error);
+        alert('Sync thất bại. Vui lòng thử lại.');
+      }
+    });
+  }
   
   // Modal
   modalClose.addEventListener('click', closeEditModal);
