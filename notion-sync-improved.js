@@ -678,41 +678,79 @@ async function syncCardsToStorage(deckName, toggles) {
     chrome.storage.local.get(['cards', 'decks'], async (result) => {
       try {
         let cards = result.cards || [];
-        let decks = result.decks || ['Default'];
-        
-        // Ensure deck exists
-        if (!decks.includes(deckName)) {
-          decks.push(deckName);
+        const normalizedDeckName = (deckName || 'Default').trim() || 'Default';
+        let decks = result.decks;
+        let targetDeckId = null;
+
+        // Support both deck formats:
+        // - Legacy array: ['Default', 'Deck A']
+        // - New object: { deck_xxx: { name, ... } }
+        if (Array.isArray(decks)) {
+          decks = [...decks];
+          if (!decks.includes(normalizedDeckName)) {
+            decks.push(normalizedDeckName);
+          }
+        } else if (decks && typeof decks === 'object') {
+          decks = { ...decks };
+          for (const [id, deck] of Object.entries(decks)) {
+            const existingName = typeof deck === 'string' ? deck : deck?.name;
+            if (existingName === normalizedDeckName) {
+              targetDeckId = id;
+              break;
+            }
+          }
+
+          if (!targetDeckId) {
+            targetDeckId = `deck_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+            decks[targetDeckId] = {
+              name: normalizedDeckName,
+              description: '',
+              emoji: '\uD83D\uDCDA',
+              color: '#10b981',
+              pinned: false,
+              created: Date.now(),
+              lastModified: Date.now(),
+            };
+          }
+        } else {
+          decks = ['Default'];
+          if (!decks.includes(normalizedDeckName)) {
+            decks.push(normalizedDeckName);
+          }
         }
-        
+
         // Get existing cards in this deck
-        const existingCards = cards.filter(c => c.deck === deckName);
-        
+        const existingCards = cards.filter(c =>
+          c.deck === normalizedDeckName || (targetDeckId && c.deckId === targetDeckId)
+        );
+
         // Add or update cards
         const now = Date.now();
         let addedCount = 0;
         let updatedCount = 0;
-        
+
         for (const toggle of toggles) {
           // Check if card with same front already exists in this deck
           const duplicate = existingCards.find(card => card.front === toggle.front);
-          
+
           if (duplicate) {
             // Update existing card's back
             const cardIndex = cards.findIndex(c => c.id === duplicate.id);
             if (cardIndex !== -1) {
+              cards[cardIndex].deck = normalizedDeckName;
+              if (targetDeckId) cards[cardIndex].deckId = targetDeckId;
               cards[cardIndex].back = toggle.back;
               cards[cardIndex].lastReviewed = now;
-              log(`  🔄 Updated card: "${toggle.front.substring(0, 40)}..."`);
+              log(`  Updated card: "${toggle.front.substring(0, 40)}..."`);
               updatedCount++;
             }
           } else {
             // Create new card
-            cards.push({
+            const card = {
               id: `notion-${now}-${toggle.index}`,
               front: toggle.front,
               back: toggle.back,
-              deck: deckName,
+              deck: normalizedDeckName,
               created: now,
               lastReviewed: 0,
               nextReview: now,
@@ -721,22 +759,26 @@ async function syncCardsToStorage(deckName, toggles) {
               repetitions: 0,
               source: 'notion',
               sourceUrl: toggle.url,
-            });
-            log(`  ✨ Created card: "${toggle.front.substring(0, 40)}..."`);
+            };
+            if (targetDeckId) {
+              card.deckId = targetDeckId;
+            }
+            cards.push(card);
+            log(`  Created card: "${toggle.front.substring(0, 40)}..."`);
             addedCount++;
           }
         }
-        
+
         // Save to storage
         chrome.storage.local.set({ cards, decks }, () => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
-            log(`✅ Sync complete: +${addedCount} new, ~${updatedCount} updated`);
+            log(`Sync complete: +${addedCount} new, ~${updatedCount} updated`);
             resolve();
           }
         });
-        
+
       } catch (error) {
         reject(error);
       }
