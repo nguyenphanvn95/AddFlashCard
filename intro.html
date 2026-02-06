@@ -136,6 +136,291 @@
             color: var(--primary);
         }
 
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Sections */
+        section {
+            padding: 60px 0;
+        }
+
+        .section-title {
+            font-size: 2.5em;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            color: var(--text-gray);
+            margin-bottom: 50px;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: var(--bg-white);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .feature-description {
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: var(--text-gray);
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* How it works */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 30px;
+            background: var(--bg-white);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(79, 70, 229, 0.15);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+
+        .step-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .step-description {
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        /* Screenshots Section */
+        .screenshot-section {
+            background: var(--bg-light);
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .screenshot-card {
+            background: var(--bg-white);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+        }
+
+        .screenshot-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+        }
+
+        .screenshot-content {
+            padding: 25px;
+        }
+
+        .screenshot-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .screenshot-description {
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .tech-badge {
+            background: var(--bg-white);
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tech-badge:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.2);
+        }
+
+        .tech-icon {
+            font-size: 1.5em;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 50px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(79, 70, 229, 0.3);
+        }
+
+        .highlight-box h3 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .highlight-box p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .footer-link {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-link:hover {
+            opacity: 1;
+        }
+
+        .copyright {
+            opacity: 0.6;
+            font-size: 0.9em;
+        }
+
+        /* Animations */
+        .fade-in-up {
+            opacity: 0;
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* Setup Modal */
         .setup-modal {
             display: none;
@@ -217,19 +502,17 @@
         }
 
         .setup-option:hover {
-            background: #EEF2FF;
             border-color: var(--primary);
+            background: rgba(79, 70, 229, 0.05);
         }
 
         .setup-option.selected {
-            background: #EEF2FF;
             border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+            background: rgba(79, 70, 229, 0.1);
         }
 
         .setup-option-icon {
-            font-size: 32px;
-            flex-shrink: 0;
+            font-size: 2em;
         }
 
         .setup-option-content {
@@ -237,39 +520,36 @@
         }
 
         .setup-option-title {
-            font-size: 1.2em;
             font-weight: 600;
-            color: var(--text-dark);
+            font-size: 1.1em;
             margin-bottom: 5px;
         }
 
         .setup-option-desc {
-            font-size: 0.95em;
             color: var(--text-gray);
+            font-size: 0.9em;
         }
 
         .setup-folder-status {
-            display: none;
-            padding: 15px;
-            background: #ECFDF5;
-            border: 2px solid #10B981;
+            background: #e0f2fe;
+            border: 2px solid #0ea5e9;
             border-radius: 12px;
-            margin-top: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            display: none;
         }
 
         .setup-folder-status.active {
             display: block;
         }
 
-        .setup-folder-status strong {
-            color: var(--success);
-            font-size: 1.1em;
-        }
-
         .setup-folder-path {
-            color: var(--text-gray);
-            font-size: 0.95em;
-            margin-top: 5px;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9em;
             word-break: break-all;
         }
 
@@ -280,23 +560,24 @@
         }
 
         .setup-btn {
-            padding: 15px 35px;
+            padding: 12px 30px;
             border: none;
             border-radius: 50px;
-            font-weight: 600;
             font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .setup-btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: var(--primary);
             color: white;
         }
 
         .setup-btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
         }
 
         .setup-btn-primary:disabled {
@@ -304,347 +585,22 @@
             cursor: not-allowed;
         }
 
-        .setup-btn-skip {
-            background: transparent;
-            color: var(--text-gray);
-            border: 2px solid var(--border);
-        }
-
-        .setup-btn-skip:hover {
-            background: var(--bg-light);
-            border-color: var(--text-gray);
-        }
-
-        /* Container */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Section */
-        section {
-            padding: 80px 20px;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            color: var(--text-dark);
-        }
-
-        .section-subtitle {
-            text-align: center;
-            font-size: 1.2em;
-            color: var(--text-gray);
-            margin-bottom: 60px;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Features Grid */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 40px;
-            margin-top: 60px;
-        }
-
-        .feature-card {
-            background: var(--bg-white);
-            padding: 40px 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px var(--shadow);
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 40px var(--shadow);
-        }
-
-        .feature-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 25px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-        }
-
-        .feature-title {
-            font-size: 1.5em;
-            margin-bottom: 15px;
-            color: var(--text-dark);
-        }
-
-        .feature-description {
-            color: var(--text-gray);
-            line-height: 1.8;
-        }
-
-        /* Screenshot Section */
-        .screenshot-section {
-            background: var(--bg-white);
-        }
-
-        .screenshots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 40px;
-            margin-top: 60px;
-        }
-
-        .screenshot-card {
-            background: var(--bg-light);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px var(--shadow);
-            transition: all 0.3s ease;
-        }
-
-        .screenshot-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 30px var(--shadow);
-        }
-
-        .screenshot-image {
-            width: 100%;
-            height: 300px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .new-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            font-size: 3em;
-            position: relative;
-        }
-
-        .screenshot-image::after {
-            content: 'Chèn ảnh tại đây';
-            position: absolute;
-            bottom: 20px;
-            font-size: 0.4em;
-            opacity: 0.7;
-        }
-
-        .screenshot-content {
-            padding: 30px;
-        }
-
-        .screenshot-title {
-            font-size: 1.4em;
-            margin-bottom: 15px;
-            color: var(--text-dark);
-        }
-
-        .screenshot-description {
-            color: var(--text-gray);
-        }
-
-        /* How It Works */
-        .steps-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-top: 60px;
-        }
-
-        .step-card {
-            position: relative;
-            padding: 40px 30px;
-            background: var(--bg-white);
-            border-radius: 16px;
-            box-shadow: 0 4px 20px var(--shadow);
-            text-align: center;
-        }
-
-        .step-number {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5em;
+            font-size: 0.7em;
+            padding: 3px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
             font-weight: 700;
-            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            vertical-align: middle;
+            animation: pulse 2s ease-in-out infinite;
         }
 
-        .step-title {
-            font-size: 1.3em;
-            margin: 20px 0 15px;
-            color: var(--text-dark);
-        }
-
-        .step-description {
-            color: var(--text-gray);
-        }
-
-        /* Tech Stack */
-        .tech-stack {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 40px;
-        }
-
-        .tech-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 24px;
-            background: var(--bg-white);
-            border-radius: 50px;
-            box-shadow: 0 2px 10px var(--shadow);
-            font-weight: 600;
-            color: var(--text-dark);
-            transition: all 0.3s ease;
-        }
-
-        .tech-badge:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 20px var(--shadow);
-        }
-
-        .tech-icon {
-            font-size: 1.5em;
-        }
-
-        /* Footer */
-        footer {
-            background: var(--text-dark);
-            color: white;
-            padding: 60px 20px 30px;
-            text-align: center;
-        }
-
-        .footer-links {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-
-        .footer-link {
-            color: white;
-            text-decoration: none;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-
-        .footer-link:hover {
-            opacity: 1;
-        }
-
-        .copyright {
-            margin-top: 30px;
-            opacity: 0.6;
-            font-size: 0.9em;
-        }
-
-        /* Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 40px;
-            margin-top: 60px;
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 30px;
-            background: var(--bg-white);
-            border-radius: 16px;
-            box-shadow: 0 4px 20px var(--shadow);
-        }
-
-        .stat-number {
-            font-size: 3em;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .stat-label {
-            color: var(--text-gray);
-            font-size: 1.1em;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2em;
-            }
-
-            .subtitle {
-                font-size: 1.1em;
-            }
-
-            .section-title {
-                font-size: 2em;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-            }
-
-            .screenshots-grid,
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .fade-in-up {
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        /* Highlight Box */
-        .highlight-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 60px 40px;
-            border-radius: 20px;
-            text-align: center;
-            margin: 60px 0;
-            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-        }
-
-        .highlight-box h3 {
-            font-size: 2em;
-            margin-bottom: 20px;
-        }
-
-        .highlight-box p {
-            font-size: 1.2em;
-            opacity: 0.95;
-            margin-bottom: 30px;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
     </style>
 </head>
@@ -652,106 +608,156 @@
     <!-- Header -->
     <header>
         <div class="header-content">
-            <div class="logo">📚</div>
-            <h1 class="fade-in-up">AddFlashcard</h1>
-            <p class="subtitle fade-in-up">Extension Tạo Flashcard Anki Thông Minh với Image Occlusion</p>
-            <div class="version fade-in-up">Version 2.7.0 - Enhanced</div>
-            <div class="cta-buttons fade-in-up">
-                <a href="#features" class="btn">Xem tính năng</a>
-                <a href="manage.html" class="btn btn-secondary">Quản lý Cards</a>
+            <div class="logo">🎴</div>
+            <h1>AddFlashcard</h1>
+            <p class="subtitle">Extension tạo flashcard thông minh với Image Occlusion, PDF Viewer, Notion Sync và Allow Copy</p>
+            <p class="version">Version 2.8.0</p>
+            
+            <div class="cta-buttons">
+                <a href="manage.html" class="btn">Bắt đầu ngay</a>
+                <a href="#features" class="btn btn-secondary">Tìm hiểu thêm</a>
             </div>
         </div>
     </header>
-
-    <!-- Stats Section -->
-    <section>
-        <div class="container">
-            <div class="stats-grid">
-                <div class="stat-card fade-in-up">
-                    <div class="stat-number">10+</div>
-                    <div class="stat-label">Tính năng mạnh mẽ</div>
-                </div>
-                <div class="stat-card fade-in-up">
-                    <div class="stat-number">3</div>
-                    <div class="stat-label">Cách tạo Image Occlusion</div>
-                </div>
-                <div class="stat-card fade-in-up">
-                    <div class="stat-number">100%</div>
-                    <div class="stat-label">Tương thích Anki</div>
-                </div>
-                <div class="stat-card fade-in-up">
-                    <div class="stat-number">Free</div>
-                    <div class="stat-label">Miễn phí & Mã nguồn mở</div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- Features Section -->
     <section id="features">
         <div class="container">
             <h2 class="section-title">✨ Tính năng nổi bật</h2>
-            <p class="section-subtitle">Tất cả những gì bạn cần để tạo flashcard Anki một cách nhanh chóng và hiệu quả</p>
+            <p class="section-subtitle">Tất cả công cụ bạn cần để học tập hiệu quả với Anki</p>
             
             <div class="features-grid">
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">⌨️</div>
-                    <h3 class="feature-title">Alt+Click</h3>
-                    <p class="feature-description">Giữ phím Alt (hoặc Option trên Mac) và click vào ảnh để gửi ngay vào Image Occlusion Editor. Nhanh nhất có thể!</p>
+                    <span class="feature-icon">🖼️</span>
+                    <h3 class="feature-title">Image Occlusion <span class="new-badge">NEW</span></h3>
+                    <p class="feature-description">Tạo flashcard che mờ từ bất kỳ ảnh nào trên web. Hoàn hảo cho y khoa, địa lý, sơ đồ, biểu đồ...</p>
+                    <ul class="feature-list">
+                        <li>Hover icon tự động xuất hiện trên mọi ảnh</li>
+                        <li>Alt + Click để mở editor nhanh</li>
+                        <li>Vẽ hình chữ nhật và ellipse</li>
+                        <li>Multi-cards mode (mỗi khung = 1 thẻ)</li>
+                        <li>Export APKG hoặc sync với AnkiConnect</li>
+                        <li>Tùy chỉnh bật/tắt trong Settings</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">🖼️</div>
-                    <h3 class="feature-title">Image Occlusion</h3>
-                    <p class="feature-description">Tạo flashcard từ ảnh với các vùng che mờ. Hoàn hảo cho việc học giải phẫu, bản đồ, sơ đồ và biểu đồ.</p>
+                    <span class="feature-icon">📄</span>
+                    <h3 class="feature-title">PDF Viewer <span class="new-badge">NEW</span></h3>
+                    <p class="feature-description">Đọc PDF và tạo flashcard trực tiếp từ tài liệu học tập, sách giáo khoa, paper...</p>
+                    <ul class="feature-list">
+                        <li>Mở PDF trực tiếp trong extension</li>
+                        <li>Highlight và tạo flashcard ngay</li>
+                        <li>Zoom, search, navigate pages</li>
+                        <li>Lưu progress đọc tự động</li>
+                        <li>Context menu: "Open in AddFlashcard PDF Viewer"</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">📄</div>
-                    <h3 class="feature-title">PDF Support</h3>
-                    <p class="feature-description">Mở PDF trực tiếp trong trình duyệt và tạo flashcard từ văn bản hoặc ảnh trong PDF. Hỗ trợ highlight và annotations.</p>
+                    <span class="feature-icon">📝</span>
+                    <h3 class="feature-title">Notion Sync <span class="new-badge">IMPROVED</span></h3>
+                    <p class="feature-description">Đồng bộ flashcard từ Notion database với auto-detect fields thông minh</p>
+                    <ul class="feature-list">
+                        <li>Tự động phát hiện Front, Back, Tags, Deck</li>
+                        <li>Hỗ trợ text, images, rich text</li>
+                        <li>Sync incremental (chỉ sync mới/sửa)</li>
+                        <li>Xem preview trong sidebar</li>
+                        <li>Export hàng loạt ra APKG</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">📝</div>
-                    <h3 class="feature-title">Notion Sync</h3>
-                    <p class="feature-description">Đồng bộ flashcard từ Notion database. Hỗ trợ text, images, audio và video. Tự động detect và import.</p>
+                    <span class="feature-icon">📋</span>
+                    <h3 class="feature-title">Allow Copy <span class="new-badge">NEW</span></h3>
+                    <p class="feature-description">Cho phép copy và chuột phải trên các trang web bị chặn</p>
+                    <ul class="feature-list">
+                        <li>Bật/tắt nhanh từ popup hoặc icon</li>
+                        <li>Bypass copy protection</li>
+                        <li>Enable context menu (chuột phải)</li>
+                        <li>Hoạt động trên mọi trang web</li>
+                        <li>Tự động lưu trạng thái</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">💾</div>
-                    <h3 class="feature-title">Export APKG</h3>
-                    <p class="feature-description">Xuất flashcard ra file .apkg chuẩn Anki. Hỗ trợ media (ảnh, audio, video) và import trực tiếp vào Anki Desktop.</p>
+                    <span class="feature-icon">🎨</span>
+                    <h3 class="feature-title">Rich Text Editor <span class="new-badge">ENHANCED</span></h3>
+                    <p class="feature-description">Toolbar nâng cao với đầy đủ công cụ định dạng văn bản</p>
+                    <ul class="feature-list">
+                        <li>Bold, Italic, Underline, Strikethrough</li>
+                        <li>Highlight với color picker</li>
+                        <li>Text color picker</li>
+                        <li>Superscript, Subscript</li>
+                        <li>Code, Blockquote</li>
+                        <li>Lists (ordered/unordered)</li>
+                        <li>Links, Images, Tables</li>
+                        <li>Undo/Redo, Clear formatting</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">🔄</div>
-                    <h3 class="feature-title">AnkiConnect</h3>
-                    <p class="feature-description">Gửi flashcard trực tiếp đến Anki Desktop đang chạy qua AnkiConnect add-on. Không cần export/import thủ công.</p>
+                    <span class="feature-icon">💾</span>
+                    <h3 class="feature-title">Auto Backup & Sync</h3>
+                    <p class="feature-description">Bảo vệ dữ liệu với auto-backup vào thư mục cloud</p>
+                    <ul class="feature-list">
+                        <li>Tự động backup mỗi 5 phút</li>
+                        <li>Sync với Google Drive/OneDrive</li>
+                        <li>Import/Export JSON</li>
+                        <li>Restore từ backup</li>
+                        <li>Multi-device sync</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">⚡</div>
-                    <h3 class="feature-title">Quick Capture</h3>
-                    <p class="feature-description">Chọn văn bản trên web và nhấn Alt+A (Front) hoặc Alt+S (Back) để thêm nhanh vào flashcard đang soạn.</p>
+                    <span class="feature-icon">📦</span>
+                    <h3 class="feature-title">Anki Export</h3>
+                    <p class="feature-description">Export flashcard sang định dạng APKG chuẩn Anki</p>
+                    <ul class="feature-list">
+                        <li>Export APKG file trực tiếp</li>
+                        <li>Hỗ trợ Image Occlusion format</li>
+                        <li>Basic/Cloze/Image Occlusion cards</li>
+                        <li>Tags, Decks, Media handling</li>
+                        <li>AnkiConnect integration</li>
+                    </ul>
                 </div>
 
                 <div class="feature-card fade-in-up">
-                    <div class="feature-icon">🎨</div>
-                    <h3 class="feature-title">Rich Editor</h3>
-                    <p class="feature-description">Editor hỗ trợ HTML formatting, code blocks, tables, và media embeds. Tương thích 100% với Anki.</p>
+                    <span class="feature-icon">🎯</span>
+                    <h3 class="feature-title">Smart Selection</h3>
+                    <p class="feature-description">Tạo flashcard nhanh từ text trên bất kỳ trang web nào</p>
+                    <ul class="feature-list">
+                        <li>Context menu: "Add to Front/Back"</li>
+                        <li>Keyboard shortcuts: Alt+A, Alt+S</li>
+                        <li>Sidebar mode để xem realtime</li>
+                        <li>Auto-capture source URL</li>
+                        <li>Smart text cleanup</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <span class="feature-icon">📱</span>
+                    <h3 class="feature-title">Integrated Manager</h3>
+                    <p class="feature-description">Quản lý tất cả flashcard trong một giao diện thống nhất</p>
+                    <ul class="feature-list">
+                        <li>Xem, sửa, xóa cards</li>
+                        <li>Filter theo deck, tags, date</li>
+                        <li>Bulk operations (delete, export)</li>
+                        <li>Statistics và charts</li>
+                        <li>Dark/Light theme</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- How It Works -->
-    <section style="background: var(--bg-white);">
+    <!-- How it works -->
+    <section>
         <div class="container">
-            <h2 class="section-title">🚀 Cách sử dụng</h2>
-            <p class="section-subtitle">3 bước đơn giản để tạo Image Occlusion flashcard</p>
+            <h2 class="section-title">🚀 Cách sử dụng Image Occlusion</h2>
+            <p class="section-subtitle">Chỉ 3 bước đơn giản để tạo flashcard che mờ từ bất kỳ ảnh nào</p>
             
-            <div class="steps-container">
+            <div class="steps-grid">
                 <div class="step-card fade-in-up">
                     <div class="step-number">1</div>
                     <h3 class="step-title">Tìm ảnh</h3>
@@ -783,8 +789,6 @@
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         🎯
-                        <!-- Chèn ảnh hover icon tại đây: -->
-                        <!-- <img src="images/hover-icon-demo.png" alt="Hover Icon Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">Hover Icon trên ảnh</h3>
@@ -795,8 +799,6 @@
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         ✏️
-                        <!-- Chèn ảnh Image Occlusion Editor tại đây: -->
-                        <!-- <img src="images/editor-demo.png" alt="Editor Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">Image Occlusion Editor</h3>
@@ -807,8 +809,6 @@
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         📱
-                        <!-- Chèn ảnh sidebar tại đây: -->
-                        <!-- <img src="images/sidebar-demo.png" alt="Sidebar Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">Sidebar & Card Manager</h3>
@@ -819,8 +819,6 @@
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         ⚙️
-                        <!-- Chèn ảnh settings tại đây: -->
-                        <!-- <img src="images/settings-demo.png" alt="Settings Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">Settings Panel</h3>
@@ -831,24 +829,50 @@
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         📄
-                        <!-- Chèn ảnh PDF viewer tại đây: -->
-                        <!-- <img src="images/pdf-demo.png" alt="PDF Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">PDF Viewer</h3>
-                        <p class="screenshot-description">Đọc PDF và tạo flashcard trực tiếp. Hỗ trợ highlight, search, và zoom.</p>
+                        <p class="screenshot-description">Đọc PDF và tạo flashcard trực tiếp. Hỗ trợ highlight, search, zoom và navigation.</p>
                     </div>
                 </div>
 
                 <div class="screenshot-card fade-in-up">
                     <div class="screenshot-image">
                         📝
-                        <!-- Chèn ảnh Notion sync tại đây: -->
-                        <!-- <img src="images/notion-demo.png" alt="Notion Demo" style="width: 100%; height: 100%; object-fit: cover;"> -->
                     </div>
                     <div class="screenshot-content">
                         <h3 class="screenshot-title">Notion Integration</h3>
-                        <p class="screenshot-description">Sync flashcard từ Notion database. Auto-detect fields và media.</p>
+                        <p class="screenshot-description">Sync flashcard từ Notion database. Auto-detect fields và media với thuật toán thông minh.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        📋
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Allow Copy Feature</h3>
+                        <p class="screenshot-description">Cho phép copy và chuột phải trên các trang web bị chặn. Bật/tắt dễ dàng từ popup.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        🎨
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Rich Text Toolbar</h3>
+                        <p class="screenshot-description">Toolbar nâng cao với color picker, formatting, links, images, tables và nhiều hơn nữa.</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card fade-in-up">
+                    <div class="screenshot-image">
+                        📖
+                    </div>
+                    <div class="screenshot-content">
+                        <h3 class="screenshot-title">Study Mode</h3>
+                        <p class="screenshot-description">Học flashcard ngay trong extension với thuật toán spaced repetition.</p>
                     </div>
                 </div>
             </div>
@@ -895,12 +919,11 @@
         <div class="container">
             <div class="highlight-box fade-in-up">
                 <h3>🎓 Hoàn hảo cho mọi học sinh, sinh viên</h3>
-                <p>Từ học tiếng Anh, y khoa, lịch sử, địa lý đến lập trình - AddFlashcard giúp bạn học hiệu quả hơn với Image Occlusion</p>
+                <p>Từ học tiếng Anh, y khoa, lịch sử, địa lý đến lập trình - AddFlashcard giúp bạn học hiệu quả hơn với Image Occlusion, PDF Viewer, Rich Text Editor và Auto Sync</p>
                 <a href="manage.html" class="btn">Bắt đầu ngay - Miễn phí!</a>
             </div>
         </div>
     </section>
-
 
     <!-- Setup Modal -->
     <div class="setup-modal" id="setupModal">
@@ -930,7 +953,7 @@
                     <div class="setup-option-icon">⏭️</div>
                     <div class="setup-option-content">
                         <div class="setup-option-title">Bỏ qua bây giờ</div>
-                        <div class="setup-option-desc">Bạn có thể thiết lập sau!</div>
+                        <div class="setup-option-desc">Bạn có thể thiết lập sau trong Settings!</div>
                     </div>
                 </div>
             </div>
@@ -950,13 +973,12 @@
                 <a href="#features" class="footer-link">Tính năng</a>
                 <a href="#screenshots" class="footer-link">Ảnh minh họa</a>
                 <a href="manage.html" class="footer-link">Quản lý Cards</a>
-                <a href="https://github.com" class="footer-link">GitHub</a>
-                <a href="#" class="footer-link">Tài liệu</a>
-                <a href="#" class="footer-link">Báo lỗi</a>
+                <a href="https://github.com/nguyenphanvn95/" class="footer-link">GitHub</a>
+                <a href="huong-dan-su-dung.html" class="footer-link">Hướng dẫn</a>
             </div>
             
             <p class="copyright">
-                © 2025 AddFlashcard Extension. Made with ❤️ for Anki users.<br>
+                © 2025 AddFlashcard Extension v2.8.0. Made with ❤️ for Anki users.<br>
                 Licensed under MIT License. Free and Open Source.
             </p>
         </div>
@@ -965,4 +987,3 @@
     <script src="intro.js"></script>
 </body>
 </html>
-
