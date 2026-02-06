@@ -548,3 +548,127 @@ body {
 .notification.error {
   background-color: #e74c3c;
 }
+
+/* Popup theme overrides */
+body.theme-light {
+  background: #f4f7fb;
+  color: #1f2937;
+}
+
+body.theme-light .popup-container {
+  background: #f4f7fb;
+}
+
+body.theme-light .header {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #dbe3ee;
+}
+
+body.theme-light .header h1 {
+  color: #1e293b;
+}
+
+body.theme-light .quick-btn {
+  background: #eef2f7;
+  border: 1px solid #d0d9e5;
+  color: #334155;
+}
+
+body.theme-light .quick-btn:hover {
+  background: #e2e8f0;
+  border-color: #93c5fd;
+}
+
+body.theme-light .stats {
+  background: #ffffff;
+  border-bottom: 1px solid #dbe3ee;
+}
+
+body.theme-light .stat-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+body.theme-light .stat-label {
+  color: #64748b;
+}
+
+body.theme-light .stat-value {
+  color: #2563eb;
+}
+
+body.theme-light .actions {
+  background: #f4f7fb;
+}
+
+body.theme-light .action-btn {
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.16);
+}
+
+body.theme-light .footer {
+  border-top: 1px solid #dbe3ee;
+  color: #64748b;
+  background: #ffffff;
+}
+
+body.theme-light .footer .version {
+  color: #64748b;
+}
+
+body.theme-light .footer a {
+  color: #2563eb;
+}
+
+body.theme-dark {
+  background: #2c3e50;
+  color: #ecf0f1;
+}
+
+body.theme-dark .popup-container {
+  background: #2c3e50;
+}
+
+body.theme-dark .header {
+  background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  border-bottom: 1px solid #3d5266;
+}
+
+body.theme-dark .header h1 {
+  color: #ecf0f1;
+}
+
+body.theme-dark .quick-btn {
+  background: #34495e;
+  border: 1px solid #4a5f7f;
+  color: #ecf0f1;
+}
+
+body.theme-dark .quick-btn:hover {
+  background: #3d5266;
+  border-color: #5dade2;
+}
+
+body.theme-dark .stats {
+  background: #34495e;
+  border-bottom: 1px solid #3d5266;
+}
+
+body.theme-dark .stat-item {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid transparent;
+}
+
+body.theme-dark .stat-label {
+  color: #95a5a6;
+}
+
+body.theme-dark .stat-value {
+  color: #5dade2;
+}
+
+body.theme-dark .footer {
+  border-top: 1px solid #3d5266;
+  color: #7f8c8d;
+  background: #2c3e50;
+}

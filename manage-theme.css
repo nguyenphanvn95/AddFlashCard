@@ -37,6 +37,33 @@
   color: var(--light-text-secondary);
 }
 
+.theme-light .nav-tabs {
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+}
+
+.theme-light .nav-tab {
+  color: #64748b;
+}
+
+.theme-light .nav-tab:hover {
+  background: #dbe3ee;
+  color: #334155;
+}
+
+.theme-light .nav-tab.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.theme-light .sync-status {
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
 .theme-light .sidebar-left {
   background: var(--light-bg-card);
   border-right: 1px solid var(--light-border);
@@ -259,9 +286,23 @@
   background: #dc2626;
 }
 
+.theme-light .btn-success {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.theme-light .btn-success:hover {
+  background: #059669;
+}
+
 .theme-light .modal {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.theme-light .modal-content {
   background: var(--light-bg-card);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--light-border);
 }
 
 .theme-light .modal-header {
@@ -272,7 +313,17 @@
   color: var(--light-text);
 }
 
-.theme-light .form-label {
+.theme-light .modal-close {
+  color: #64748b;
+}
+
+.theme-light .modal-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.theme-light .form-label,
+.theme-light .form-group label {
   color: var(--light-text);
 }
 
@@ -286,6 +337,58 @@
 .theme-light .form-input:focus,
 .theme-light .form-select:focus {
   border-color: #3b82f6;
+}
+
+.theme-light .form-group small {
+  color: #64748b;
+}
+
+.theme-light .modal-footer {
+  border-top: 1px solid var(--light-border);
+}
+
+.theme-light .deck-checkbox-list {
+  background: #f8fafc;
+  border: 1px solid var(--light-border);
+}
+
+.theme-light .deck-checkbox-item {
+  background: #ffffff;
+}
+
+.theme-light .deck-checkbox-item:hover {
+  background: #f1f5f9;
+}
+
+.theme-light .deck-checkbox-item label {
+  color: var(--light-text);
+}
+
+.theme-light .deck-card-count {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.theme-light .progress-bar {
+  background: #e2e8f0;
+}
+
+.theme-light .progress-text {
+  color: #334155;
+}
+
+.theme-light .anki-status {
+  background: #f8fafc;
+  border: 1px solid var(--light-border);
+}
+
+.theme-light .field-mapping {
+  background: #f8fafc;
+  border: 1px solid var(--light-border);
+}
+
+.theme-light .mapping-row label {
+  color: #334155;
 }
 
 .theme-light .stats-card {
@@ -327,6 +430,33 @@
 
 .theme-dark .subtitle {
   color: var(--dark-text-secondary);
+}
+
+.theme-dark .nav-tabs {
+  background: #0b1220;
+  border: 1px solid #334155;
+}
+
+.theme-dark .nav-tab {
+  color: #94a3b8;
+}
+
+.theme-dark .nav-tab:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.theme-dark .nav-tab.active {
+  background: #1e293b;
+  color: #60a5fa;
+  box-shadow: inset 0 0 0 1px #475569;
+}
+
+.theme-dark .sync-status {
+  color: #cbd5e1;
+  background: #0b1220;
+  border: 1px solid #334155;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
 }
 
 .theme-dark .sidebar {
@@ -446,6 +576,10 @@
 }
 
 .theme-dark .modal {
+  background: rgba(2, 6, 23, 0.7);
+}
+
+.theme-dark .modal-content {
   background: var(--dark-bg-card);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   border: 1px solid var(--dark-border);
@@ -459,7 +593,17 @@
   color: var(--dark-text);
 }
 
-.theme-dark .form-label {
+.theme-dark .modal-close {
+  color: var(--dark-text-secondary);
+}
+
+.theme-dark .modal-close:hover {
+  background: #334155;
+  color: var(--dark-text);
+}
+
+.theme-dark .form-label,
+.theme-dark .form-group label {
   color: var(--dark-text);
 }
 
@@ -473,6 +617,18 @@
 .theme-dark .form-input:focus,
 .theme-dark .form-select:focus {
   border-color: #3b82f6;
+}
+
+.theme-dark .form-group small {
+  color: #94a3b8;
+}
+
+.theme-dark .modal-footer {
+  border-top: 1px solid var(--dark-border);
+}
+
+.theme-dark .deck-checkbox-item label {
+  color: var(--dark-text);
 }
 
 .theme-dark .stats-card {

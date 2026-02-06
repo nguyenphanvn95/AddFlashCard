@@ -219,9 +219,7 @@ class StudySession {
     let newCards = [];
     let learningCards = [];
     let reviewCards = [];
-    
-    const now = Date.now();
-    
+
     this.cards.forEach(card => {
       if (card.status === 'new') {
         newCards.push(card);
@@ -256,6 +254,9 @@ class StudySession {
       this.learningQueue.sort((a, b) => a.dueDate - b.dueDate);
       this.reviewQueue.sort((a, b) => a.dueDate - b.dueDate);
     }
+
+    // Track initial session size after limits are applied
+    this.initialQueueTotal = this.newQueue.length + this.learningQueue.length + this.reviewQueue.length;
   }
 
   // Get next card to study
@@ -310,13 +311,28 @@ class StudySession {
   }
 
   // Get queue counts
-  getQueueCounts() {
-    // Return total available counts, not just loaded in session
+  getQueueCounts(currentCard = null) {
+    // Live queue counts (remaining in current session)
+    let newCount = this.newQueue.length;
+    let learningCount = this.learningQueue.length;
+    let reviewCount = this.reviewQueue.length;
+
+    // Include current card so header badges reflect what is on screen
+    if (currentCard) {
+      if (currentCard.status === 'new') {
+        newCount++;
+      } else if (currentCard.status === 'learning' || currentCard.status === 'relearning') {
+        learningCount++;
+      } else if (currentCard.status === 'review') {
+        reviewCount++;
+      }
+    }
+
     return {
-      new: this.totalCounts?.new || this.newQueue.length,
-      learning: this.totalCounts?.learning || this.learningQueue.length,
-      review: this.totalCounts?.review || this.reviewQueue.length,
-      total: (this.totalCounts?.new || 0) + (this.totalCounts?.learning || 0) + (this.totalCounts?.review || 0)
+      new: newCount,
+      learning: learningCount,
+      review: reviewCount,
+      total: newCount + learningCount + reviewCount
     };
   }
 
@@ -545,25 +561,26 @@ function updateCardStatusBadge(card) {
 }
 
 function updateQueueCounts() {
-  const counts = session.getQueueCounts();
+  const counts = session.getQueueCounts(currentCard);
   
   newCount.textContent = `${counts.new} New`;
   learningCount.textContent = `${counts.learning} Learning`;
   reviewCount.textContent = `${counts.review} Review`;
   
-  totalCards.textContent = counts.total;
+  const totalForSession = session.initialQueueTotal || counts.total;
+  totalCards.textContent = totalForSession;
   currentCardNumber.textContent = session.sessionStats.studied + 1;
   sessionCards.textContent = session.sessionStats.studied;
 }
 
 function updateProgress() {
   const stats = session.getSessionStats();
-  const initialTotal = session.cards.length;
-  const remaining = session.getQueueCounts().total;
-  const studied = initialTotal - remaining;
-  
-  if (initialTotal > 0) {
-    const progressPercent = (studied / initialTotal) * 100;
+  const remaining = session.getQueueCounts(currentCard).total;
+  const studied = stats.studied;
+  const total = studied + remaining;
+
+  if (total > 0) {
+    const progressPercent = (studied / total) * 100;
     const rounded = Math.round(progressPercent);
     progressBar.style.width = progressPercent + '%';
     if (cardProgressFill) cardProgressFill.style.width = progressPercent + '%';

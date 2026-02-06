@@ -1,12 +1,32 @@
 // Popup.js - Enhanced with Allow Copy submenu v2.8.0
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await initPopupTheme();
   await loadStats();
   setupEventListeners();
   setupSettingsModal();
   setupAboutModal();
   updateUI();
 });
+
+async function initPopupTheme() {
+  try {
+    const result = await chrome.storage.local.get(['afc_theme']);
+    applyPopupTheme(result.afc_theme || 'light');
+  } catch (error) {
+    applyPopupTheme('light');
+  }
+}
+
+function applyPopupTheme(theme) {
+  let effectiveTheme = theme;
+  if (theme === 'system') {
+    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  document.body.classList.toggle('theme-light', effectiveTheme === 'light');
+  document.body.classList.toggle('theme-dark', effectiveTheme === 'dark');
+}
 
 async function loadStats() {
   try {
@@ -28,6 +48,12 @@ async function loadStats() {
 }
 
 function setupEventListeners() {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.afc_theme) {
+      applyPopupTheme(changes.afc_theme.newValue);
+    }
+  });
+
   document.getElementById('add-card-btn').addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab) {
@@ -204,21 +230,58 @@ document.head.appendChild(style);
 function setupSettingsModal() {}
 
 function openSettingsModal() {
+  const isLight = document.body.classList.contains('theme-light');
+  const palette = isLight
+    ? {
+        overlay: 'rgba(15, 23, 42, 0.35)',
+        modalBg: '#ffffff',
+        modalBorder: '#dbe3ee',
+        title: '#2563eb',
+        text: '#1f2937',
+        muted: '#64748b',
+        inputBg: '#f8fafc',
+        buttonBg: '#f8fafc',
+        buttonBorder: '#d0d9e5',
+        selectedBg: '#5dade2',
+        selectedBorder: '#5dade2',
+        cancelBg: '#f8fafc',
+        cancelBorder: '#d0d9e5',
+        saveBg: '#22c55e',
+        saveBorder: '#22c55e'
+      }
+    : {
+        overlay: 'rgba(0, 0, 0, 0.5)',
+        modalBg: '#2c3e50',
+        modalBorder: '#3d5266',
+        title: '#5dade2',
+        text: '#ecf0f1',
+        muted: '#bdc3c7',
+        inputBg: '#34495e',
+        buttonBg: '#34495e',
+        buttonBorder: '#4a5f7f',
+        selectedBg: '#5dade2',
+        selectedBorder: '#5dade2',
+        cancelBg: '#34495e',
+        cancelBorder: '#4a5f7f',
+        saveBg: '#27ae60',
+        saveBorder: '#27ae60'
+      };
+
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: ${palette.overlay};
     display: flex; align-items: center; justify-content: center;
     z-index: 2000;
   `;
   
   const modal = document.createElement('div');
   modal.style.cssText = `
-    background: #2c3e50; border: 1px solid #3d5266;
+    background: ${palette.modalBg}; border: 1px solid ${palette.modalBorder};
     border-radius: 12px; padding: 20px;
     width: 90%; max-width: 450px;
-    color: #ecf0f1;
+    color: ${palette.text};
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   `;
   
@@ -227,6 +290,9 @@ function openSettingsModal() {
     const dockSide = result.afc_dock_side || 'right';
     const theme = result.afc_theme || 'light';
     const enableAltClick = result.afc_image_alt_click !== false;
+    let selectedDock = dockSide;
+    let selectedTheme = theme;
+    let selectedAltClick = enableAltClick;
     
     modal.innerHTML = `
       <h2 style="margin: 0 0 20px 0; font-size: 18px; color: #5dade2;">⚙️ Cài đặt</h2>
@@ -286,6 +352,39 @@ function openSettingsModal() {
     
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+
+    const titleEl = modal.querySelector('h2');
+    if (titleEl) titleEl.style.color = palette.title;
+    modal.querySelectorAll('label').forEach((label) => {
+      label.style.color = palette.muted;
+    });
+    const sliderEl = document.getElementById('popupOverlayOpacity');
+    if (sliderEl) sliderEl.style.background = palette.inputBg;
+    const cancelBtnEl = modal.querySelector('.close-modal-btn');
+    if (cancelBtnEl) {
+      cancelBtnEl.style.background = palette.cancelBg;
+      cancelBtnEl.style.borderColor = palette.cancelBorder;
+      cancelBtnEl.style.color = palette.text;
+    }
+    const saveBtnEl = modal.querySelector('.save-settings-btn');
+    if (saveBtnEl) {
+      saveBtnEl.style.background = palette.saveBg;
+      saveBtnEl.style.borderColor = palette.saveBorder;
+      saveBtnEl.style.color = '#ffffff';
+    }
+
+    const paintGroup = (selector, selectedValue, attrName) => {
+      modal.querySelectorAll(selector).forEach((btn) => {
+        const selected = btn.getAttribute(attrName) === selectedValue;
+        btn.style.background = selected ? palette.selectedBg : palette.buttonBg;
+        btn.style.borderColor = selected ? palette.selectedBorder : palette.buttonBorder;
+        btn.style.color = selected ? '#ffffff' : palette.text;
+      });
+    };
+
+    paintGroup('.dock-btn', selectedDock, 'data-side');
+    paintGroup('.theme-btn', selectedTheme, 'data-theme');
+    paintGroup('.altclick-btn', selectedAltClick ? 'on' : 'off', 'data-value');
     
     const opacitySlider = document.getElementById('popupOverlayOpacity');
     const opacityLabel = modal.querySelector('label');
@@ -293,44 +392,32 @@ function openSettingsModal() {
       opacityLabel.textContent = `Độ mờ overlay (${e.target.value}%)`;
     });
     
-    document.querySelectorAll('.dock-btn').forEach(btn => {
+    modal.querySelectorAll('.dock-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.dock-btn').forEach(b => {
-          b.style.background = '#34495e';
-          b.style.borderColor = '#4a5f7f';
-        });
-        e.target.style.background = '#5dade2';
-        e.target.style.borderColor = '#5dade2';
+        selectedDock = e.currentTarget.getAttribute('data-side') || 'right';
+        paintGroup('.dock-btn', selectedDock, 'data-side');
       });
     });
     
-    document.querySelectorAll('.theme-btn').forEach(btn => {
+    modal.querySelectorAll('.theme-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.theme-btn').forEach(b => {
-          b.style.background = '#34495e';
-          b.style.borderColor = '#4a5f7f';
-        });
-        e.target.style.background = '#5dade2';
-        e.target.style.borderColor = '#5dade2';
+        selectedTheme = e.currentTarget.getAttribute('data-theme') || 'light';
+        paintGroup('.theme-btn', selectedTheme, 'data-theme');
       });
     });
     
-    document.querySelectorAll('.altclick-btn').forEach(btn => {
+    modal.querySelectorAll('.altclick-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.altclick-btn').forEach(b => {
-          b.style.background = '#34495e';
-          b.style.borderColor = '#4a5f7f';
-        });
-        e.target.style.background = '#5dade2';
-        e.target.style.borderColor = '#5dade2';
+        selectedAltClick = (e.currentTarget.getAttribute('data-value') === 'on');
+        paintGroup('.altclick-btn', selectedAltClick ? 'on' : 'off', 'data-value');
       });
     });
     
-    document.querySelector('.save-settings-btn').addEventListener('click', () => {
+    modal.querySelector('.save-settings-btn').addEventListener('click', () => {
       const opacity = parseFloat(document.getElementById('popupOverlayOpacity').value) / 100;
-      const dockSide = document.querySelector('.dock-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-side') || 'right';
-      const theme = document.querySelector('.theme-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-theme') || 'light';
-      const enableAltClick = document.querySelector('.altclick-btn[style*="rgb(93, 173, 226)"]')?.getAttribute('data-value') === 'on';
+      const dockSide = selectedDock;
+      const theme = selectedTheme;
+      const enableAltClick = selectedAltClick;
       
       chrome.storage.local.set({
         afc_overlay_opacity: opacity,
@@ -355,11 +442,12 @@ function openSettingsModal() {
         });
       } catch (e) {}
       
+      applyPopupTheme(theme);
       overlay.remove();
       showNotification('Settings saved!', 'success');
     });
     
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+    modal.querySelectorAll('.close-modal-btn').forEach(btn => {
       btn.addEventListener('click', () => overlay.remove());
     });
     
@@ -372,20 +460,47 @@ function openSettingsModal() {
 function setupAboutModal() {}
 
 function openAboutModal() {
+  const isLight = document.body.classList.contains('theme-light');
+  const palette = isLight
+    ? {
+        overlay: 'rgba(15, 23, 42, 0.35)',
+        modalBg: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        modalBorder: '#dbe3ee',
+        title: '#2563eb',
+        text: '#334155',
+        muted: '#64748b',
+        cardBg: '#f8fafc',
+        buttonBg: '#f8fafc',
+        buttonBorder: '#d0d9e5',
+        buttonText: '#1f2937'
+      }
+    : {
+        overlay: 'rgba(0, 0, 0, 0.5)',
+        modalBg: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+        modalBorder: '#3d5266',
+        title: '#5dade2',
+        text: '#ecf0f1',
+        muted: '#95a5a6',
+        cardBg: 'rgba(0, 0, 0, 0.2)',
+        buttonBg: '#34495e',
+        buttonBorder: '#4a5f7f',
+        buttonText: '#ecf0f1'
+      };
+
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: ${palette.overlay};
     display: flex; align-items: center; justify-content: center;
     z-index: 2000;
   `;
   
   const modal = document.createElement('div');
   modal.style.cssText = `
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    border: 1px solid #3d5266; border-radius: 12px; padding: 30px;
-    width: 90%; max-width: 380px; color: #ecf0f1;
+    background: ${palette.modalBg};
+    border: 1px solid ${palette.modalBorder}; border-radius: 12px; padding: 30px;
+    width: 90%; max-width: 380px; color: ${palette.text};
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     text-align: center;
   `;
@@ -421,8 +536,39 @@ function openAboutModal() {
   
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
-  
-  document.querySelector('.close-about-btn').addEventListener('click', () => overlay.remove());
+
+  const titleEl = modal.querySelector('h2');
+  if (titleEl) titleEl.style.color = palette.title;
+  const descEl = modal.querySelector('p');
+  if (descEl) descEl.style.color = palette.muted;
+  const infoBox = modal.querySelector('div[style*="padding: 15px"]');
+  if (infoBox) {
+    infoBox.style.background = palette.cardBg;
+    if (isLight) {
+      infoBox.style.border = '1px solid #dbe3ee';
+      infoBox.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.08)';
+      infoBox.style.background = 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)';
+    }
+
+    infoBox.querySelectorAll('p').forEach((p) => {
+      p.style.color = palette.text;
+    });
+    infoBox.querySelectorAll('span').forEach((span) => {
+      const text = (span.textContent || '').trim();
+      span.style.color = text.endsWith(':') ? palette.muted : palette.text;
+    });
+  }
+  modal.querySelectorAll('a').forEach((a) => {
+    a.style.color = palette.title;
+  });
+  const closeBtn = modal.querySelector('.close-about-btn');
+  if (closeBtn) {
+    closeBtn.style.background = palette.buttonBg;
+    closeBtn.style.borderColor = palette.buttonBorder;
+    closeBtn.style.color = palette.buttonText;
+  }
+
+  modal.querySelector('.close-about-btn').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.remove();
   });

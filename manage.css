@@ -80,20 +80,38 @@ body {
 .sync-bar-right {
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .sync-status {
   font-size: 12px;
-  color: #94a3b8;
-  padding: 6px 10px;
-  border-radius: 999px;
+  line-height: 1.45;
+  color: #cbd5e1;
+  padding: 8px 12px;
+  border-radius: 12px;
   border: 1px solid #334155;
   background: #0f172a;
+  max-width: min(100%, 980px);
+  width: fit-content;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
 }
 
 @media (max-width: 768px) {
   .sync-bar {
     padding: 8px 20px 0 20px;
+  }
+
+  .sync-bar-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .sync-status {
+    max-width: 100%;
   }
 }
 
