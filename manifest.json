@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AddFlashcard",
-  "version": "2.7.0",
-  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Tích hợp Image Occlusion để tạo thẻ Anki từ ảnh chụp màn hình. Export APKG và sync với Anki qua AnkiConnect.",
+  "version": "2.7.1",
+  "description": "Tạo flashcard từ văn bản/ảnh/media trên web, PDF và Notion. Tích hợp Image Occlusion và Allow Copy. Export APKG và sync với Anki qua AnkiConnect.",
   "permissions": [
     "contextMenus",
     "storage",
@@ -35,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js", "image-hover-handler.js"],
+      "js": ["content.js", "image-hover-handler.js", "allow-copy-content.js"],
       "run_at": "document_idle"
     },
     {
@@ -79,7 +79,11 @@
         "notion-sync.css",
         "icons/icon16.png",
         "icons/icon48.png",
-        "icons/icon128.png"
+        "icons/icon128.png",
+        "allow-copy-popup.html",
+        "allow-copy-popup.css",
+        "allow-copy-popup.js",
+        "icons/allow-copy-icon.png"
       ],
       "matches": ["<all_urls>"]
     }

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allow Copy</title>
+  <link rel="stylesheet" href="allow-copy-popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="icons/allow-copy-icon.png" alt="Allow Copy" class="logo">
+      <h1>Allow Copy</h1>
+    </div>
+
+    <div class="toggle-section">
+      <div class="toggle-label">
+        <span>Trạng thái</span>
+        <span id="status-text" class="status-text">Đang bật</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-switch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="current-site">
+      <h3>Trang hiện tại</h3>
+      <div id="current-url" class="url-display">Đang tải...</div>
+      <button id="add-to-whitelist" class="btn btn-primary">
+        <span class="btn-icon">+</span>
+        Thêm vào danh sách
+      </button>
+    </div>
+
+    <div class="whitelist-section">
+      <h3>Danh sách trang web đã lưu</h3>
+      <div class="whitelist-actions">
+        <button id="export-domains-btn" class="btn btn-secondary">
+          📥 Export domains.json
+        </button>
+        <button id="import-domains-btn" class="btn btn-secondary">
+          📤 Import domains.json
+        </button>
+        <input type="file" id="import-domains-input" accept=".json" style="display: none;">
+      </div>
+      <div id="whitelist-container" class="whitelist-container">
+        <p class="empty-state">Chưa có trang web nào trong danh sách</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Extension cho phép copy mọi nội dung trên web</p>
+    </div>
+  </div>
+
+  <script src="allow-copy-popup.js"></script>
+</body>
+</html>

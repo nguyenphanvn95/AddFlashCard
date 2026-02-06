@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hướng dẫn Allow Copy - AddFlashcard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      color: #764ba2;
+      font-size: 24px;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 {
+      color: #4b5563;
+      font-size: 18px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 15px;
+      color: #4b5563;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+
+    li {
+      margin-bottom: 8px;
+      color: #4b5563;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #dc2626;
+    }
+
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    pre code {
+      background: none;
+      color: #10b981;
+      padding: 0;
+    }
+
+    .feature {
+      background: #f9fafb;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .warning {
+      background: #fef2f2;
+      border-left: 4px solid #ef4444;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .tip {
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 20px;
+      transition: transform 0.2s;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 20px 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 Hướng dẫn sử dụng Allow Copy</h1>
+    <p><strong>Version:</strong> 2.7.1 | <strong>Tác giả:</strong> Nguyễn Văn Phán</p>
+
+    <h2>📌 Giới thiệu</h2>
+    <p>
+      <strong>Allow Copy</strong> là tính năng được tích hợp vào AddFlashcard Extension, 
+      cho phép bạn copy nội dung trên bất kỳ trang web nào, ngay cả khi trang web đó 
+      có chặn chức năng copy, select hay right-click.
+    </p>
+
+    <div class="feature">
+      <h3>✨ Tính năng chính</h3>
+      <ul>
+        <li>✅ Bật/tắt cho phép copy trên tất cả các trang web</li>
+        <li>✅ Quản lý danh sách các domain đã lưu (whitelist)</li>
+        <li>✅ Export danh sách domains ra file JSON</li>
+        <li>✅ Import danh sách domains từ file JSON</li>
+        <li>✅ Áp dụng realtime không cần reload trang</li>
+        <li>✅ Tự động loại bỏ các hạn chế về copy, select, right-click</li>
+      </ul>
+    </div>
+
+    <h2>🚀 Cách sử dụng</h2>
+
+    <h3>1. Mở Allow Copy Popup</h3>
+    <ol>
+      <li>Click vào icon AddFlashcard extension trên thanh công cụ</li>
+      <li>Trong popup chính, click vào nút <strong>"Allow Copy"</strong> (icon 📋)</li>
+      <li>Popup Allow Copy sẽ mở ra trong tab mới</li>
+    </ol>
+
+    <h3>2. Bật/Tắt Allow Copy</h3>
+    <div class="feature">
+      <p>
+        Sử dụng <strong>Toggle switch</strong> ở đầu popup để bật/tắt tính năng.
+      </p>
+      <ul>
+        <li><strong>Đang bật:</strong> Màu xanh lá - Allow Copy đang hoạt động trên tất cả trang</li>
+        <li><strong>Đã tắt:</strong> Màu đỏ - Allow Copy không hoạt động</li>
+      </ul>
+      <p><em>Lưu ý: Thay đổi sẽ được áp dụng ngay lập tức trên tất cả các tab đang mở.</em></p>
+    </div>
+
+    <h3>3. Thêm trang vào Whitelist</h3>
+    <ol>
+      <li>Mở popup Allow Copy</li>
+      <li>Phần "Trang hiện tại" sẽ hiển thị domain của tab đang active</li>
+      <li>Click nút <strong>"+ Thêm vào danh sách"</strong></li>
+      <li>Domain sẽ được thêm vào danh sách bên dưới</li>
+    </ol>
+
+    <h3>4. Quản lý Whitelist</h3>
+    <div class="feature">
+      <p>Danh sách các domain đã lưu sẽ hiển thị ở phần "Danh sách trang web đã lưu".</p>
+      <p>Mỗi domain có nút <strong>"Xóa"</strong> để xóa khỏi danh sách.</p>
+    </div>
+
+    <h2>💾 Export & Import Domains</h2>
+
+    <h3>Export domains.json</h3>
+    <ol>
+      <li>Click nút <strong>"📥 Export domains.json"</strong></li>
+      <li>File JSON sẽ được tải về với tên <code>domains-[timestamp].json</code></li>
+      <li>File chứa danh sách tất cả các domain đã lưu</li>
+    </ol>
+
+    <h3>Import domains.json</h3>
+    <ol>
+      <li>Click nút <strong>"📤 Import domains.json"</strong></li>
+      <li>Chọn file JSON đã export trước đó</li>
+      <li>Xác nhận merge với danh sách hiện có</li>
+      <li>Danh sách sẽ được cập nhật (không ghi đè, chỉ merge)</li>
+    </ol>
+
+    <h3>Định dạng file domains.json</h3>
+    <pre><code>{
+  "domains": [
+    "example.com",
+    "test.com",
+    "another-site.org"
+  ],
+  "exportDate": "2024-02-06T12:00:00.000Z",
+  "version": "1.0"
+}</code></pre>
+
+    <div class="tip">
+      <strong>💡 Mẹo:</strong> Bạn có thể edit file JSON bằng text editor để thêm/xóa domains 
+      trước khi import lại.
+    </div>
+
+    <h2>🔧 Cách hoạt động</h2>
+
+    <h3>Kỹ thuật</h3>
+    <p>Allow Copy hoạt động bằng cách:</p>
+    <ul>
+      <li>Inject content script vào tất cả các trang web</li>
+      <li>Override các event listener ngăn chặn copy (oncopy, oncontextmenu, v.v.)</li>
+      <li>Loại bỏ CSS <code>user-select: none</code></li>
+      <li>Sử dụng MutationObserver để theo dõi thay đổi DOM</li>
+      <li>Apply CSS để cho phép text selection</li>
+    </ul>
+
+    <h3>Storage</h3>
+    <p>Dữ liệu được lưu trong <code>chrome.storage.local</code>:</p>
+    <ul>
+      <li><code>allowCopyEnabled</code>: Trạng thái bật/tắt (boolean)</li>
+      <li><code>allowCopyWhitelist</code>: Danh sách domains (array)</li>
+    </ul>
+
+    <h2>⚠️ Lưu ý quan trọng</h2>
+
+    <div class="warning">
+      <h3>Giới hạn</h3>
+      <ul>
+        <li>Không hoạt động trên các trang Chrome internal (<code>chrome://</code>)</li>
+        <li>Một số trang web có thể sử dụng kỹ thuật chặn phức tạp hơn</li>
+        <li>Cần reload trang nếu content script chưa được inject</li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <h3>Best Practices</h3>
+      <ul>
+        <li>✅ Export domains.json định kỳ để backup</li>
+        <li>✅ Chỉ thêm các domain tin cậy vào whitelist</li>
+        <li>✅ Tắt Allow Copy khi không cần để tránh conflict</li>
+        <li>✅ Check console log (F12) nếu gặp vấn đề</li>
+      </ul>
+    </div>
+
+    <h2>🐛 Troubleshooting</h2>
+
+    <h3>Allow Copy không hoạt động?</h3>
+    <ol>
+      <li>Kiểm tra toggle switch đã bật chưa</li>
+      <li>Reload lại trang web</li>
+      <li>Check console log (F12) để xem lỗi</li>
+      <li>Kiểm tra extension permissions tại <code>chrome://extensions/</code></li>
+    </ol>
+
+    <h3>File import không được?</h3>
+    <ol>
+      <li>Kiểm tra định dạng file JSON</li>
+      <li>Đảm bảo có field <code>domains</code> là array</li>
+      <li>Check encoding của file (nên là UTF-8)</li>
+    </ol>
+
+    <h2>📊 Thống kê & Dữ liệu</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Dữ liệu</th>
+          <th>Lưu trữ</th>
+          <th>Mô tả</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>allowCopyEnabled</td>
+          <td>chrome.storage.local</td>
+          <td>Trạng thái bật/tắt</td>
+        </tr>
+        <tr>
+          <td>allowCopyWhitelist</td>
+          <td>chrome.storage.local</td>
+          <td>Danh sách domains</td>
+        </tr>
+        <tr>
+          <td>domains.json</td>
+          <td>Local file</td>
+          <td>Export/Import backup</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>🎯 Kết luận</h2>
+    <p>
+      Allow Copy là một tính năng mạnh mẽ giúp bạn tự do copy nội dung trên web. 
+      Kết hợp với các tính năng flashcard của AddFlashcard, bạn có thể dễ dàng 
+      tạo flashcard từ bất kỳ nguồn nào trên internet.
+    </p>
+
+    <div class="tip">
+      <strong>💝 Cảm ơn đã sử dụng AddFlashcard!</strong>
+      <p>Nếu bạn thích extension này, đừng quên để lại đánh giá và chia sẻ với bạn bè!</p>
+    </div>
+
+    <a href="https://github.com/nguyenphanvn95/" class="button">🔗 GitHub</a>
+  </div>
+</body>
+</html>

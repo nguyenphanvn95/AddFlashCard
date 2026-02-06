@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AddFlashcard - Extension Tạo Flashcard Thông Minh</title>
+    <script src="storage-manager.js"></script>
     <style>
         * {
             margin: 0;
@@ -115,6 +116,8 @@
             font-size: 1.1em;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            border: none;
         }
 
         .btn:hover {
@@ -131,6 +134,185 @@
         .btn-secondary:hover {
             background: white;
             color: var(--primary);
+        }
+
+        /* Setup Modal */
+        .setup-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .setup-modal.active {
+            display: flex;
+        }
+
+        .setup-modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 50px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.4s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .setup-modal h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .setup-modal-icon {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .setup-modal p {
+            font-size: 1.1em;
+            color: var(--text-gray);
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .setup-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .setup-option {
+            padding: 20px;
+            background: var(--bg-light);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .setup-option:hover {
+            background: #EEF2FF;
+            border-color: var(--primary);
+        }
+
+        .setup-option.selected {
+            background: #EEF2FF;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+
+        .setup-option-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .setup-option-content {
+            flex: 1;
+        }
+
+        .setup-option-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .setup-option-desc {
+            font-size: 0.95em;
+            color: var(--text-gray);
+        }
+
+        .setup-folder-status {
+            display: none;
+            padding: 15px;
+            background: #ECFDF5;
+            border: 2px solid #10B981;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .setup-folder-status.active {
+            display: block;
+        }
+
+        .setup-folder-status strong {
+            color: var(--success);
+            font-size: 1.1em;
+        }
+
+        .setup-folder-path {
+            color: var(--text-gray);
+            font-size: 0.95em;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+
+        .setup-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .setup-btn {
+            padding: 15px 35px;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .setup-btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .setup-btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .setup-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .setup-btn-skip {
+            background: transparent;
+            color: var(--text-gray);
+            border: 2px solid var(--border);
+        }
+
+        .setup-btn-skip:hover {
+            background: var(--bg-light);
+            border-color: var(--text-gray);
         }
 
         /* Container */
@@ -720,6 +902,47 @@
     </section>
 
 
+    <!-- Setup Modal -->
+    <div class="setup-modal" id="setupModal">
+        <div class="setup-modal-content">
+            <div class="setup-modal-icon">📁</div>
+            <h2>Chào mừng đến với AddFlashcard! 🎉</h2>
+            <p>
+                Để bảo vệ dữ liệu flashcards của bạn, hãy chọn một thư mục để tự động backup.
+                <br><strong>Khuyến nghị:</strong> Chọn thư mục trong Google Drive hoặc OneDrive để đồng bộ cloud.
+            </p>
+
+            <div class="setup-options">
+                <div class="setup-option" data-choice="select">
+                    <div class="setup-option-icon">✅</div>
+                    <div class="setup-option-content">
+                        <div class="setup-option-title">Chọn thư mục backup</div>
+                        <div class="setup-option-desc">Dữ liệu được backup tự động mỗi 5 phút (Khuyến nghị)</div>
+                    </div>
+                </div>
+
+                <div class="setup-folder-status" id="folderStatus">
+                    <strong>✓ Đã chọn thư mục:</strong>
+                    <div class="setup-folder-path" id="folderPath">Chưa chọn</div>
+                </div>
+
+                <div class="setup-option" data-choice="skip">
+                    <div class="setup-option-icon">⏭️</div>
+                    <div class="setup-option-content">
+                        <div class="setup-option-title">Bỏ qua bây giờ</div>
+                        <div class="setup-option-desc">Bạn có thể thiết lập sau trong trang Quản lý</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setup-buttons">
+                <button class="setup-btn setup-btn-primary" id="setupContinueBtn" disabled>
+                    Tiếp tục
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer>
         <div class="container">
@@ -740,6 +963,119 @@
     </footer>
 
     <script>
+        // Setup Modal Logic
+        const setupModal = document.getElementById('setupModal');
+        const setupContinueBtn = document.getElementById('setupContinueBtn');
+        const folderStatus = document.getElementById('folderStatus');
+        const folderPath = document.getElementById('folderPath');
+        
+        let selectedChoice = null;
+        let selectedFolder = null;
+
+        // Check if this is first run
+        async function checkFirstRun() {
+            const result = await chrome.storage.local.get(['intro_completed', 'sync_folder_selected']);
+            
+            // Show modal if intro not completed OR sync folder not selected
+            if (!result.intro_completed || !result.sync_folder_selected) {
+                setupModal.classList.add('active');
+            }
+        }
+
+        // Option selection
+        document.querySelectorAll('.setup-option').forEach(option => {
+            option.addEventListener('click', async function() {
+                // Remove selected from all
+                document.querySelectorAll('.setup-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // Add selected to this one
+                this.classList.add('selected');
+                selectedChoice = this.dataset.choice;
+                
+                if (selectedChoice === 'select') {
+                    // Request directory picker
+                    try {
+                        if ('showDirectoryPicker' in window) {
+                            const dirHandle = await window.showDirectoryPicker({
+                                mode: 'readwrite',
+                                startIn: 'documents'
+                            });
+                            
+                            selectedFolder = dirHandle;
+                            folderPath.textContent = dirHandle.name || 'Thư mục đã chọn';
+                            folderStatus.classList.add('active');
+                            setupContinueBtn.disabled = false;
+                            
+                            // Save to storage manager
+                            if (window.storageManager) {
+                                window.storageManager.storageDir = dirHandle;
+                                await window.storageManager.saveDirectoryHandle();
+                                await window.storageManager.syncBothWays();
+                            }
+                            
+                            // Mark as selected
+                            await chrome.storage.local.set({ sync_folder_selected: true });
+                        } else {
+                            alert('Trình duyệt của bạn không hỗ trợ File System Access API. Vui lòng sử dụng Chrome/Edge phiên bản mới.');
+                            setupContinueBtn.disabled = false;
+                        }
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            console.error('Error selecting folder:', error);
+                        }
+                        // User cancelled or error - allow skip
+                        this.classList.remove('selected');
+                        selectedChoice = null;
+                    }
+                } else if (selectedChoice === 'skip') {
+                    folderStatus.classList.remove('active');
+                    setupContinueBtn.disabled = false;
+                }
+            });
+        });
+
+        // Continue button
+        setupContinueBtn.addEventListener('click', async () => {
+            // Mark intro as completed
+            await chrome.storage.local.set({ intro_completed: true });
+            
+            // Close modal with animation
+            setupModal.querySelector('.setup-modal-content').style.animation = 'modalSlideOut 0.3s ease-out';
+            setTimeout(() => {
+                setupModal.classList.remove('active');
+            }, 300);
+        });
+
+        // Add slide out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes modalSlideOut {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateY(-50px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load storage manager if available
+            if (window.storageManager) {
+                window.storageManager.initialize().then(() => {
+                    checkFirstRun();
+                });
+            } else {
+                checkFirstRun();
+            }
+        });
+
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

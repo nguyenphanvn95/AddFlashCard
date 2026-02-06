@@ -55,6 +55,11 @@
         <span class="icon">🖼️</span>
         <span>Image Occlusion</span>
       </button>
+
+      <button class="action-btn allow-copy-btn" id="allow-copy-btn">
+        <span class="icon">📋</span>
+        <span>Allow Copy</span>
+      </button>
     </div>
 
     <div class="footer">
@@ -196,6 +201,39 @@
     }
 
     .action-btn.add-card-btn .icon {
+      font-size: 20px;
+    }
+
+    /* Allow Copy Button Style */
+    .action-btn.allow-copy-btn {
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn.allow-copy-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn.allow-copy-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn.allow-copy-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+    }
+
+    .action-btn.allow-copy-btn .icon {
       font-size: 20px;
     }
   </style>

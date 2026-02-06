@@ -407,6 +407,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })();
       return true;
 
+    // Allow Copy handlers
+    case 'toggleAllowCopy':
+      handleToggleAllowCopy(message.enabled);
+      sendResponse({ success: true });
+      break;
+
     default:
       sendResponse({ success: false, error: 'Unknown action' });
   }
@@ -632,6 +638,28 @@ async function cropImage(dataUrl, area) {
       .catch(err => {
         console.error('Crop image error:', err);
         resolve(dataUrl);
+      });
+  });
+}
+
+// ===== ALLOW COPY HANDLERS =====
+
+// Handle toggle Allow Copy
+function handleToggleAllowCopy(enabled) {
+  // Gửi message tới tất cả các tab để áp dụng ngay lập tức
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(tab => {
+      if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+        chrome.tabs.sendMessage(tab.id, { 
+          action: 'toggleAllowCopy', 
+          enabled: enabled 
+        }).catch(() => {
+          // Ignore errors for tabs that don't have content script
+        });
+      }
+    });
+  });
+}
       });
   });
 }
