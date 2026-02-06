@@ -1,97 +1,89 @@
-#zorbi-extension-root {
-  width: 500px;
-  height: 100%;
-  position: fixed;
-  top: 0px;
-  bottom: 0px;
-  border-width: 0;
-  z-index: 2147483647;
-  box-shadow: 0px 0px 5px #0000009e;
-  min-width: 350px;
-  max-width: 90vw;
-  background-color: #f4f5f8;
+/* GENERAL CARD STYLE */
+.card {
+  font-family: "Helvetica LT Std", Helvetica, Arial, Sans;
+  font-size: 150%;
+  text-align: center;
+  color: black;
+  background-color: white;
 }
 
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap");
-#zorbi-extension-body {
-  margin: 0px;
-  font-family: "Roboto", sans-serif;
-  background-color: #f4f5f8;
+/* OCCLUSION CSS START - don't edit this */
+#io-overlay {
+  position:absolute;
+  top:0;
+  width:100%;
+  z-index:3
 }
 
-#zorbi-extension-resize {
-  height: 100%;
-  position: fixed;
-  top: 0px;
-  right: -500px;
-  bottom: 0px;
-  border-width: 0;
-  min-width: 350px;
-  max-width: 90vw;
+#io-original {
+  position:relative;
+  top:0;
+  width:100%;
+  z-index:2;
+  visibility: hidden;
 }
 
-#zorbi-tooltip-box {
-  all: unset;
-  position: fixed;
-  display: flex;
-  flex-direction: row;
-  background-color: #303336;
-  border-radius: 0.25rem;
-  color: white;
-  z-index: 2147483647;
-  max-height: 40px;
-  height: 100%;
-}
-
-.zorbi-tooltip-item {
-  padding: 0.4rem 1rem;
-  font-size: 18px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-}
-
-
-.zorbi-tooltip-item:hover {
-  cursor: pointer;
-  background-color: #3e4349;
-  border-radius: 0.25rem;
-}
-
-#zorbi-tooltip-logo {
-  all: unset;
-  display: flex;
-  height: 100%;
-  align-items: center;
-  padding: 0rem 0.5rem;
-  background:#3e4349;
-  border-right: 1px;
-  border-color:#7c3aed;
- border-radius: 0.25rem;
-}
-
-#zorbi-tooltip-logo img {
-  all: unset;
-
-  height: 20px;
-}
-
-
-
-#zorbi-extension-body button:focus {
-  outline: none;
-}
-
-#zorbi-extension-root::before {
-  content: "";
-  cursor: w-resize;
-  height: 100vh;
-  width: 5px;
-  position: absolute;
-  left: -2.5px;
-}
-
-#zorbi-extension-frame {
+#io-wrapper {
+  position:relative;
   width: 100%;
-  height: 100%;
+}
+/* OCCLUSION CSS END */
+
+/* OTHER STYLES */
+#io-header{
+  font-size: 1.1em;
+  margin-bottom: 0.2em;
+}
+
+#io-footer{
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.8em;
+  font-style: italic;
+}
+
+#io-extra-wrapper{
+  /* the wrapper is needed to center the
+  left-aligned blocks below it */
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.5em;
+}
+
+#io-extra{
+  text-align:center;
+  display: inline-block;
+}
+
+.io-extra-entry{
+  margin-top: 0.8em;
+  font-size: 0.9em;
+  text-align:left;
+}
+
+.io-field-descr{
+  margin-bottom: 0.2em;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+#io-revl-btn {
+  font-size: 0.5em;
+}
+
+/* ADJUSTMENTS FOR MOBILE DEVICES */
+
+.mobile .card, .mobile #content {
+  font-size: 120%;
+  margin: 0;
+}
+
+.mobile #io-extra-wrapper {
+  width: 95%;
+}
+
+.mobile #io-revl-btn {
+  font-size: 0.8em;
 }

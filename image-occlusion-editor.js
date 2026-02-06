@@ -144,6 +144,9 @@ function setupEventListeners() {
   document.getElementById('drawEllipseBtn').addEventListener('click', () => selectTool('ellipse'));
   document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
   document.getElementById('clearBtn').addEventListener('click', clearAll);
+  document.getElementById('editTemplateBtn').addEventListener('click', () => {
+    window.open(chrome.runtime.getURL('anki-template.html'), '_blank');
+  });
   document.getElementById('exportBtn').addEventListener('click', () => {
     // Sử dụng hàm từ anki-export-unified.js
     exportAnkiMultiCard();

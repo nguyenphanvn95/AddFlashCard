@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anki Template Editor</title>
+  <link rel="stylesheet" href="anki-template.css">
+</head>
+<body>
+  <div class="template-page">
+    <header class="toolbar">
+      <div class="toolbar-left">
+        <img src="icons/icon48.png" alt="AddFlashcard" class="toolbar-logo">
+        <h1>Anki Template Editor</h1>
+      </div>
+      <div class="toolbar-right">
+        <button id="backEditorBtn" class="tool-btn">Quay lại Editor</button>
+        <button id="resetTemplateBtn" class="tool-btn">Reset mặc định</button>
+        <button id="saveTemplateBtn" class="export-btn">Lưu template</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="panel panel-left">
+        <h2>Template</h2>
+        <div class="radio-row">
+          <label><input type="radio" name="editTab" value="front" checked> Front Template</label>
+          <label><input type="radio" name="editTab" value="back"> Back Template</label>
+          <label><input type="radio" name="editTab" value="css"> Styling</label>
+        </div>
+
+        <div class="search-row">
+          <input id="searchInput" type="text" placeholder="Search">
+          <button id="searchBtn">Tìm</button>
+        </div>
+
+        <p class="hint-text">Changes below will affect the notes that use this card type.</p>
+        <textarea id="templateEditor" spellcheck="false"></textarea>
+      </section>
+
+      <div class="splitter" aria-hidden="true">⋮</div>
+
+      <section class="panel panel-right">
+        <h2>Preview</h2>
+        <div class="radio-row">
+          <label><input type="radio" name="previewTab" value="front" checked> Front Preview</label>
+          <label><input type="radio" name="previewTab" value="back"> Back Preview</label>
+        </div>
+        <iframe id="previewFrame" title="Template Preview"></iframe>
+      </section>
+    </main>
+
+    <footer class="status-bar">
+      <span id="statusText">Sẵn sàng chỉnh sửa template xuất .apkg.</span>
+    </footer>
+  </div>
+
+  <script src="anki-template.js"></script>
+</body>
+</html>
+

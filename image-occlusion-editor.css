@@ -25,9 +25,11 @@ body {
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   min-height: 60px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .toolbar-left {
@@ -64,17 +66,17 @@ body {
 .toolbar-upload {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: clamp(3px, 0.5vw, 6px);
+  padding: clamp(6px, 0.7vw, 8px) clamp(8px, 0.9vw, 12px);
   border: 1px solid #ddd;
   background: #fff;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: clamp(11px, 0.8vw, 13px);
   color: #555;
   transition: all 0.2s;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .toolbar-upload:hover {
@@ -88,34 +90,34 @@ body {
 }
 
 .toolbar-upload svg {
-  width: 18px;
-  height: 18px;
+  width: clamp(14px, 1.1vw, 18px);
+  height: clamp(14px, 1.1vw, 18px);
   flex-shrink: 0;
 }
 
 .toolbar-center {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 300px;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
   justify-content: center;
 }
 
 .tool-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: clamp(2px, 0.45vw, 4px);
+  padding: clamp(6px, 0.7vw, 8px) clamp(7px, 0.8vw, 12px);
   border: 1px solid #ddd;
   background: #fff;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: clamp(11px, 0.8vw, 13px);
   color: #555;
   transition: all 0.2s;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .tool-btn:hover {
@@ -131,8 +133,8 @@ body {
 }
 
 .tool-btn svg {
-  width: 18px;
-  height: 18px;
+  width: clamp(13px, 1vw, 18px);
+  height: clamp(13px, 1vw, 18px);
   flex-shrink: 0;
 }
 
@@ -140,17 +142,20 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-left: auto;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 #cardTitle {
-  padding: 8px 12px;
+  padding: clamp(6px, 0.7vw, 8px) clamp(8px, 0.9vw, 12px);
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 13px;
-  min-width: 150px;
-  max-width: 250px;
+  font-size: clamp(11px, 0.8vw, 13px);
+  flex: 1 1 clamp(140px, 16vw, 260px);
+  min-width: 120px;
+  max-width: 280px;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -160,14 +165,16 @@ body {
 }
 
 #hideModeSelect {
-  padding: 8px 12px;
+  padding: clamp(6px, 0.7vw, 8px) clamp(8px, 0.9vw, 12px);
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: clamp(11px, 0.8vw, 13px);
   background: #fff;
   cursor: pointer;
   transition: border-color 0.2s;
   outline: none;
+  flex: 0 1 clamp(130px, 14vw, 210px);
+  min-width: 120px;
 }
 
 #hideModeSelect:hover,
@@ -178,18 +185,18 @@ body {
 .export-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: clamp(4px, 0.5vw, 6px);
+  padding: clamp(6px, 0.7vw, 8px) clamp(9px, 1vw, 16px);
   background: #28a745;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: clamp(11px, 0.8vw, 13px);
   font-weight: 500;
   transition: all 0.2s;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .export-btn:hover {
@@ -203,8 +210,36 @@ body {
 }
 
 .export-btn svg {
-  width: 18px;
-  height: 18px;
+  width: clamp(13px, 1vw, 18px);
+  height: clamp(13px, 1vw, 18px);
+}
+
+.template-btn {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 0.5vw, 6px);
+  padding: clamp(6px, 0.7vw, 8px) clamp(8px, 0.95vw, 14px);
+  background: #6f42c1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: clamp(11px, 0.8vw, 13px);
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.template-btn:hover {
+  background: #5a32a3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(90, 50, 163, 0.3);
+}
+
+.template-btn svg {
+  width: clamp(12px, 0.9vw, 16px);
+  height: clamp(12px, 0.9vw, 16px);
 }
 
 /* Canvas container */
@@ -366,6 +401,8 @@ body {
   .toolbar {
     padding: 10px 12px;
     min-height: 55px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .toolbar-left h2 {
@@ -414,6 +451,7 @@ body {
   #hideModeSelect {
     font-size: 12px;
     padding: 7px 10px;
+    min-width: 110px;
   }
 }
 
@@ -422,6 +460,8 @@ body {
     padding: 8px 10px;
     min-height: auto;
     justify-content: flex-start;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .toolbar-left h2 {

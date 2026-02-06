@@ -554,7 +554,7 @@ function showImageOcclusionIframeOverlay(imageData, pageTitle) {
     width: '92vw', height: '92vh',
     background: '#fff',
     borderRadius: '10px',
-    overflow: 'hidden',
+    overflow: 'visible',
     boxShadow: '0 18px 50px rgba(0,0,0,0.45)',
     position: 'relative'
   });
@@ -565,14 +565,16 @@ function showImageOcclusionIframeOverlay(imageData, pageTitle) {
   closeBtn.textContent = '×';
   closeBtn.setAttribute('aria-label', 'Close');
   Object.assign(closeBtn.style, {
-    position: 'absolute', top: '10px', right: '12px',
-    zIndex: 2,
-    width: '40px', height: '40px',
+    position: 'absolute', top: '-20px', right: '-20px',
+    zIndex: 5,
+    width: '52px', height: '52px',
     borderRadius: '999px',
-    border: '1px solid rgba(0,0,0,0.15)',
-    background: 'rgba(255,255,255,0.95)',
+    border: '1px solid rgba(255,255,255,0.35)',
+    background: 'rgba(24,31,42,0.92)',
+    color: '#fff',
     cursor: 'pointer',
-    fontSize: '28px', lineHeight: '36px'
+    fontSize: '34px', lineHeight: '44px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.35)'
   });
   closeBtn.addEventListener('click', () => overlay.remove());
 
@@ -583,6 +585,15 @@ function showImageOcclusionIframeOverlay(imageData, pageTitle) {
   Object.assign(iframe.style, {
     width: '100%', height: '100%',
     border: '0', display: 'block'
+  });
+
+  const frameWrap = document.createElement('div');
+  Object.assign(frameWrap.style, {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: '10px',
+    background: '#fff'
   });
 
   // Allow Esc to close
@@ -610,7 +621,8 @@ function showImageOcclusionIframeOverlay(imageData, pageTitle) {
   });
 
   // Mount
-  panel.appendChild(iframe);
+  frameWrap.appendChild(iframe);
+  panel.appendChild(frameWrap);
   panel.appendChild(closeBtn);
   overlay.appendChild(panel);
   (document.documentElement || document.body).appendChild(overlay);
