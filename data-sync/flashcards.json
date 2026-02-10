@@ -302,32 +302,14 @@
     }
   ],
   "decks": {
-    "deck_1": {
+    "deck_0": {
       "color": "#10b981",
-      "created": 1770290903437,
+      "created": 1770705095204,
       "emoji": "📚",
       "name": "A12 - Thận & Lọc máu",
       "pinned": false
-    },
-    "deck_1770336759193_2my7lba7h": {
-      "color": "#ec4899",
-      "created": 1770336759193,
-      "description": "Tin tức",
-      "emoji": "😊",
-      "lastModified": 1770336782824,
-      "name": "Newsinlinve",
-      "pinned": false
-    },
-    "deck_1770374739743_4cze4g6": {
-      "color": "#10b981",
-      "created": 1770374739743,
-      "description": "",
-      "emoji": "📚",
-      "lastModified": 1770374739743,
-      "name": "A2 - Tim mạch (1)",
-      "pinned": false
     }
   },
-  "lastUpdate": 1770411528956,
+  "lastUpdate": 1770705109685,
   "version": "2.4.0"
 }
