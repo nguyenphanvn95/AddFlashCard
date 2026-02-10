@@ -1,6 +1,8 @@
 {
-  "domains": [],
-  "allowCopyEnabled": false,
-  "lastUpdate": 1770705109803,
+  "domains": [
+    "nguyenphanvn95.github.io"
+  ],
+  "allowCopyEnabled": true,
+  "lastUpdate": 1770705755108,
   "version": "1.0"
 }
